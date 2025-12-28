@@ -50,7 +50,6 @@ export default function SquarePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [logoVersion, setLogoVersion] = useState(0);
   const [copied, setCopied] = useState(false);
   const bg1Ref = useRef<HTMLImageElement | null>(null);
   const bg2Ref = useRef<HTMLImageElement | null>(null);
@@ -96,12 +95,13 @@ export default function SquarePage() {
     logo.onload = () => {
       if (logoRef.current) URL.revokeObjectURL(logoRef.current.src);
       logoRef.current = logo;
-      setLogoVersion((v) => v + 1);
+      drawCanvasRef.current?.();
     };
     logo.src = url;
   }, [settings.logoColor]);
 
   // Draw canvas
+  const drawCanvasRef = useRef<(() => void) | null>(null);
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -152,7 +152,9 @@ export default function SquarePage() {
 
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;
-  }, [settings, imagesLoaded, logoVersion]);
+  }, [settings, imagesLoaded]);
+
+  drawCanvasRef.current = drawCanvas;
 
   useEffect(() => {
     drawCanvas();
