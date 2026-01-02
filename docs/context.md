@@ -76,15 +76,37 @@ Power comes from **systems**, not clicks.
 
 ## High-level architecture (target)
 
-This is the intended “locked” architecture. The repo may not yet contain all integrations.
+This is the intended "locked" architecture. The repo may not yet contain all integrations.
 
 - **Frontend**: Next.js 16 (App Router), React Server Components by default
-- **UI**: shadcn/ui (maia / base-maia), Tailwind CSS (base color: zinc), icons: Phosphor, font: Nunito Sans (target)
+- **UI**: shadcn/ui (base-maia style) + Base UI primitives, Tailwind CSS v4 (base color: zinc), icons: Phosphor, font: Nunito Sans (target)
 - **Backend / State**: Convex (reactive game state)
 - **Authentication**: WorkOS
 - **Deployment**: Vercel
 
 Note: the current scaffold still uses Next.js template fonts; align to the target font when the game UI is implemented.
+
+### UI Component Baseline (non-negotiable)
+
+The project was initialized with this exact shadcn preset:
+
+```bash
+pnpm dlx shadcn@latest create --preset "https://ui.shadcn.com/init?base=base&style=maia&baseColor=zinc&theme=zinc&iconLibrary=phosphor&font=nunito-sans&menuAccent=subtle&menuColor=default&radius=small&template=next" --template next
+```
+
+This configures:
+- **Style**: `base-maia` (shadcn + Base UI primitives)
+- **Base color**: `zinc`
+- **Icon library**: `phosphor`
+- **Font**: `nunito-sans`
+- **Radius**: `small`
+
+**CRITICAL**: All UI components MUST use **Base UI** primitives (`@base-ui/react`), NOT Radix, NOT custom implementations.
+
+- Use Base UI components: https://base-ui.com/react/components/accordion
+- shadcn components in this project are built on Base UI, not Radix
+- When adding new components, always use `pnpm dlx shadcn@latest add <component>` first
+- Only create custom components if no Base UI equivalent exists
 
 ### Architectural rules (non-negotiable)
 
@@ -124,11 +146,13 @@ Also note:
 
 ### Notable frontend libs
 
+- **@base-ui/react** — **Primary UI primitive library** (all shadcn components use this, NOT Radix)
 - **class-variance-authority (CVA)** — Component variants
 - **clsx** — Conditional class composition
 - **tailwind-merge** — Intelligent Tailwind class merging
 - **tw-animate-css** — Animation utilities
-- **@base-ui/react** — Unstyled, accessible primitives
+
+> ⚠️ **Important**: This project uses **Base UI** (`@base-ui/react`), not Radix UI. All interactive components (Button, Dialog, Accordion, etc.) must import from Base UI.
 
 ---
 
@@ -178,10 +202,20 @@ pnpm build
 pnpm lint
 ```
 
-### Adding UI components (shadcn/ui)
+### Adding UI components (shadcn/ui + Base UI)
+
+Always add components via shadcn first (they use Base UI primitives):
 
 ```bash
-pnpm dlx shadcn@latest add button
+pnpm dlx shadcn@latest add button dialog accordion progress
+```
+
+Available Base UI components: https://base-ui.com/react/components/accordion
+
+If you need a component that exists in Base UI but not in shadcn, import directly:
+
+```tsx
+import { Accordion } from "@base-ui/react/accordion";
 ```
 
 ---
@@ -214,10 +248,11 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 - [React docs](https://react.dev)
 - [Tailwind CSS docs](https://tailwindcss.com/docs)
 - [shadcn/ui](https://ui.shadcn.com)
+- [Base UI components](https://base-ui.com/react/components/accordion) — **Primary primitive library**
 - [Convex](https://docs.convex.dev)
 - [WorkOS](https://workos.com/docs)
 - [Phosphor Icons](https://phosphoricons.com)
 
 ---
 
-_Last updated: 2025-12-28_
+_Last updated: 2026-01-02_

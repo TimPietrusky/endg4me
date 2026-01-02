@@ -1,21 +1,40 @@
-import { GlitchBackground } from "@/components/glitch-background";
+import { withAuth, getSignInUrl } from "@workos-inc/authkit-nextjs";
+import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";
+import { GlitchBackground } from "@/components/glitch-background";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 
-export default function Home() {
+export default async function HomePage() {
+  const { user } = await withAuth();
+  const signInUrl = await getSignInUrl();
+
+  // If user is logged in, redirect to play
+  if (user) {
+    redirect("/play");
+  }
+
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-white">
+    <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden">
+      {/* Glitch Background */}
       <GlitchBackground />
-      <a
-        href="https://x.com/endg4_me"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="relative z-10 w-full max-w-4xl transition-opacity hover:opacity-80 lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
-      >
-        <Logo className="w-full drop-shadow-[0_4px_32px_rgba(0,0,0,0.8)]" />
-      </a>
-      <p className="relative z-10 font-mono text-xl font-semibold uppercase tracking-[0.4em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] sm:text-2xl md:text-3xl lg:text-4xl">
-        race to agi
-      </p>
-    </main>
+
+      {/* Dark overlay for better contrast */}
+      <div className="absolute inset-0 bg-black/60" />
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center gap-8">
+        {/* Logo */}
+        <Logo className="w-[600px] max-w-[90vw] h-auto text-white drop-shadow-2xl" />
+
+        {/* Sign In Button */}
+        <a
+          href={signInUrl}
+          className="group px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 font-semibold text-lg text-white hover:from-emerald-400 hover:to-cyan-400 transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2"
+        >
+          Start Playing
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </a>
+      </div>
+    </div>
   );
 }
