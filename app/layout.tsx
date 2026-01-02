@@ -10,14 +10,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "endg4me",
   description:
-    "browser based game to build your ai company and compete with everyone else on the race to agi.",
+    "browser based game to build your ai company and compete with everyone else on the race to singularity.",
   icons: {
     icon: "/favicon.ico",
   },
   openGraph: {
     title: "endg4me",
     description:
-      "browser based game to build your ai company and compete with everyone else on the race to agi.",
+      "browser based game to build your ai company and compete with everyone else on the race to singularity.",
     images: [
       {
         url: "/banner.jpg",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "endg4me",
     description:
-      "browser based game to build your ai company and compete with everyone else on the race to agi.",
+      "browser based game to build your ai company and compete with everyone else on the race to singularity.",
     images: ["/banner.jpg"],
   },
 };

@@ -168,7 +168,7 @@ export default function BannerPage() {
     ctx.letterSpacing = "0.4em";
     
     const sloganY = CANVAS_HEIGHT / 2 + settings.sloganOffsetY;
-    ctx.fillText("RACE TO AGI", CANVAS_WIDTH / 2, sloganY);
+    ctx.fillText("RACE TO SINGULARITY", CANVAS_WIDTH / 2, sloganY);
 
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;
