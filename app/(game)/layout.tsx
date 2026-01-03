@@ -1,6 +1,12 @@
 import { redirect } from "next/navigation";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
+import { JetBrains_Mono } from "next/font/google";
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export default async function GameLayout({
   children,
@@ -13,6 +19,9 @@ export default async function GameLayout({
     redirect("/");
   }
 
-  return <ConvexClientProvider>{children}</ConvexClientProvider>;
+  return (
+    <div className={`${jetbrainsMono.variable} font-mono`}>
+      <ConvexClientProvider>{children}</ConvexClientProvider>
+    </div>
+  );
 }
-

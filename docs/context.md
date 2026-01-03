@@ -74,39 +74,28 @@ Power comes from **systems**, not clicks.
 
 ---
 
-## High-level architecture (target)
-
-This is the intended "locked" architecture. The repo may not yet contain all integrations.
+## High-level architecture
 
 - **Frontend**: Next.js 16 (App Router), React Server Components by default
-- **UI**: shadcn/ui (base-maia style) + Base UI primitives, Tailwind CSS v4 (base color: zinc), icons: Phosphor, font: Nunito Sans (target)
+- **UI**: shadcn/ui + Base UI primitives, Tailwind CSS v4, icons: Phosphor
+- **Dashboard Font**: JetBrains Mono (terminal aesthetic)
 - **Backend / State**: Convex (reactive game state)
 - **Authentication**: WorkOS
 - **Deployment**: Vercel
 
-Note: the current scaffold still uses Next.js template fonts; align to the target font when the game UI is implemented.
+### UI Component Baseline
 
-### UI Component Baseline (non-negotiable)
+- **Style**: Terminal-inspired dark theme with cyan accent
+- **Base color**: Custom dark palette (oklch)
+- **Icon library**: Phosphor
+- **Font**: JetBrains Mono (dashboard), Geist (landing)
+- **Radius**: Small (0.125rem)
 
-The project was initialized with this exact shadcn preset:
-
-```bash
-pnpm dlx shadcn@latest create --preset "https://ui.shadcn.com/init?base=base&style=maia&baseColor=zinc&theme=zinc&iconLibrary=phosphor&font=nunito-sans&menuAccent=subtle&menuColor=default&radius=small&template=next" --template next
-```
-
-This configures:
-- **Style**: `base-maia` (shadcn + Base UI primitives)
-- **Base color**: `zinc`
-- **Icon library**: `phosphor`
-- **Font**: `nunito-sans`
-- **Radius**: `small`
-
-**CRITICAL**: All UI components MUST use **Base UI** primitives (`@base-ui/react`), NOT Radix, NOT custom implementations.
+**CRITICAL**: UI components should use **Base UI** primitives (`@base-ui/react`) where available.
 
 - Use Base UI components: https://base-ui.com/react/components/accordion
-- shadcn components in this project are built on Base UI, not Radix
-- When adding new components, always use `pnpm dlx shadcn@latest add <component>` first
-- Only create custom components if no Base UI equivalent exists
+- When adding new components, use `pnpm dlx shadcn@latest add <component>` first
+- Exception: Toast uses Radix (`@radix-ui/react-toast`) as Base UI has no equivalent
 
 ### Architectural rules (non-negotiable)
 
@@ -119,30 +108,33 @@ This configures:
 
 ---
 
-## Current codebase status (what exists today)
+## Current codebase status
 
-The repository currently contains a **minimal Next.js scaffold** (App Router + Tailwind v4 + shadcn configuration). The homepage is still the default template and should be treated as placeholder.
+The game dashboard is **fully implemented** with:
+- Terminal-inspired design (cyan accent, JetBrains Mono font)
+- Three main views: Tasks, Models, Messages
+- Action cards with images and progress visualization
+- Convex-powered reactive state
+- WorkOS authentication
 
-Also note:
-
-- The **product name** is **endg4me**.
+The homepage (`app/page.tsx`) is the landing page. The game lives at `/play`.
 
 ---
 
-## Technology stack (current)
+## Technology stack
 
-| Category            | Technology           | Current in repo |
-| ------------------- | -------------------- | --------------- |
-| **Framework**       | Next.js (App Router) | ✅              |
-| **UI Library**      | React                | ✅              |
-| **Language**        | TypeScript           | ✅              |
-| **Styling**         | Tailwind CSS v4      | ✅              |
-| **UI Components**   | shadcn + Base UI     | ✅              |
-| **Icons**           | Phosphor Icons       | ✅              |
-| **Package Manager** | pnpm                 | ✅              |
-| **Linting**         | ESLint               | ✅              |
-| **Backend / State** | Convex               | ⏳ (planned)    |
-| **Authentication**  | WorkOS               | ⏳ (planned)    |
+| Category            | Technology           | Status |
+| ------------------- | -------------------- | ------ |
+| **Framework**       | Next.js (App Router) | ✅     |
+| **UI Library**      | React                | ✅     |
+| **Language**        | TypeScript           | ✅     |
+| **Styling**         | Tailwind CSS v4      | ✅     |
+| **UI Components**   | shadcn + Base UI     | ✅     |
+| **Icons**           | Phosphor Icons       | ✅     |
+| **Package Manager** | pnpm                 | ✅     |
+| **Linting**         | ESLint               | ✅     |
+| **Backend / State** | Convex               | ✅     |
+| **Authentication**  | WorkOS               | ✅     |
 
 ### Notable frontend libs
 
@@ -156,33 +148,38 @@ Also note:
 
 ---
 
-## Repository structure (current)
+## Repository structure
 
 ```
-endg4me/                     # repo folder name (may be renamed later)
-├── app/                     # Next.js App Router
-│   ├── globals.css          # Tailwind v4 + theme tokens (light/dark)
+endg4me/
+├── app/
+│   ├── (game)/              # Protected game routes
+│   │   ├── layout.tsx       # Auth check + Convex provider
+│   │   └── play/page.tsx    # Main game dashboard
+│   ├── api/                 # API routes (auth callbacks)
+│   ├── globals.css          # Terminal theme (cyan accent)
 │   ├── layout.tsx           # Root layout
-│   └── page.tsx             # Route: / (placeholder)
-├── docs/
-│   └── context.md           # This file
-├── public/                  # Static assets
-├── components.json          # shadcn/ui configuration
-├── eslint.config.mjs        # ESLint flat config (Next.js presets)
-├── next.config.ts           # Next.js config (currently minimal)
-├── package.json             # scripts + dependencies
-├── postcss.config.mjs       # Tailwind/PostCSS config
-└── tsconfig.json            # TS config (+ path aliases)
+│   └── page.tsx             # Landing page
+├── components/
+│   ├── game/
+│   │   ├── dashboard/       # Dashboard view components
+│   │   ├── lab-dashboard.tsx
+│   │   ├── founder-selection.tsx
+│   │   └── ...
+│   ├── ui/                  # shadcn components
+│   └── providers/           # Context providers
+├── convex/                  # Game logic and data model
+│   ├── schema.ts            # Database schema
+│   ├── tasks.ts             # Task mutations/queries
+│   ├── labs.ts              # Lab operations
+│   └── lib/gameConstants.ts # Game balance constants
+├── hooks/                   # Custom React hooks
+├── lib/                     # Utilities
+│   ├── game-types.ts        # TypeScript types for game
+│   └── utils.ts             # Helper functions
+├── design/                  # Reference designs (not deployed)
+└── docs/                    # Documentation
 ```
-
-### Planned directories (from `components.json` aliases)
-
-- `components/` — Reusable React components
-- `components/ui/` — shadcn/ui components
-- `lib/` — Utilities/shared logic
-- `hooks/` — Custom React hooks (use sparingly; prefer server-first)
-
-When Convex is added, expect a `convex/` folder for game rules and data model.
 
 ---
 
@@ -234,11 +231,11 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 
 ## First-time contributor checklist
 
-- **Understand the product rules first**: two views, no duplicated game logic, no real AI yet, anti-snowballing matters.
+- **Understand the product rules**: no duplicated game logic, no real AI yet, anti-snowballing matters.
 - **Stay server-first**: default to React Server Components; add `"use client"` only when you need interactivity.
-- **Treat `app/page.tsx` as placeholder** until the game UI is implemented.
+- **Game logic lives in Convex**: UI is presentation-only.
+- **Dashboard at `/play`**: requires authentication, uses terminal-style design.
 - **Prefer adding UI via shadcn** instead of bespoke components.
-- **Keep game logic centralized** (eventually: Convex). UI should not become the rules engine.
 
 ---
 

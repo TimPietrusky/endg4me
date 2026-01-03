@@ -2,16 +2,23 @@ import { withAuth, getSignInUrl } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { GlitchBackground } from "@/components/glitch-background";
-import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Warning } from "@phosphor-icons/react/dist/ssr";
 
-export default async function HomePage() {
+interface HomePageProps {
+  searchParams: Promise<{ error?: string; message?: string }>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
   const { user } = await withAuth();
   const signInUrl = await getSignInUrl();
+  const params = await searchParams;
 
   // If user is logged in, redirect to play
   if (user) {
     redirect("/play");
   }
+
+  const hasError = params.error === "auth_failed";
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden">
@@ -30,6 +37,19 @@ export default async function HomePage() {
         <p className="font-mono font-semibold uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] text-[3.5vw] sm:text-[2.5vw] md:text-[2vw] lg:text-[1.8vw] max-w-[1400px] whitespace-nowrap">
           race to singularity
         </p>
+
+        {/* Error Message */}
+        {hasError && (
+          <div className="mt-4 px-6 py-4 bg-red-500/20 border border-red-500/50 rounded-xl flex items-center gap-3 max-w-md">
+            <Warning className="w-6 h-6 text-red-400 flex-shrink-0" />
+            <div className="text-sm text-red-200">
+              <p className="font-semibold">Sign in failed</p>
+              <p className="text-red-300/80 text-xs mt-1">
+                {params.message || "Please try again. If the problem persists, check your network connection."}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Sign In Button */}
         <a
