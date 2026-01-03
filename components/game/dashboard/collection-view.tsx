@@ -3,6 +3,7 @@
 import { Cube, Brain, Trophy, Star } from "@phosphor-icons/react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Doc } from "@/convex/_generated/dataModel"
+import { formatCompact } from "@/lib/utils"
 
 interface CollectionViewProps {
   models?: Doc<"trainedModels">[]
@@ -39,7 +40,7 @@ export function CollectionView({ models, bestScore }: CollectionViewProps) {
               <Trophy className="w-6 h-6 text-white" weight="fill" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{bestScore.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{formatCompact(bestScore)}</p>
               <p className="text-sm text-muted-foreground">best score</p>
             </div>
           </div>

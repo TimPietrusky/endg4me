@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { cn } from "@/lib/utils";
+import { cn, formatCompact } from "@/lib/utils";
 import {
   X,
   Brain,
@@ -77,19 +77,19 @@ export function ModelCollection({ labId, onClose }: ModelCollectionProps) {
             <StatMini
               icon={Lightning}
               label="Total Score"
-              value={stats.totalScore.toLocaleString()}
+              value={formatCompact(stats.totalScore)}
               color="text-cyan-400"
             />
             <StatMini
               icon={Sparkle}
               label="Avg Score"
-              value={stats.averageScore.toLocaleString()}
+              value={formatCompact(stats.averageScore)}
               color="text-amber-400"
             />
             <StatMini
               icon={Trophy}
               label="Best Score"
-              value={stats.bestModel?.score.toLocaleString() || "—"}
+              value={stats.bestModel?.score ? formatCompact(stats.bestModel.score) : "—"}
               color="text-emerald-400"
             />
           </div>
@@ -160,7 +160,7 @@ export function ModelCollection({ labId, onClose }: ModelCollectionProps) {
                     {/* Score */}
                     <div className="text-right">
                       <p className="font-bold text-lg text-emerald-400">
-                        {model.score.toLocaleString()}
+                        {formatCompact(model.score)}
                       </p>
                       <p className="text-xs text-zinc-500">Score</p>
                     </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id, Doc } from "@/convex/_generated/dataModel";
-import { cn } from "@/lib/utils";
+import { cn, formatCompact } from "@/lib/utils";
 import {
   X,
   Users,
@@ -228,7 +228,7 @@ export function ClanPanel({ userId, playerState, onClose }: ClanPanelProps) {
                               <p className="text-xs text-zinc-500">
                                 {clan.memberCount} member
                                 {clan.memberCount !== 1 && "s"} ·{" "}
-                                {clan.totalReputation.toLocaleString()} Rep
+                                {formatCompact(clan.totalReputation)} Rep
                               </p>
                             </div>
                           </div>

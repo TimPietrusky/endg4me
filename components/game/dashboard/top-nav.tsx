@@ -6,6 +6,7 @@ import { CurrencyDollar, Lightning, Star } from "@phosphor-icons/react"
 import { SettingsPanel } from "../settings-panel"
 import { XpIcon } from "./xp-icon"
 import type { ViewType } from "@/lib/game-types"
+import { formatCompact } from "@/lib/utils"
 
 interface TopNavProps {
   labName: string
@@ -132,15 +133,15 @@ export function TopNav({
 
               <div className="flex items-center gap-1.5 text-sm">
                 <CurrencyDollar className="w-5 h-5 text-white" />
-                <span className="font-bold">{cash.toLocaleString()}</span>
+                <span className="font-bold">{formatCompact(cash)}</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm">
                 <Lightning className="w-5 h-5 text-white" />
-                <span className="font-bold">{rp}</span>
+                <span className="font-bold">{formatCompact(rp)}</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm">
                 <Star className="w-5 h-5 text-white" />
-                <span className="font-bold">{reputation}</span>
+                <span className="font-bold">{formatCompact(reputation)}</span>
               </div>
             </div>
 

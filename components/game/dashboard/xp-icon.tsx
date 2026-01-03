@@ -1,4 +1,4 @@
 export function XpIcon({ className }: { className?: string }) {
-  return <span className={`font-bold text-xs ${className || ""}`}>XP</span>
+  return <span className={`text-[10px] ${className || ""}`}>XP</span>
 }
 

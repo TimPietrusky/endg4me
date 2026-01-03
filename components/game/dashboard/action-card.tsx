@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { CurrencyDollar, Lightning, Star, Clock, CaretUp, CaretDown } from "@phosphor-icons/react"
 import { XpIcon } from "./xp-icon"
 import type { Action } from "@/lib/game-types"
+import { formatCompact, formatTimeCompact } from "@/lib/utils"
 
 interface ActionCardProps {
   action: Action
@@ -97,32 +98,40 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
     const hasValue = value !== undefined && value !== null && value !== 0 && value !== ""
     
-    // Strip any leading +/- signs from the value for display
-    const displayValue = typeof value === "string" ? value.replace(/^[+-]/, "") : value
+    // Format numeric values compactly (1200 → 1.2k)
+    const displayValue = isTime ? value : formatCompact(value)
 
     if (isXP) {
       return (
-        <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
+        <div className="flex items-center justify-between px-2 border-r border-white/10 last:border-r-0">
+          <div className="flex items-center gap-1">
+            <span className="w-3 flex items-center justify-center flex-shrink-0">
+              <XpIcon className={hasValue ? color : "text-gray-500 opacity-50"} />
+            </span>
+            {hasValue && <span className="text-white text-xs">{displayValue}</span>}
+          </div>
           {hasValue && (
             isGain 
-              ? <CaretUp weight="fill" className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-              : <CaretDown weight="fill" className="w-3 h-3 text-red-500 flex-shrink-0" />
+              ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
+              : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
           )}
-          <XpIcon className={hasValue ? color : "text-gray-500 opacity-50"} />
-          {hasValue && <span className="font-bold text-white text-sm">{displayValue}</span>}
         </div>
       )
     }
 
     return (
-      <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
+      <div className="flex items-center justify-between px-2 border-r border-white/10 last:border-r-0">
+        <div className="flex items-center gap-1">
+          <span className="w-3 flex items-center justify-center flex-shrink-0">
+            <Icon weight="regular" className={`w-3 h-3 ${hasValue ? color : "text-gray-500 opacity-50"}`} />
+          </span>
+          {hasValue && <span className="text-white text-xs">{displayValue}</span>}
+        </div>
         {hasValue && !isTime && (
           isGain 
-            ? <CaretUp weight="fill" className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-            : <CaretDown weight="fill" className="w-3 h-3 text-red-500 flex-shrink-0" />
+            ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
+            : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
         )}
-        <Icon weight="bold" className={`w-4 h-4 flex-shrink-0 ${hasValue ? color : "text-gray-500 opacity-50"}`} />
-        {hasValue && <span className="font-bold text-white text-sm">{isTime ? value : displayValue}</span>}
       </div>
     )
   }
@@ -137,7 +146,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     return [
       {
         icon: Clock,
-        value: action.duration > 0 ? formatTime(action.duration) : undefined,
+        value: action.duration > 0 ? formatTimeCompact(action.duration) : undefined,
         color: "text-white",
         isTime: true,
         isGain: true,
@@ -206,7 +215,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
               <span className="text-3xl font-black text-white font-mono tabular-nums">{formatTime(displayTime)}</span>
             </div>
 
-            <div className="grid grid-cols-5 relative z-10 py-2 bg-black/20">
+            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] relative z-10 py-2 bg-black/20">
               {attributeGrid.map((attr, i) => (
                 <AttributeCell
                   key={i}
@@ -243,7 +252,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
               </button>
             </div>
 
-            <div className="grid grid-cols-5 py-2 bg-black/20">
+            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] py-2 bg-black/20">
               {attributeGrid.map((attr, i) => (
                 <AttributeCell
                   key={i}
@@ -267,12 +276,12 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
                 <div className="flex items-center gap-1 text-red-400">
                   <span className="text-sm font-bold">need</span>
                   <CurrencyDollar weight="bold" className="w-4 h-4" />
-                  <span className="text-sm font-bold">{action.fundsShortfall.toLocaleString()} more</span>
+                  <span className="text-sm font-bold">{formatCompact(action.fundsShortfall)} more</span>
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-5 py-2 bg-black/20">
+            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] py-2 bg-black/20">
               {attributeGrid.map((attr, i) => (
                 <AttributeCell
                   key={i}
@@ -297,7 +306,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
               </span>
             </div>
 
-            <div className="grid grid-cols-5 py-2 bg-black/20">
+            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] py-2 bg-black/20">
               {attributeGrid.map((attr, i) => (
                 <AttributeCell
                   key={i}
