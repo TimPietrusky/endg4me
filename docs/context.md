@@ -323,3 +323,4 @@ _Last updated: 2026-01-03 (white accent, top nav simplified)_
 - **Unlock Registry**: Single source of truth in Convex for all gating
 - **Deep links**: Inbox notifications link to relevant views
 - **Unified Navigation**: PageHeader + SubNav system for consistent navigation across all views. SubNav is view-specific and optional. First SubNav element has no left padding to align with logo.
+- **Compute Units as blocking resource**: Training tasks consume Compute Units (CU). With 1 CU and 1 training running, cannot start another training even if queue allows. Action cards display CU cost after cash in the attribute grid.

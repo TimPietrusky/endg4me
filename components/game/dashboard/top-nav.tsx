@@ -118,8 +118,8 @@ export function TopNav({
                 <span className="font-bold">{formatCompact(rp)}</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm">
-                <Cpu className="w-5 h-5 text-orange-400" />
-                <span className="font-bold text-orange-400">{gpus}</span>
+                <Cpu className="w-5 h-5 text-white" />
+                <span className="font-bold">{gpus}</span>
               </div>
             </div>
 

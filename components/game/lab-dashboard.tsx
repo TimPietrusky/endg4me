@@ -90,50 +90,59 @@ export function LabDashboard({
   const isQueueFull = activeTaskCount >= maxParallelTasks
   const isStaffFull = labState.juniorResearchers >= labState.staffCapacity
   const isFreelanceOnCooldown = freelanceCooldown && freelanceCooldown > Date.now()
+  
+  // Calculate GPU usage - training tasks consume GPUs
+  const usedGpus = inProgressTasks.filter(
+    (t) => t.type === "train_small_model" || t.type === "train_medium_model"
+  ).length
+  const availableGpus = labState.computeUnits - usedGpus
 
   // Check what blocks each task type
-  const getTrainingDisabledInfo = (cost: number) => {
+  const getTrainingDisabledInfo = (cost: number, gpuCost: number) => {
     if (labState.cash < cost) {
-      return { reason: "not enough funds", shortfall: cost - labState.cash }
+      return { reason: "not enough funds", fundsShortfall: cost - labState.cash, gpuShortfall: 0 }
+    }
+    if (gpuCost > 0 && availableGpus < gpuCost) {
+      return { reason: "not enough CU", fundsShortfall: 0, gpuShortfall: gpuCost - availableGpus }
     }
     if (isQueueFull) {
-      return { reason: "queue full", shortfall: 0 }
+      return { reason: "queue full", fundsShortfall: 0, gpuShortfall: 0 }
     }
-    return { reason: undefined, shortfall: 0 }
+    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
   }
 
   const getFreelanceDisabledInfo = () => {
     if (isFreelanceOnCooldown) {
-      return { reason: "on cooldown", shortfall: 0 }
+      return { reason: "on cooldown", fundsShortfall: 0, gpuShortfall: 0 }
     }
     if (isQueueFull) {
-      return { reason: "queue full", shortfall: 0 }
+      return { reason: "queue full", fundsShortfall: 0, gpuShortfall: 0 }
     }
-    return { reason: undefined, shortfall: 0 }
+    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
   }
 
   const getHireDisabledInfo = () => {
     if (labState.cash < TASKS.hire_junior_researcher.cost) {
-      return { reason: "not enough funds", shortfall: TASKS.hire_junior_researcher.cost - labState.cash }
+      return { reason: "not enough funds", fundsShortfall: TASKS.hire_junior_researcher.cost - labState.cash, gpuShortfall: 0 }
     }
     if (isStaffFull) {
-      return { reason: "staff capacity full", shortfall: 0 }
+      return { reason: "staff capacity full", fundsShortfall: 0, gpuShortfall: 0 }
     }
-    return { reason: undefined, shortfall: 0 }
+    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
   }
 
   const getRentGpuDisabledInfo = () => {
     if (labState.cash < TASKS.rent_gpu_cluster.cost) {
-      return { reason: "not enough funds", shortfall: TASKS.rent_gpu_cluster.cost - labState.cash }
+      return { reason: "not enough funds", fundsShortfall: TASKS.rent_gpu_cluster.cost - labState.cash, gpuShortfall: 0 }
     }
     if (isQueueFull) {
-      return { reason: "queue full", shortfall: 0 }
+      return { reason: "queue full", fundsShortfall: 0, gpuShortfall: 0 }
     }
-    return { reason: undefined, shortfall: 0 }
+    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
   }
 
-  const smallModelInfo = getTrainingDisabledInfo(TASKS.train_small_model.cost)
-  const mediumModelInfo = getTrainingDisabledInfo(TASKS.train_medium_model.cost)
+  const smallModelInfo = getTrainingDisabledInfo(TASKS.train_small_model.cost, TASKS.train_small_model.computeRequired)
+  const mediumModelInfo = getTrainingDisabledInfo(TASKS.train_medium_model.cost, TASKS.train_medium_model.computeRequired)
   const freelanceInfo = getFreelanceDisabledInfo()
   const hireInfo = getHireDisabledInfo()
   const rentGpuInfo = getRentGpuDisabledInfo()
@@ -147,12 +156,14 @@ export function LabDashboard({
       description: "Train a text-to-speech model to gain research points",
       size: "3B",
       cost: TASKS.train_small_model.cost,
+      gpuCost: TASKS.train_small_model.computeRequired,
       duration: Math.floor(TASKS.train_small_model.duration / 1000),
       rpReward: TASKS.train_small_model.baseRewards.researchPoints,
       xpReward: TASKS.train_small_model.baseRewards.experience,
       disabled: !!smallModelInfo.reason,
       disabledReason: smallModelInfo.reason,
-      fundsShortfall: smallModelInfo.shortfall,
+      fundsShortfall: smallModelInfo.fundsShortfall,
+      gpuShortfall: smallModelInfo.gpuShortfall,
       image: "/ai-neural-network-training-blue-glow.jpg",
       isActive: inProgressTasks.some((t) => t.type === "train_small_model"),
       remainingTime: getTaskRemainingTime("train_small_model"),
@@ -164,12 +175,14 @@ export function LabDashboard({
       description: "Train a vision language model for higher rewards",
       size: "7B",
       cost: TASKS.train_medium_model.cost,
+      gpuCost: TASKS.train_medium_model.computeRequired,
       duration: Math.floor(TASKS.train_medium_model.duration / 1000),
       rpReward: TASKS.train_medium_model.baseRewards.researchPoints,
       xpReward: TASKS.train_medium_model.baseRewards.experience,
       disabled: !!mediumModelInfo.reason,
       disabledReason: mediumModelInfo.reason,
-      fundsShortfall: mediumModelInfo.shortfall,
+      fundsShortfall: mediumModelInfo.fundsShortfall,
+      gpuShortfall: mediumModelInfo.gpuShortfall,
       image: "/advanced-ai-training-purple-cyber.jpg",
       isActive: inProgressTasks.some((t) => t.type === "train_medium_model"),
       remainingTime: getTaskRemainingTime("train_medium_model"),
@@ -202,7 +215,7 @@ export function LabDashboard({
       xpReward: TASKS.hire_junior_researcher.baseRewards.experience,
       disabled: !!hireInfo.reason,
       disabledReason: hireInfo.reason,
-      fundsShortfall: hireInfo.shortfall,
+      fundsShortfall: hireInfo.fundsShortfall,
       image: "/hiring-tech-researcher-futuristic.jpg",
       isActive: inProgressTasks.some((t) => t.type === "hire_junior_researcher"),
       remainingTime: getTaskRemainingTime("hire_junior_researcher"),
@@ -218,7 +231,7 @@ export function LabDashboard({
       xpReward: TASKS.rent_gpu_cluster.baseRewards.experience,
       disabled: !!rentGpuInfo.reason,
       disabledReason: rentGpuInfo.reason,
-      fundsShortfall: rentGpuInfo.shortfall,
+      fundsShortfall: rentGpuInfo.fundsShortfall,
       image: "/massive-ai-datacenter-training.jpg",
       isActive: inProgressTasks.some((t) => t.type === "rent_gpu_cluster"),
       remainingTime: getTaskRemainingTime("rent_gpu_cluster"),

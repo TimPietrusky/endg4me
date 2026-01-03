@@ -30,11 +30,13 @@ export interface Action {
   cashReward?: number
   speedBonus?: number
   gpuBonus?: number
+  gpuCost?: number
   costReduction?: number
   cooldown?: number
   disabled?: boolean
   disabledReason?: string
   fundsShortfall?: number
+  gpuShortfall?: number
   image?: string
   isActive?: boolean
   remainingTime?: number

@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { CurrencyDollar, Lightning, Star, Clock, CaretUp, CaretDown } from "@phosphor-icons/react"
+import { CurrencyDollar, Lightning, Star, Clock, CaretUp, CaretDown, Cpu } from "@phosphor-icons/react"
 import { XpIcon } from "./xp-icon"
 import type { Action } from "@/lib/game-types"
 import { formatCompact, formatTimeCompact } from "@/lib/utils"
@@ -93,7 +93,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     isGain = true,
   }: { icon?: React.ElementType; value?: number | string; color?: string; isTime?: boolean; isXP?: boolean; isGain?: boolean }) => {
     if (!Icon && !isXP) {
-      return <div className="flex items-center justify-between px-2 border-r border-white/10 last:border-r-0" />
+      return <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0" />
     }
 
     const hasValue = value !== undefined && value !== null && value !== 0 && value !== ""
@@ -103,35 +103,31 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
     if (isXP) {
       return (
-        <div className="flex items-center justify-between px-2 border-r border-white/10 last:border-r-0">
-          <div className="flex items-center gap-1">
-            <span className="w-3 flex items-center justify-center flex-shrink-0">
-              <XpIcon className={hasValue ? color : "text-gray-500 opacity-50"} />
-            </span>
-            {hasValue && <span className="text-white text-xs">{displayValue}</span>}
-          </div>
+        <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
+          <span className="w-3 flex items-center justify-center flex-shrink-0">
+            <XpIcon className={hasValue ? color : "text-gray-500 opacity-50"} />
+          </span>
           {hasValue && (
             isGain 
               ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
               : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
           )}
+          {hasValue && <span className="text-white text-xs">{displayValue}</span>}
         </div>
       )
     }
 
     return (
-      <div className="flex items-center justify-between px-2 border-r border-white/10 last:border-r-0">
-        <div className="flex items-center gap-1">
-          <span className="w-3 flex items-center justify-center flex-shrink-0">
-            <Icon weight="regular" className={`w-3 h-3 ${hasValue ? color : "text-gray-500 opacity-50"}`} />
-          </span>
-          {hasValue && <span className="text-white text-xs">{displayValue}</span>}
-        </div>
+      <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
+        <span className="w-3 flex items-center justify-center flex-shrink-0">
+          <Icon weight="regular" className={`w-3 h-3 ${hasValue ? color : "text-gray-500 opacity-50"}`} />
+        </span>
         {hasValue && !isTime && (
           isGain 
             ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
             : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
         )}
+        {hasValue && <span className="text-white text-xs">{displayValue}</span>}
       </div>
     )
   }
@@ -142,6 +138,9 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     const hasCashReward = action.cashReward && action.cashReward > 0
     const cashValue = hasCashCost ? action.cost : (hasCashReward ? action.cashReward : undefined)
     const isCashGain = !hasCashCost && hasCashReward
+    
+    // GPU is always a cost (blocking resource)
+    const hasGpuCost = action.gpuCost && action.gpuCost > 0
 
     return [
       {
@@ -156,6 +155,12 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
         value: cashValue,
         color: "text-white",
         isGain: isCashGain,
+      },
+      {
+        icon: Cpu,
+        value: hasGpuCost ? action.gpuCost : undefined,
+        color: "text-white",
+        isGain: false,
       },
       {
         icon: Lightning,
@@ -271,6 +276,13 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
                   <span className="text-sm font-bold">need</span>
                   <CurrencyDollar weight="bold" className="w-4 h-4" />
                   <span className="text-sm font-bold">{formatCompact(action.fundsShortfall)} more</span>
+                </div>
+              )}
+              {action.gpuShortfall != null && action.gpuShortfall > 0 && (
+                <div className="flex items-center gap-1 text-red-400">
+                  <span className="text-sm font-bold">need</span>
+                  <Cpu weight="bold" className="w-4 h-4" />
+                  <span className="text-sm font-bold">{action.gpuShortfall} more</span>
                 </div>
               )}
             </div>
