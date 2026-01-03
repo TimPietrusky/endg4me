@@ -64,7 +64,7 @@ export interface TaskConfig {
   staffCapacityRequired?: number;
   effects?: {
     researchSpeedBonus?: number;
-    parallelTasksBonus?: number;
+    computeBonus?: number;
   };
   baseRewards: TaskBaseRewards;
   randomRange: { min: number; max: number };
@@ -117,10 +117,22 @@ export const TASKS: Record<string, TaskConfig> = {
     staffCapacityRequired: 1,
     effects: {
       researchSpeedBonus: 0.1, // +10%
-      parallelTasksBonus: 1, // +1 parallel task
     },
     baseRewards: {
       experience: 50,
+    },
+    randomRange: { min: 1.0, max: 1.0 },
+  },
+  rent_gpu_cluster: {
+    name: "Rent GPU Cluster",
+    duration: 1 * 60 * 1000, // 1 minute in ms
+    cost: 3000,
+    computeRequired: 0,
+    effects: {
+      computeBonus: 1, // +1 GPU
+    },
+    baseRewards: {
+      experience: 30,
     },
     randomRange: { min: 1.0, max: 1.0 },
   },
@@ -155,6 +167,6 @@ export const CLAN_BONUS = {
   reputationGain: 1.05, // +5%
 };
 
-export type TaskType = "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher";
+export type TaskType = "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher" | "rent_gpu_cluster";
 export type FounderType = keyof typeof FOUNDER_MODIFIERS;
 

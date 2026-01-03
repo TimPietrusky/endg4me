@@ -1,6 +1,6 @@
 "use client"
 
-import { X, Queue, UsersThree, Cpu, Brain, CurrencyDollar, Users, Trophy, Atom, ArrowsOutCardinal, Lock } from "@phosphor-icons/react"
+import { X, Queue, UsersThree, Cpu, Brain, CurrencyDollar, Users, Trophy, Atom, Lock } from "@phosphor-icons/react"
 import { SKILL_TREE, type LevelUnlocks, type UnlockIcon } from "@/convex/lib/skillTree"
 
 interface SkillTreeProps {
@@ -11,7 +11,6 @@ interface SkillTreeProps {
 
 const ICON_MAP: Record<UnlockIcon, React.ElementType> = {
   queue: Queue,
-  parallel: ArrowsOutCardinal,
   staff: UsersThree,
   gpu: Cpu,
   model: Brain,
@@ -125,22 +124,18 @@ function LevelRow({ levelData, status }: LevelRowProps) {
         </div>
 
         {/* Stats */}
-        <div className={`w-32 shrink-0 flex flex-col justify-center gap-1 p-3 border-r ${borderColor} text-xs`}>
+        <div className={`w-28 shrink-0 flex flex-col justify-center gap-1.5 p-3 border-r ${borderColor} text-xs`}>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Queue</span>
             <span className="font-bold">{levelData.queueSlots}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Parallel</span>
-            <span className="font-bold">{levelData.parallelTasks}</span>
+            <span className="text-orange-400">GPUs</span>
+            <span className="font-bold text-orange-400">{levelData.gpus}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Staff</span>
             <span className="font-bold">{levelData.staffCapacity}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">GPUs</span>
-            <span className="font-bold">{levelData.computeUnits}</span>
           </div>
         </div>
 

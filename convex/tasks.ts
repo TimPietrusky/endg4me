@@ -25,7 +25,8 @@ export const startTask = mutation({
       v.literal("train_small_model"),
       v.literal("train_medium_model"),
       v.literal("freelance_contract"),
-      v.literal("hire_junior_researcher")
+      v.literal("hire_junior_researcher"),
+      v.literal("rent_gpu_cluster")
     ),
   },
   handler: async (ctx, args) => {
@@ -289,7 +290,11 @@ export const completeTask = internalMutation({
     // Handle hiring completion
     if (task.type === "hire_junior_researcher") {
       updates.juniorResearchers = labState.juniorResearchers + 1;
-      updates.parallelTasks = labState.parallelTasks + 1;
+    }
+
+    // Handle GPU rental completion
+    if (task.type === "rent_gpu_cluster") {
+      updates.computeUnits = labState.computeUnits + 1;
     }
 
     if (Object.keys(updates).length > 0) {
@@ -499,7 +504,8 @@ export const canAffordTask = query({
       v.literal("train_small_model"),
       v.literal("train_medium_model"),
       v.literal("freelance_contract"),
-      v.literal("hire_junior_researcher")
+      v.literal("hire_junior_researcher"),
+      v.literal("rent_gpu_cluster")
     ),
   },
   handler: async (ctx, args) => {

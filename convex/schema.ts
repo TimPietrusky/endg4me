@@ -46,7 +46,8 @@ export default defineSchema({
       v.literal("train_small_model"),
       v.literal("train_medium_model"),
       v.literal("freelance_contract"),
-      v.literal("hire_junior_researcher")
+      v.literal("hire_junior_researcher"),
+      v.literal("rent_gpu_cluster")
     ),
     status: v.union(
       v.literal("queued"),

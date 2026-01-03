@@ -110,10 +110,21 @@ export function LabDashboard({
     return { reason: undefined, shortfall: 0 }
   }
 
+  const getRentGpuDisabledInfo = () => {
+    if (labState.cash < TASKS.rent_gpu_cluster.cost) {
+      return { reason: "not enough funds", shortfall: TASKS.rent_gpu_cluster.cost - labState.cash }
+    }
+    if (isQueueFull) {
+      return { reason: "queue full", shortfall: 0 }
+    }
+    return { reason: undefined, shortfall: 0 }
+  }
+
   const smallModelInfo = getTrainingDisabledInfo(TASKS.train_small_model.cost)
   const mediumModelInfo = getTrainingDisabledInfo(TASKS.train_medium_model.cost)
   const freelanceInfo = getFreelanceDisabledInfo()
   const hireInfo = getHireDisabledInfo()
+  const rentGpuInfo = getRentGpuDisabledInfo()
 
   // Build actions list for the new UI
   const actions: Action[] = [
@@ -179,7 +190,6 @@ export function LabDashboard({
       cost: TASKS.hire_junior_researcher.cost,
       duration: Math.floor(TASKS.hire_junior_researcher.duration / 1000),
       speedBonus: 10,
-      parallelBonus: 1,
       xpReward: TASKS.hire_junior_researcher.baseRewards.experience,
       disabled: !!hireInfo.reason,
       disabledReason: hireInfo.reason,
@@ -187,6 +197,22 @@ export function LabDashboard({
       image: "/hiring-tech-researcher-futuristic.jpg",
       isRunning: inProgressTasks.some((t) => t.type === "hire_junior_researcher"),
       remainingTime: getTaskRemainingTime("hire_junior_researcher"),
+    },
+    {
+      id: "rent-gpu",
+      category: "INFRASTRUCTURE",
+      name: "Rent GPU Cluster",
+      description: `Add compute power (${labState.computeUnits} GPUs)`,
+      cost: TASKS.rent_gpu_cluster.cost,
+      duration: Math.floor(TASKS.rent_gpu_cluster.duration / 1000),
+      gpuBonus: 1,
+      xpReward: TASKS.rent_gpu_cluster.baseRewards.experience,
+      disabled: !!rentGpuInfo.reason,
+      disabledReason: rentGpuInfo.reason,
+      fundsShortfall: rentGpuInfo.shortfall,
+      image: "/massive-ai-datacenter-training.jpg",
+      isRunning: inProgressTasks.some((t) => t.type === "rent_gpu_cluster"),
+      remainingTime: getTaskRemainingTime("rent_gpu_cluster"),
     },
   ]
 
@@ -197,6 +223,7 @@ export function LabDashboard({
       if (action.id === "train-medium") return t.type === "train_medium_model"
       if (action.id === "freelance") return t.type === "freelance_contract"
       if (action.id === "hire") return t.type === "hire_junior_researcher"
+      if (action.id === "rent-gpu") return t.type === "rent_gpu_cluster"
       return false
     })
     if (queuedTask) {
@@ -213,11 +240,12 @@ export function LabDashboard({
   }
 
   const handleStartAction = async (action: Action) => {
-    const taskTypeMap: Record<string, "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher"> = {
+    const taskTypeMap: Record<string, "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher" | "rent_gpu_cluster"> = {
       "train-small": "train_small_model",
       "train-medium": "train_medium_model",
       "freelance": "freelance_contract",
       "hire": "hire_junior_researcher",
+      "rent-gpu": "rent_gpu_cluster",
     }
 
     const taskType = taskTypeMap[action.id]
@@ -275,6 +303,7 @@ export function LabDashboard({
         cash={labState.cash}
         rp={labState.researchPoints}
         reputation={labState.reputation}
+        gpus={labState.computeUnits}
         modelsTrained={modelStats?.totalModels || 0}
         currentView={currentView}
         setCurrentView={setCurrentView}

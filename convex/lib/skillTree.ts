@@ -4,9 +4,8 @@ export interface LevelUnlocks {
   level: number;
   xpRequired: number;
   queueSlots: number;
-  parallelTasks: number;
+  gpus: number;
   staffCapacity: number;
-  computeUnits: number;
   unlocks: LevelUnlock[];
 }
 
@@ -26,7 +25,6 @@ export type UnlockCategory =
 
 export type UnlockIcon =
   | "queue"
-  | "parallel"
   | "staff"
   | "gpu"
   | "model"
@@ -54,10 +52,9 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 1,
     xpRequired: 0,
-    queueSlots: 0,
-    parallelTasks: 1,
+    queueSlots: 1,
+    gpus: 1,
     staffCapacity: 2,
-    computeUnits: 1,
     unlocks: [
       {
         category: "research",
@@ -76,15 +73,14 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 2,
     xpRequired: 100,
-    queueSlots: 1,
-    parallelTasks: 1,
+    queueSlots: 2,
+    gpus: 1,
     staffCapacity: 2,
-    computeUnits: 1,
     unlocks: [
       {
         category: "capacity",
-        name: "Task Queue",
-        description: "Queue 1 task while another runs",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 2 tasks",
         icon: "queue",
       },
       {
@@ -98,10 +94,9 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 3,
     xpRequired: 300,
-    queueSlots: 1,
-    parallelTasks: 1,
+    queueSlots: 2,
+    gpus: 2,
     staffCapacity: 3,
-    computeUnits: 2,
     unlocks: [
       {
         category: "social",
@@ -110,31 +105,30 @@ export const SKILL_TREE: LevelUnlocks[] = [
         icon: "clan",
       },
       {
+        category: "infrastructure",
+        name: "+1 GPU",
+        description: "Train 2 models simultaneously",
+        icon: "gpu",
+      },
+      {
         category: "capacity",
         name: "+1 Staff Capacity",
         description: "Hire up to 3 researchers",
         icon: "staff",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 Compute Unit",
-        description: "2 GPUs available",
-        icon: "gpu",
       },
     ],
   },
   {
     level: 4,
     xpRequired: 700,
-    queueSlots: 2,
-    parallelTasks: 1,
+    queueSlots: 3,
+    gpus: 2,
     staffCapacity: 3,
-    computeUnits: 2,
     unlocks: [
       {
         category: "capacity",
         name: "+1 Queue Slot",
-        description: "Queue up to 2 tasks",
+        description: "Run or queue up to 3 tasks",
         icon: "queue",
       },
       {
@@ -154,16 +148,15 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 5,
     xpRequired: 1500,
-    queueSlots: 2,
-    parallelTasks: 2,
+    queueSlots: 4,
+    gpus: 2,
     staffCapacity: 4,
-    computeUnits: 2,
     unlocks: [
       {
         category: "capacity",
-        name: "Parallel Processing",
-        description: "Run 2 tasks simultaneously",
-        icon: "parallel",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 4 tasks",
+        icon: "queue",
       },
       {
         category: "social",
@@ -182,21 +175,20 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 6,
     xpRequired: 3300,
-    queueSlots: 3,
-    parallelTasks: 2,
+    queueSlots: 5,
+    gpus: 3,
     staffCapacity: 4,
-    computeUnits: 3,
     unlocks: [
       {
         category: "capacity",
         name: "+1 Queue Slot",
-        description: "Queue up to 3 tasks",
+        description: "Run or queue up to 5 tasks",
         icon: "queue",
       },
       {
         category: "infrastructure",
-        name: "+1 Compute Unit",
-        description: "3 GPUs available",
+        name: "+1 GPU",
+        description: "Train 3 models simultaneously",
         icon: "gpu",
       },
       {
@@ -210,10 +202,9 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 7,
     xpRequired: 7260,
-    queueSlots: 3,
-    parallelTasks: 2,
+    queueSlots: 5,
+    gpus: 3,
     staffCapacity: 5,
-    computeUnits: 3,
     unlocks: [
       {
         category: "capacity",
@@ -238,27 +229,20 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 8,
     xpRequired: 15972,
-    queueSlots: 4,
-    parallelTasks: 3,
+    queueSlots: 6,
+    gpus: 4,
     staffCapacity: 5,
-    computeUnits: 4,
     unlocks: [
       {
         category: "capacity",
         name: "+1 Queue Slot",
-        description: "Queue up to 4 tasks",
+        description: "Run or queue up to 6 tasks",
         icon: "queue",
       },
       {
-        category: "capacity",
-        name: "+1 Parallel Task",
-        description: "Run 3 tasks simultaneously",
-        icon: "parallel",
-      },
-      {
         category: "infrastructure",
-        name: "+1 Compute Unit",
-        description: "4 GPUs available",
+        name: "+1 GPU",
+        description: "Train 4 models simultaneously",
         icon: "gpu",
       },
       {
@@ -272,11 +256,16 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 9,
     xpRequired: 35139,
-    queueSlots: 4,
-    parallelTasks: 3,
+    queueSlots: 7,
+    gpus: 4,
     staffCapacity: 6,
-    computeUnits: 4,
     unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 7 tasks",
+        icon: "queue",
+      },
       {
         category: "capacity",
         name: "+1 Staff Capacity",
@@ -300,21 +289,20 @@ export const SKILL_TREE: LevelUnlocks[] = [
   {
     level: 10,
     xpRequired: 77306,
-    queueSlots: 5,
-    parallelTasks: 3,
+    queueSlots: 8,
+    gpus: 5,
     staffCapacity: 6,
-    computeUnits: 5,
     unlocks: [
       {
         category: "capacity",
         name: "+1 Queue Slot",
-        description: "Queue up to 5 tasks",
+        description: "Run or queue up to 8 tasks",
         icon: "queue",
       },
       {
         category: "infrastructure",
-        name: "+1 Compute Unit",
-        description: "5 GPUs available",
+        name: "+1 GPU",
+        description: "Train 5 models simultaneously",
         icon: "gpu",
       },
       {
@@ -354,19 +342,16 @@ export function hasUnlock(level: number, unlockName: string): boolean {
 // Helper: get capacity values for a level
 export function getCapacityForLevel(level: number): {
   queueSlots: number;
-  parallelTasks: number;
+  gpus: number;
   staffCapacity: number;
-  computeUnits: number;
 } {
   const levelData = SKILL_TREE.find((l) => l.level === level);
   if (!levelData) {
-    return { queueSlots: 0, parallelTasks: 1, staffCapacity: 2, computeUnits: 1 };
+    return { queueSlots: 1, gpus: 1, staffCapacity: 2 };
   }
   return {
     queueSlots: levelData.queueSlots,
-    parallelTasks: levelData.parallelTasks,
+    gpus: levelData.gpus,
     staffCapacity: levelData.staffCapacity,
-    computeUnits: levelData.computeUnits,
   };
 }
-

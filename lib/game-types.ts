@@ -31,7 +31,7 @@ export interface Action {
   xpReward?: number
   cashReward?: number
   speedBonus?: number
-  parallelBonus?: number
+  gpuBonus?: number
   costReduction?: number
   cooldown?: number
   disabled?: boolean

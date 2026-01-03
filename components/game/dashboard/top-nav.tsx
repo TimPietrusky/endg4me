@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CurrencyDollar, Lightning, Star } from "@phosphor-icons/react"
+import { CurrencyDollar, Lightning, Star, Cpu } from "@phosphor-icons/react"
 import { SettingsPanel } from "../settings-panel"
 import { XpIcon } from "./xp-icon"
 import type { ViewType } from "@/lib/game-types"
@@ -18,6 +18,7 @@ interface TopNavProps {
   cash: number
   rp: number
   reputation: number
+  gpus: number
   modelsTrained: number
   currentView: ViewType
   setCurrentView: (view: ViewType) => void
@@ -35,6 +36,7 @@ export function TopNav({
   cash,
   rp,
   reputation,
+  gpus,
   modelsTrained,
   currentView,
   setCurrentView,
@@ -147,6 +149,10 @@ export function TopNav({
               <div className="flex items-center gap-1.5 text-sm">
                 <Star className="w-5 h-5 text-white" />
                 <span className="font-bold">{formatCompact(reputation)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-sm">
+                <Cpu className="w-5 h-5 text-orange-400" />
+                <span className="font-bold text-orange-400">{gpus}</span>
               </div>
             </div>
 
