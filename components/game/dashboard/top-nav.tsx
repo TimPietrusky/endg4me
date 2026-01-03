@@ -49,7 +49,7 @@ export function TopNav({
   ]
 
   return (
-    <div className="border-b border-white/20 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+    <div className="border-b border-white/20 bg-card/50 backdrop-blur-sm">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Left: Game logo and navigation */}

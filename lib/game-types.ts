@@ -51,6 +51,7 @@ export interface Notification {
   title: string
   message: string
   timestamp: number
+  read: boolean
   deepLink?: { view: ViewType; target?: string }
 }
 

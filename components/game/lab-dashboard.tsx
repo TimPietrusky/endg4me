@@ -4,15 +4,17 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id, Doc } from "@/convex/_generated/dataModel"
-import { TASKS, XP_CURVE, LEVEL_REWARDS } from "@/convex/lib/gameConstants"
-import { formatCash, formatTimeRemaining, calculateXPProgress } from "@/lib/utils"
+import { TASKS, XP_CURVE } from "@/convex/lib/gameConstants"
+import { formatTimeRemaining } from "@/lib/utils"
+import { Trophy, Crown } from "@phosphor-icons/react"
 
-import { TopNav } from "./dashboard/top-nav"
+import { PageHeader } from "./dashboard/page-header"
+import { SubNavContainer, SubNavButton } from "./dashboard/sub-nav"
 import { TasksView } from "./dashboard/tasks-view"
-import { CollectionView } from "./dashboard/collection-view"
-import { MsgsView } from "./dashboard/msgs-view"
-import { ResearchView } from "./dashboard/research-view"
-import { WorldView } from "./dashboard/world-view"
+import { CollectionView, type VisibilityFilter } from "./dashboard/collection-view"
+import { MsgsView, type InboxFilter } from "./dashboard/msgs-view"
+import { ResearchView, RESEARCH_CATEGORIES, type ResearchCategory } from "./dashboard/research-view"
+import { WorldView, type LeaderboardType, getLeaderboardUnlocks } from "./dashboard/world-view"
 import { TaskToastContainer } from "./task-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/hooks/use-toast"
@@ -35,8 +37,22 @@ export function LabDashboard({
 }: LabDashboardProps) {
   const { toast } = useToast()
   const [currentView, setCurrentView] = useState<ViewType>("operate")
+  
+  // Operate view filters
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [showActiveOnly, setShowActiveOnly] = useState(false)
+  
+  // Research view filters
+  const [selectedResearchCategory, setSelectedResearchCategory] = useState<ResearchCategory | null>(null)
+  
+  // Lab/Collection view filters
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
+  
+  // Inbox view filters
+  const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all")
+  
+  // World view filters
+  const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>("weekly")
 
   // Convex queries
   const activeTasks = useQuery(api.tasks.getActiveTasks, { labId: lab._id })
@@ -64,7 +80,6 @@ export function LabDashboard({
 
   // Calculate derived state
   const xpRequired = XP_CURVE[playerState.level] || 100
-  const xpProgress = calculateXPProgress(playerState.experience, xpRequired)
 
   const inProgressTasks = activeTasks?.filter((t) => t.status === "in_progress") || []
   const queuedTasks = activeTasks?.filter((t) => t.status === "queued") || []
@@ -77,10 +92,6 @@ export function LabDashboard({
   const isFreelanceOnCooldown = freelanceCooldown && freelanceCooldown > Date.now()
 
   // Check what blocks each task type
-  // Training: needs funds + queue slot
-  // Freelance: needs queue slot + not on cooldown
-  // Hire: needs funds + staff capacity (does NOT need queue slot - hiring is instant effect)
-  
   const getTrainingDisabledInfo = (cost: number) => {
     if (labState.cash < cost) {
       return { reason: "not enough funds", shortfall: cost - labState.cash }
@@ -127,7 +138,7 @@ export function LabDashboard({
   const hireInfo = getHireDisabledInfo()
   const rentGpuInfo = getRentGpuDisabledInfo()
 
-  // Build actions list for the new UI (reputation rewards removed)
+  // Build actions list
   const actions: Action[] = [
     {
       id: "train-small",
@@ -136,7 +147,7 @@ export function LabDashboard({
       description: "Train a text-to-speech model to gain research points",
       size: "3B",
       cost: TASKS.train_small_model.cost,
-      duration: Math.floor(TASKS.train_small_model.duration / 1000), // Convert ms to seconds
+      duration: Math.floor(TASKS.train_small_model.duration / 1000),
       rpReward: TASKS.train_small_model.baseRewards.researchPoints,
       xpReward: TASKS.train_small_model.baseRewards.experience,
       disabled: !!smallModelInfo.reason,
@@ -279,6 +290,7 @@ export function LabDashboard({
     title: n.title,
     message: n.message,
     timestamp: n.createdAt,
+    read: n.read,
     deepLink: n.deepLink as Notification["deepLink"],
   }))
 
@@ -290,9 +302,153 @@ export function LabDashboard({
     }
   }
 
+  // Build actionsByCategory for filters
+  const actionsByCategory = actions.reduce(
+    (acc, action) => {
+      if (!acc[action.category]) {
+        acc[action.category] = []
+      }
+      acc[action.category].push(action)
+      return acc
+    },
+    {} as Record<string, Action[]>,
+  )
+
+  // Model counts for Lab view
+  const publicModelCount = trainedModels?.filter((m) => m.visibility === "public").length || 0
+  const privateModelCount = trainedModels?.filter((m) => m.visibility !== "public").length || 0
+
+  // Leaderboard unlocks
+  const leaderboardUnlocks = getLeaderboardUnlocks(playerState.level)
+
+  // SubNav content per view
+  const getSubNav = () => {
+    switch (currentView) {
+      case "operate":
+        return (
+          <SubNavContainer>
+            <SubNavButton
+              isFirst
+              isActive={showActiveOnly}
+              onClick={() => setShowActiveOnly(!showActiveOnly)}
+              badge={`${activeTaskCount}/${maxParallelTasks}`}
+            >
+              ACTIVE
+            </SubNavButton>
+            {Object.keys(actionsByCategory).map((category) => (
+              <SubNavButton
+                key={category}
+                isActive={selectedCategories.includes(category)}
+                onClick={() => toggleCategory(category)}
+                badge={actionsByCategory[category].length}
+              >
+                {category}
+              </SubNavButton>
+            ))}
+          </SubNavContainer>
+        )
+
+      case "research":
+        return (
+          <SubNavContainer>
+            {RESEARCH_CATEGORIES.map((category, index) => (
+              <SubNavButton
+                key={category}
+                isFirst={index === 0}
+                isActive={selectedResearchCategory === category}
+                onClick={() => setSelectedResearchCategory(
+                  selectedResearchCategory === category ? null : category
+                )}
+              >
+                {category.toUpperCase()}
+              </SubNavButton>
+            ))}
+          </SubNavContainer>
+        )
+
+      case "lab":
+        return (
+          <SubNavContainer>
+            <SubNavButton
+              isFirst
+              isActive={visibilityFilter === "public"}
+              onClick={() => setVisibilityFilter(
+                visibilityFilter === "public" ? "all" : "public"
+              )}
+              badge={publicModelCount}
+            >
+              PUBLIC
+            </SubNavButton>
+            <SubNavButton
+              isActive={visibilityFilter === "private"}
+              onClick={() => setVisibilityFilter(
+                visibilityFilter === "private" ? "all" : "private"
+              )}
+              badge={privateModelCount}
+            >
+              PRIVATE
+            </SubNavButton>
+          </SubNavContainer>
+        )
+
+      case "inbox":
+        return (
+          <SubNavContainer>
+            <SubNavButton
+              isFirst
+              isActive={inboxFilter === "unread"}
+              onClick={() => setInboxFilter(
+                inboxFilter === "unread" ? "all" : "unread"
+              )}
+              badge={unreadCount || 0}
+            >
+              UNREAD
+            </SubNavButton>
+          </SubNavContainer>
+        )
+
+      case "world":
+        return (
+          <SubNavContainer>
+            <SubNavButton
+              isFirst
+              isActive={leaderboardType === "weekly"}
+              onClick={() => setLeaderboardType("weekly")}
+              disabled={!leaderboardUnlocks.weekly}
+            >
+              <Trophy className="w-4 h-4 mr-1" />
+              WEEKLY
+              {!leaderboardUnlocks.weekly && <span className="ml-1 text-muted-foreground">(Lvl 5)</span>}
+            </SubNavButton>
+            <SubNavButton
+              isActive={leaderboardType === "monthly"}
+              onClick={() => setLeaderboardType("monthly")}
+              disabled={!leaderboardUnlocks.monthly}
+            >
+              <Trophy className="w-4 h-4 mr-1" />
+              MONTHLY
+              {!leaderboardUnlocks.monthly && <span className="ml-1 text-muted-foreground">(Lvl 7)</span>}
+            </SubNavButton>
+            <SubNavButton
+              isActive={leaderboardType === "allTime"}
+              onClick={() => setLeaderboardType("allTime")}
+              disabled={!leaderboardUnlocks.allTime}
+            >
+              <Crown className="w-4 h-4 mr-1" />
+              ALL-TIME
+              {!leaderboardUnlocks.allTime && <span className="ml-1 text-muted-foreground">(Lvl 9)</span>}
+            </SubNavButton>
+          </SubNavContainer>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TopNav
+      <PageHeader
         labName={lab.name}
         founderName={user.name || user.email}
         founderType={lab.founderType}
@@ -305,19 +461,17 @@ export function LabDashboard({
         currentView={currentView}
         setCurrentView={setCurrentView}
         notificationCount={unreadCount || 0}
+        subNav={getSubNav()}
       />
 
       <div className="px-6 pb-6">
-        {/* OPERATE: Run the lab day-to-day (formerly Tasks) */}
+        {/* OPERATE: Run the lab day-to-day */}
         {currentView === "operate" && (
           <TasksView
             actions={actions}
             showActiveOnly={showActiveOnly}
-            setShowActiveOnly={setShowActiveOnly}
             selectedCategories={selectedCategories}
-            toggleCategory={toggleCategory}
             onStartAction={handleStartAction}
-            maxParallelTasks={labState.parallelTasks + labState.juniorResearchers}
           />
         )}
 
@@ -326,6 +480,7 @@ export function LabDashboard({
           <ResearchView
             userId={userId as Id<"users">}
             currentRp={labState.researchPoints}
+            selectedCategory={selectedResearchCategory}
           />
         )}
 
@@ -335,13 +490,15 @@ export function LabDashboard({
             labName={lab.name}
             models={trainedModels}
             bestScore={modelStats?.bestModel?.score}
+            visibilityFilter={visibilityFilter}
           />
         )}
 
-        {/* INBOX: Events/offers/notifications (formerly Messages) */}
+        {/* INBOX: Events/offers/notifications */}
         {currentView === "inbox" && (
           <MsgsView
             notifications={notifications}
+            filter={inboxFilter}
             onMarkAsRead={handleMarkAsRead}
             onNavigate={(view) => setCurrentView(view)}
           />
@@ -352,6 +509,7 @@ export function LabDashboard({
           <WorldView
             labName={lab.name}
             playerLevel={playerState.level}
+            leaderboardType={leaderboardType}
           />
         )}
       </div>

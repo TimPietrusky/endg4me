@@ -5,13 +5,23 @@ import { Button } from "@/components/ui/button"
 import { EnvelopeSimple, Trophy, CheckCircle, User, Star, UserPlus, Lightning, ArrowRight } from "@phosphor-icons/react"
 import type { Notification, ViewType } from "@/lib/game-types"
 
+export type InboxFilter = "all" | "unread"
+
 interface MsgsViewProps {
   notifications: Notification[]
+  filter: InboxFilter
   onMarkAsRead?: (id: string | number) => void
   onNavigate?: (view: ViewType, target?: string) => void
 }
 
-export function MsgsView({ notifications, onMarkAsRead, onNavigate }: MsgsViewProps) {
+export function MsgsView({ notifications, filter, onMarkAsRead, onNavigate }: MsgsViewProps) {
+  // Filter notifications based on read status
+  const filteredNotifications = notifications.filter((n) => {
+    if (filter === "all") return true
+    if (filter === "unread") return !n.read
+    return true
+  })
+
   const getIcon = (type: string) => {
     switch (type) {
       case "level_up":
@@ -64,16 +74,16 @@ export function MsgsView({ notifications, onMarkAsRead, onNavigate }: MsgsViewPr
   }
 
   return (
-    <div className="space-y-3">
-      {notifications.length === 0 ? (
+    <div className="space-y-3 mt-4">
+      {filteredNotifications.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             <EnvelopeSimple className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>no messages yet</p>
+            <p>{filter === "unread" ? "no unread messages" : "no messages yet"}</p>
           </CardContent>
         </Card>
       ) : (
-        notifications.map((notification) => (
+        filteredNotifications.map((notification) => (
           <Card
             key={notification.id}
             className="hover:bg-muted/30 transition-colors cursor-pointer"
@@ -113,4 +123,3 @@ export function MsgsView({ notifications, onMarkAsRead, onNavigate }: MsgsViewPr
     </div>
   )
 }
-

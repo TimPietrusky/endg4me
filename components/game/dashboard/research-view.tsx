@@ -13,9 +13,10 @@ import { formatCompact } from "@/lib/utils"
 interface ResearchViewProps {
   userId: Id<"users">
   currentRp: number
+  selectedCategory: string | null
 }
 
-export function ResearchView({ userId, currentRp }: ResearchViewProps) {
+export function ResearchView({ userId, currentRp, selectedCategory }: ResearchViewProps) {
   const { toast } = useToast()
   const researchState = useQuery(api.research.getResearchTreeState, { userId })
   const purchaseNode = useMutation(api.research.purchaseResearchNode)
@@ -62,8 +63,13 @@ export function ResearchView({ userId, currentRp }: ResearchViewProps) {
     }
   }
 
+  // Filter nodes by selected category
+  const filteredNodes = selectedCategory
+    ? researchState?.filter((node) => node.category === selectedCategory)
+    : researchState
+
   // Group nodes by category
-  const nodesByCategory = researchState?.reduce((acc, node) => {
+  const nodesByCategory = filteredNodes?.reduce((acc, node) => {
     if (!acc[node.category]) {
       acc[node.category] = []
     }
@@ -73,55 +79,17 @@ export function ResearchView({ userId, currentRp }: ResearchViewProps) {
 
   if (!researchState || researchState.length === 0) {
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg flex items-center justify-center">
-              <Lightning className="w-6 h-6 text-white" weight="fill" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">Research Tree</h2>
-              <p className="text-sm text-muted-foreground">Spend RP on permanent unlocks</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
-            <Lightning className="w-5 h-5 text-primary" />
-            <span className="font-bold text-lg">{formatCompact(currentRp)}</span>
-            <span className="text-sm text-muted-foreground">RP available</span>
-          </div>
-        </div>
-
-        <div className="text-center py-16 text-muted-foreground">
-          <Lightning className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <p className="text-lg mb-2">Research Tree</p>
-          <p className="text-sm">No research nodes available yet.</p>
-          <p className="text-xs mt-2">Research nodes will be added in future updates.</p>
-        </div>
+      <div className="text-center py-16 text-muted-foreground">
+        <Lightning className="w-16 h-16 mx-auto mb-4 opacity-30" />
+        <p className="text-lg mb-2">Research Tree</p>
+        <p className="text-sm">No research nodes available yet.</p>
+        <p className="text-xs mt-2">Research nodes will be added in future updates.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg flex items-center justify-center">
-            <Lightning className="w-6 h-6 text-white" weight="fill" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">Research Tree</h2>
-            <p className="text-sm text-muted-foreground">Spend RP on permanent unlocks</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
-          <Lightning className="w-5 h-5 text-primary" />
-          <span className="font-bold text-lg">{formatCompact(currentRp)}</span>
-          <span className="text-sm text-muted-foreground">RP available</span>
-        </div>
-      </div>
-
+    <div className="space-y-6 mt-4">
       {/* Research Categories */}
       {nodesByCategory && Object.entries(nodesByCategory).map(([category, nodes]) => (
         <div key={category}>
@@ -196,3 +164,6 @@ export function ResearchView({ userId, currentRp }: ResearchViewProps) {
   )
 }
 
+// Export categories for use in SubNav
+export const RESEARCH_CATEGORIES = ["blueprints", "capabilities", "perks"] as const
+export type ResearchCategory = typeof RESEARCH_CATEGORIES[number]

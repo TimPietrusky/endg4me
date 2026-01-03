@@ -8,31 +8,39 @@ import { api } from "@/convex/_generated/api"
 import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { formatCompact } from "@/lib/utils"
 
+export type VisibilityFilter = "all" | "public" | "private"
+
 interface CollectionViewProps {
   labName: string
   models?: Doc<"trainedModels">[]
   bestScore?: number
+  visibilityFilter: VisibilityFilter
 }
 
-export function CollectionView({ labName, models, bestScore }: CollectionViewProps) {
+export function CollectionView({ labName, models, bestScore, visibilityFilter }: CollectionViewProps) {
   const toggleVisibility = useMutation(api.tasks.toggleModelVisibility)
+
+  // Filter models by visibility
+  const filteredModels = models?.filter((model) => {
+    if (visibilityFilter === "all") return true
+    if (visibilityFilter === "public") return model.visibility === "public"
+    if (visibilityFilter === "private") return model.visibility !== "public"
+    return true
+  })
+
+  const publicCount = models?.filter((m) => m.visibility === "public").length || 0
+  const privateCount = models?.filter((m) => m.visibility !== "public").length || 0
 
   if (!models || models.length === 0) {
     return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold">{labName}</h2>
-        <div className="text-center py-16">
-          <Cube className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30" />
-          <h3 className="text-lg font-bold mb-2">Model Collection</h3>
-          <p className="text-sm text-muted-foreground">Your trained models will appear here</p>
-          <p className="text-xs text-muted-foreground mt-2">Run training jobs in Operate to create models</p>
-        </div>
+      <div className="text-center py-16 mt-4">
+        <Cube className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30" />
+        <h3 className="text-lg font-bold mb-2">Model Collection</h3>
+        <p className="text-sm text-muted-foreground">Your trained models will appear here</p>
+        <p className="text-xs text-muted-foreground mt-2">Run training jobs in Operate to create models</p>
       </div>
     )
   }
-
-  const publicCount = models.filter((m) => m.visibility === "public").length
-  const privateCount = models.filter((m) => m.visibility !== "public").length // undefined = private
 
   const handleToggleVisibility = async (modelId: Id<"trainedModels">) => {
     try {
@@ -43,10 +51,7 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
   }
 
   return (
-    <div className="space-y-6">
-      {/* Lab Name */}
-      <h2 className="text-2xl font-bold">{labName}</h2>
-
+    <div className="space-y-6 mt-4">
       {/* Stats Header */}
       <div className="flex items-center gap-6 p-4 bg-card/50 rounded-lg border border-border">
         <div className="flex items-center gap-3">
@@ -96,15 +101,21 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
       </div>
 
       {/* Model Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {models.map((model) => (
-          <ModelCard 
-            key={model._id} 
-            model={model} 
-            onToggleVisibility={() => handleToggleVisibility(model._id)}
-          />
-        ))}
-      </div>
+      {filteredModels && filteredModels.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredModels.map((model) => (
+            <ModelCard 
+              key={model._id} 
+              model={model} 
+              onToggleVisibility={() => handleToggleVisibility(model._id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-muted-foreground">
+          <p className="text-sm">No {visibilityFilter} models found</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -180,4 +191,3 @@ function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
     </Card>
   )
 }
-

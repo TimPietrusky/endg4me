@@ -1,7 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { SubNavContainer, SubNavButton } from "./sub-nav"
 import type { Action } from "@/lib/game-types"
 
 interface TaskFiltersProps {
@@ -23,42 +22,28 @@ export function TaskFilters({
   activeCount,
   maxParallelTasks,
 }: TaskFiltersProps) {
+  const categories = Object.keys(actionsByCategory)
+
   return (
-    <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-white/20 sticky top-[73px] z-40 bg-background">
-      <Button
-        variant="ghost"
-        size="sm"
+    <SubNavContainer>
+      <SubNavButton
+        isFirst
+        isActive={showActiveOnly}
         onClick={() => setShowActiveOnly(!showActiveOnly)}
-        className={`text-xs rounded-none border-b-4 ${
-          showActiveOnly
-            ? "border-white text-white font-bold"
-            : "border-transparent hover:border-muted-foreground/30"
-        }`}
+        badge={`${activeCount}/${maxParallelTasks}`}
       >
         ACTIVE
-        <Badge variant="secondary" className="ml-2 h-4 px-1.5">
-          {activeCount}/{maxParallelTasks}
-        </Badge>
-      </Button>
-      {Object.keys(actionsByCategory).map((category) => (
-        <Button
+      </SubNavButton>
+      {categories.map((category) => (
+        <SubNavButton
           key={category}
-          variant="ghost"
-          size="sm"
+          isActive={selectedCategories.includes(category)}
           onClick={() => toggleCategory(category)}
-          className={`text-xs rounded-none border-b-4 ${
-            selectedCategories.includes(category)
-              ? "border-white text-white font-bold"
-              : "border-transparent hover:border-muted-foreground/30"
-          }`}
+          badge={actionsByCategory[category].length}
         >
           {category}
-          <Badge variant="secondary" className="ml-2 h-4 px-1.5">
-            {actionsByCategory[category].length}
-          </Badge>
-        </Button>
+        </SubNavButton>
       ))}
-    </div>
+    </SubNavContainer>
   )
 }
-

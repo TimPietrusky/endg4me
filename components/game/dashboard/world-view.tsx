@@ -1,34 +1,26 @@
 "use client"
 
-import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { GlobeHemisphereWest, Trophy, Medal, Crown, Star } from "@phosphor-icons/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { formatCompact } from "@/lib/utils"
 
-type LeaderboardType = "weekly" | "monthly" | "allTime"
+export type LeaderboardType = "weekly" | "monthly" | "allTime"
 
 interface WorldViewProps {
   labName: string
   playerLevel: number
+  leaderboardType: LeaderboardType
 }
 
-export function WorldView({ labName, playerLevel }: WorldViewProps) {
-  const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>("weekly")
-  
+export function WorldView({ labName, playerLevel, leaderboardType }: WorldViewProps) {
   const leaderboard = useQuery(api.tasks.getLeaderboard, { 
     type: leaderboardType,
     limit: 20 
   })
 
   const publicModels = useQuery(api.tasks.getPublicModels, { limit: 10 })
-
-  // Level gates for leaderboards
-  const weeklyUnlocked = playerLevel >= 5
-  const monthlyUnlocked = playerLevel >= 7
-  const allTimeUnlocked = playerLevel >= 9
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="w-5 h-5 text-amber-400" weight="fill" />
@@ -38,55 +30,7 @@ export function WorldView({ labName, playerLevel }: WorldViewProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 bg-card/50 rounded-lg border border-border">
-        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-          <GlobeHemisphereWest className="w-6 h-6 text-white" weight="fill" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold">World</h2>
-          <p className="text-sm text-muted-foreground">Global leaderboards and public labs</p>
-        </div>
-      </div>
-
-      {/* Leaderboard Type Selector */}
-      <div className="flex gap-2">
-        <Button
-          variant={leaderboardType === "weekly" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setLeaderboardType("weekly")}
-          disabled={!weeklyUnlocked}
-          className="text-xs"
-        >
-          <Trophy className="w-4 h-4 mr-1" />
-          Weekly
-          {!weeklyUnlocked && <span className="ml-1 text-muted-foreground">(Lvl 5)</span>}
-        </Button>
-        <Button
-          variant={leaderboardType === "monthly" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setLeaderboardType("monthly")}
-          disabled={!monthlyUnlocked}
-          className="text-xs"
-        >
-          <Trophy className="w-4 h-4 mr-1" />
-          Monthly
-          {!monthlyUnlocked && <span className="ml-1 text-muted-foreground">(Lvl 7)</span>}
-        </Button>
-        <Button
-          variant={leaderboardType === "allTime" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setLeaderboardType("allTime")}
-          disabled={!allTimeUnlocked}
-          className="text-xs"
-        >
-          <Crown className="w-4 h-4 mr-1" />
-          All-Time
-          {!allTimeUnlocked && <span className="ml-1 text-muted-foreground">(Lvl 9)</span>}
-        </Button>
-      </div>
-
+    <div className="space-y-6 mt-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Leaderboard */}
         <Card>
@@ -179,3 +123,11 @@ export function WorldView({ labName, playerLevel }: WorldViewProps) {
   )
 }
 
+// Level gates for leaderboards
+export function getLeaderboardUnlocks(playerLevel: number) {
+  return {
+    weekly: playerLevel >= 5,
+    monthly: playerLevel >= 7,
+    allTime: playerLevel >= 9,
+  }
+}

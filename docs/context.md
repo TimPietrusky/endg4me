@@ -322,3 +322,4 @@ _Last updated: 2026-01-03 (white accent, top nav simplified)_
 - **Leaderboards**: Only count public models
 - **Unlock Registry**: Single source of truth in Convex for all gating
 - **Deep links**: Inbox notifications link to relevant views
+- **Unified Navigation**: PageHeader + SubNav system for consistent navigation across all views. SubNav is view-specific and optional. First SubNav element has no left padding to align with logo.
