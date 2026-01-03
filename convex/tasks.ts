@@ -6,6 +6,7 @@ import {
   XP_CURVE,
   LEVEL_REWARDS,
   CLAN_BONUS,
+  MAX_LEVEL,
   getQueueSlotsForLevel,
   type TaskType,
   type TaskConfig,
@@ -243,7 +244,6 @@ export const completeTask = internalMutation({
     const rewards: {
       cash?: number;
       researchPoints?: number;
-      reputation?: number;
       experience?: number;
     } = {};
 
@@ -262,20 +262,14 @@ export const completeTask = internalMutation({
       );
     }
 
-    if (taskConfig.baseRewards.reputation) {
-      // Check clan bonus
-      let repMultiplier = 1;
-      if (playerState.clanId) {
-        repMultiplier = CLAN_BONUS.reputationGain;
-      }
-      rewards.reputation = Math.floor(
-        taskConfig.baseRewards.reputation * randomFactor * repMultiplier
-      );
-    }
-
     if (taskConfig.baseRewards.experience) {
+      // Apply clan XP bonus if in a clan
+      let xpMultiplier = 1;
+      if (playerState.clanId) {
+        xpMultiplier = CLAN_BONUS.xpGain;
+      }
       rewards.experience = Math.floor(
-        taskConfig.baseRewards.experience * randomFactor
+        taskConfig.baseRewards.experience * randomFactor * xpMultiplier
       );
     }
 
@@ -284,8 +278,6 @@ export const completeTask = internalMutation({
     if (rewards.cash) updates.cash = labState.cash + rewards.cash;
     if (rewards.researchPoints)
       updates.researchPoints = labState.researchPoints + rewards.researchPoints;
-    if (rewards.reputation)
-      updates.reputation = labState.reputation + rewards.reputation;
 
     // Handle hiring completion
     if (task.type === "hire_junior_researcher") {
@@ -320,15 +312,16 @@ export const completeTask = internalMutation({
         name: modelName,
         score: rewards.researchPoints || 0,
         trainedAt: Date.now(),
+        visibility: "private", // Default to private, player can publish in lab view
       });
     }
 
-    // Update player XP and check level up
+    // Update player XP and check level up (max level 20)
     if (rewards.experience) {
       const newXP = playerState.experience + rewards.experience;
       const xpRequired = XP_CURVE[playerState.level] || Infinity;
 
-      if (newXP >= xpRequired && playerState.level < 10) {
+      if (newXP >= xpRequired && playerState.level < MAX_LEVEL) {
         // Level up!
         await ctx.db.patch(playerState._id, {
           experience: newXP - xpRequired,
@@ -440,13 +433,11 @@ export const completeTask = internalMutation({
 function formatRewards(rewards: {
   cash?: number;
   researchPoints?: number;
-  reputation?: number;
   experience?: number;
 }): string {
   const parts: string[] = [];
   if (rewards.cash) parts.push(`+$${rewards.cash}`);
   if (rewards.researchPoints) parts.push(`+${rewards.researchPoints} RP`);
-  if (rewards.reputation) parts.push(`+${rewards.reputation} Rep`);
   if (rewards.experience) parts.push(`+${rewards.experience} XP`);
   return parts.join(", ") || "Task completed";
 }
@@ -583,6 +574,7 @@ export const getModelStats = query({
 
     const smallModels = models.filter((m) => m.modelType === "small_3b");
     const mediumModels = models.filter((m) => m.modelType === "medium_7b");
+    const publicModels = models.filter((m) => m.visibility === "public"); // undefined = private
 
     const totalScore = models.reduce((sum, m) => sum + m.score, 0);
     const bestModel = models.reduce(
@@ -594,10 +586,104 @@ export const getModelStats = query({
       totalModels: models.length,
       smallModels: smallModels.length,
       mediumModels: mediumModels.length,
+      publicModels: publicModels.length,
       totalScore,
       averageScore: models.length > 0 ? Math.round(totalScore / models.length) : 0,
       bestModel,
     };
+  },
+});
+
+// Toggle model visibility (public/private)
+export const toggleModelVisibility = mutation({
+  args: { modelId: v.id("trainedModels") },
+  handler: async (ctx, args) => {
+    const model = await ctx.db.get(args.modelId);
+    if (!model) {
+      throw new Error("Model not found");
+    }
+
+    const newVisibility = model.visibility === "public" ? "private" : "public";
+    await ctx.db.patch(args.modelId, { visibility: newVisibility });
+
+    return { modelId: args.modelId, visibility: newVisibility };
+  },
+});
+
+// Get public models for leaderboards
+export const getPublicModels = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const models = await ctx.db
+      .query("trainedModels")
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .order("desc")
+      .take(args.limit || 100);
+
+    // Get lab info for each model
+    const modelsWithLabs = await Promise.all(
+      models.map(async (model) => {
+        const lab = await ctx.db.get(model.labId);
+        return {
+          ...model,
+          labName: lab?.name || "Unknown Lab",
+        };
+      })
+    );
+
+    // Sort by score for leaderboard
+    return modelsWithLabs.sort((a, b) => b.score - a.score);
+  },
+});
+
+// Get leaderboard data
+export const getLeaderboard = query({
+  args: { 
+    type: v.union(v.literal("weekly"), v.literal("monthly"), v.literal("allTime")),
+    limit: v.optional(v.number()) 
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+
+    let models = await ctx.db
+      .query("trainedModels")
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .collect();
+
+    // Filter by time period
+    if (args.type === "weekly") {
+      models = models.filter((m) => m.trainedAt >= weekAgo);
+    } else if (args.type === "monthly") {
+      models = models.filter((m) => m.trainedAt >= monthAgo);
+    }
+
+    // Group by lab and sum scores
+    const labScores: Record<string, { labId: string; labName: string; totalScore: number; modelCount: number }> = {};
+
+    for (const model of models) {
+      const lab = await ctx.db.get(model.labId);
+      const labIdStr = model.labId.toString();
+      
+      if (!labScores[labIdStr]) {
+        labScores[labIdStr] = {
+          labId: labIdStr,
+          labName: lab?.name || "Unknown Lab",
+          totalScore: 0,
+          modelCount: 0,
+        };
+      }
+      labScores[labIdStr].totalScore += model.score;
+      labScores[labIdStr].modelCount += 1;
+    }
+
+    // Sort by total score
+    const leaderboard = Object.values(labScores)
+      .sort((a, b) => b.totalScore - a.totalScore)
+      .slice(0, args.limit || 50);
+
+    return leaderboard;
   },
 });
 

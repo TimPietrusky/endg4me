@@ -1,15 +1,17 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { EnvelopeSimple, Trophy, CheckCircle, User, Star, UserPlus, Lightning } from "@phosphor-icons/react"
-import type { Notification } from "@/lib/game-types"
+import { Button } from "@/components/ui/button"
+import { EnvelopeSimple, Trophy, CheckCircle, User, Star, UserPlus, Lightning, ArrowRight } from "@phosphor-icons/react"
+import type { Notification, ViewType } from "@/lib/game-types"
 
 interface MsgsViewProps {
   notifications: Notification[]
   onMarkAsRead?: (id: string | number) => void
+  onNavigate?: (view: ViewType, target?: string) => void
 }
 
-export function MsgsView({ notifications, onMarkAsRead }: MsgsViewProps) {
+export function MsgsView({ notifications, onMarkAsRead, onNavigate }: MsgsViewProps) {
   const getIcon = (type: string) => {
     switch (type) {
       case "level_up":
@@ -22,6 +24,8 @@ export function MsgsView({ notifications, onMarkAsRead }: MsgsViewProps) {
         return <Star weight="fill" className="w-5 h-5 text-amber-400" />
       case "hire_complete":
         return <UserPlus weight="fill" className="w-5 h-5 text-violet-400" />
+      case "research_complete":
+        return <Lightning weight="fill" className="w-5 h-5 text-purple-400" />
       default:
         return <EnvelopeSimple weight="fill" className="w-5 h-5 text-muted-foreground" />
     }
@@ -35,6 +39,28 @@ export function MsgsView({ notifications, onMarkAsRead }: MsgsViewProps) {
     const hours = Math.floor(mins / 60)
     if (hours < 24) return `${hours}h ago`
     return `${Math.floor(hours / 24)}d ago`
+  }
+
+  const getDeepLinkLabel = (view: ViewType) => {
+    switch (view) {
+      case "operate":
+        return "Go to Operate"
+      case "research":
+        return "Go to Research"
+      case "lab":
+        return "View in Lab"
+      case "world":
+        return "View in World"
+      default:
+        return "View"
+    }
+  }
+
+  const handleClick = (notification: Notification) => {
+    onMarkAsRead?.(notification.id)
+    if (notification.deepLink && onNavigate) {
+      onNavigate(notification.deepLink.view, notification.deepLink.target)
+    }
   }
 
   return (
@@ -51,7 +77,7 @@ export function MsgsView({ notifications, onMarkAsRead }: MsgsViewProps) {
           <Card
             key={notification.id}
             className="hover:bg-muted/30 transition-colors cursor-pointer"
-            onClick={() => onMarkAsRead?.(notification.id)}
+            onClick={() => handleClick(notification)}
           >
             <CardContent className="p-4 flex items-start gap-4">
               <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center flex-shrink-0">
@@ -65,6 +91,20 @@ export function MsgsView({ notifications, onMarkAsRead }: MsgsViewProps) {
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                {notification.deepLink && onNavigate && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs h-6 px-0 mt-2 text-primary"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onNavigate(notification.deepLink!.view, notification.deepLink!.target)
+                    }}
+                  >
+                    {getDeepLinkLabel(notification.deepLink.view)}
+                    <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

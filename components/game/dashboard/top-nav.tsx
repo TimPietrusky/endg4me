@@ -2,9 +2,10 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CurrencyDollar, Lightning, Star, Cpu } from "@phosphor-icons/react"
+import { CurrencyDollar, Lightning, Cpu } from "@phosphor-icons/react"
 import { SettingsPanel } from "../settings-panel"
 import { XpIcon } from "./xp-icon"
+import { Logo } from "@/components/logo"
 import type { ViewType } from "@/lib/game-types"
 import { formatCompact } from "@/lib/utils"
 
@@ -17,7 +18,6 @@ interface TopNavProps {
   maxXp: number
   cash: number
   rp: number
-  reputation: number
   gpus: number
   modelsTrained: number
   currentView: ViewType
@@ -35,7 +35,6 @@ export function TopNav({
   maxXp,
   cash,
   rp,
-  reputation,
   gpus,
   modelsTrained,
   currentView,
@@ -43,70 +42,44 @@ export function TopNav({
   notificationCount,
   actionsCount,
 }: TopNavProps) {
+  // Navigation items in order: operate, research, lab, inbox, world
+  const navItems: { id: ViewType; label: string; badge?: number | string }[] = [
+    { id: "operate", label: "operate", badge: actionsCount > 0 ? actionsCount : undefined },
+    { id: "research", label: "research" },
+    { id: "lab", label: "lab", badge: modelsTrained > 0 ? modelsTrained : undefined },
+    { id: "inbox", label: "inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined },
+    { id: "world", label: "world" },
+  ]
 
   return (
     <div className="border-b border-white/20 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Left: Lab name and navigation */}
+          {/* Left: Game logo and navigation */}
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                <Star weight="fill" className="w-5 h-5 text-black" />
-              </div>
-              <span className="text-base font-bold">{labName}</span>
-            </div>
+            <Logo className="h-5 w-auto text-white" />
 
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentView("tasks")}
-                className={`text-xs h-8 lowercase ${
-                  currentView === "tasks"
-                    ? "bg-primary text-black font-bold hover:text-white hover:bg-primary/90"
-                    : "hover:bg-muted"
-                }`}
-              >
-                tasks
-                {actionsCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-4 px-1">
-                    {actionsCount}
-                  </Badge>
-                )}
-              </Button>
-              {modelsTrained > 0 && (
+              {navItems.map((item) => (
                 <Button
+                  key={item.id}
                   variant="ghost"
                   size="sm"
-                  onClick={() => setCurrentView("models")}
+                  onClick={() => setCurrentView(item.id)}
                   className={`text-xs h-8 lowercase ${
-                    currentView === "models"
+                    currentView === item.id
                       ? "bg-primary text-black font-bold hover:text-white hover:bg-primary/90"
                       : "hover:bg-muted"
                   }`}
                 >
-                  models
-                  <Badge variant="secondary" className="ml-1 h-4 px-1">
-                    {modelsTrained}
-                  </Badge>
+                  {item.label}
+                  {item.badge && (
+                    <Badge variant="secondary" className="ml-1 h-4 px-1">
+                      {item.badge}
+                    </Badge>
+                  )}
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentView("msgs")}
-                className={`text-xs h-8 lowercase ${
-                  currentView === "msgs"
-                    ? "bg-primary text-black font-bold hover:text-white hover:bg-primary/90"
-                    : "hover:bg-muted"
-                }`}
-              >
-                msg
-                {notificationCount > 0 && (
-                  <span className="ml-1.5 text-xs text-muted-foreground">({notificationCount})</span>
-                )}
-              </Button>
+              ))}
             </div>
           </div>
 
@@ -114,10 +87,11 @@ export function TopNav({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setCurrentView("skills")}
+                onClick={() => setCurrentView("lab")}
                 className={`flex items-center gap-1.5 text-sm hover:bg-white/10 px-2 py-1 rounded transition-colors ${
-                  currentView === "skills" ? "bg-white/10" : ""
+                  currentView === "lab" ? "bg-white/10" : ""
                 }`}
+                title="View milestones"
               >
                 <span className="text-xs font-bold text-muted-foreground lowercase">lvl</span>
                 <span className="text-base font-bold text-white border border-white px-1.5 rounded">{level}</span>
@@ -132,7 +106,7 @@ export function TopNav({
                   <div className="h-0.5 w-12 bg-white/20 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-white transition-all"
-                      style={{ width: `${(xp / maxXp) * 100}%` }}
+                      style={{ width: `${Math.min((xp / maxXp) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
@@ -145,10 +119,6 @@ export function TopNav({
               <div className="flex items-center gap-1.5 text-sm">
                 <Lightning className="w-5 h-5 text-white" />
                 <span className="font-bold">{formatCompact(rp)}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-sm">
-                <Star className="w-5 h-5 text-white" />
-                <span className="font-bold">{formatCompact(reputation)}</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm">
                 <Cpu className="w-5 h-5 text-orange-400" />

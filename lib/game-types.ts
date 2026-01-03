@@ -8,7 +8,6 @@ export interface GameState {
   cash: number
   rp: number
   researchPoints?: number
-  reputation: number
   role: string
   founderType?: string
   modelsTrained: number
@@ -27,7 +26,6 @@ export interface Action {
   cost: number
   duration: number
   rpReward?: number
-  reputationReward?: number
   xpReward?: number
   cashReward?: number
   speedBonus?: number
@@ -41,15 +39,21 @@ export interface Action {
   isActive?: boolean
   remainingTime?: number
   isQueued?: boolean
+  // Unlock gating
+  locked?: boolean
+  lockReason?: string
+  unlockLink?: { view: ViewType; target?: string }
 }
 
 export interface Notification {
   id: number | string
-  type: "level_up" | "message" | "task_complete" | "unlock" | "hire_complete"
+  type: "level_up" | "message" | "task_complete" | "unlock" | "hire_complete" | "research_complete"
   title: string
   message: string
   timestamp: number
+  deepLink?: { view: ViewType; target?: string }
 }
 
-export type ViewType = "tasks" | "models" | "msgs" | "skills"
+// New 5-tab navigation: operate / research / lab / inbox / world
+export type ViewType = "operate" | "research" | "lab" | "inbox" | "world"
 

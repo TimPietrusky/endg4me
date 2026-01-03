@@ -46,11 +46,14 @@ Power comes from **systems**, not clicks.
 
 ## Core game pillars
 
-1. **Research**
-2. **People**
-3. **Infrastructure**
-4. **Reputation**
-5. **Time**
+1. **Research** (RP - permanent unlocks)
+2. **People** (staff capacity)
+3. **Infrastructure** (compute/GPUs)
+4. **XP/Level** (overall lab growth, max level 20)
+5. **Money** (operational budget)
+6. **Time** (strategic waiting)
+
+**Note**: Reputation has been removed from the game. Progression now uses XP/Level + RP + Money only.
 
 ---
 
@@ -111,38 +114,63 @@ Power comes from **systems**, not clicks.
 ## Current codebase status
 
 The game dashboard is **fully implemented** with:
+
 - Terminal-inspired design (cyan accent, JetBrains Mono font)
-- Four main views: Tasks, Models, Messages, Skills
+- Five main views: Operate, Research, Lab, Inbox, World
 - Action cards with images and progress visualization
 - Convex-powered reactive state
 - WorkOS authentication
 - Settings panel (slide-out sheet) with Profile, Organization/Team, and Sign out
-- Skill tree system for level progression
+- Level-based milestone system (max level 20)
 
 The homepage (`app/page.tsx`) is the landing page. The game lives at `/play`.
 
-### Skill Tree
+### Navigation (5 top-level views)
 
-Click the level badge in the top nav to open the skill tree. It shows:
-- **Snake pattern grid**: Levels 1-5 left-to-right, levels 6-10 right-to-left (connected path)
-- **Level status**: Completed (cyan), current (white/pulsing), locked (dim)
-- **Detail panel**: Click any level to see stats and unlocks
+1. **Operate**: Run the lab day-to-day (queue management, job catalog, run jobs)
+2. **Research**: Spend RP on permanent unlocks (blueprints, capabilities, perks)
+3. **Lab**: Your organization/ownership (model inventory, publishing controls, people)
+4. **Inbox**: Events/offers/notifications with deep links
+5. **World**: Global layer (leaderboards, public labs)
 
-**Progression unlocks** (defined in `convex/lib/skillTree.ts`):
-- **Capacity**: Queue slots (0→5), parallel tasks (1→3), staff capacity (2→6)
-- **Infrastructure**: Compute units/GPUs (1→5)
-- **Research**: Model sizes (3B→405B), AGI research at level 10
-- **Income**: Freelance (L1), Government contracts (L7), Research partnerships (L9)
-- **Social**: Clans (L3), Leaderboards (Weekly L5, Monthly L7, All-time L9)
+### Progression System
+
+**XP / Level (max 20)**:
+
+- Earned by completing jobs
+- Grants automatic rewards: queue slots, GPU capacity, staff capacity
+- Gates visibility of higher-tier content (e.g., Large Models at L12)
+- XP is never spent
+
+**Research Points (RP)**:
+
+- Earned by training jobs and research jobs
+- Spent only in Research view for permanent unlocks
+- Unlocks blueprints, new job types, perks
+
+**Money**:
+
+- Operational budget for running jobs
+- Spent in Operate (infra, contracts) and World (district expansion)
+
+### Model Lifecycle
+
+1. **Blueprint**: Unlocked via Research (RP purchase)
+2. **Trained Model**: Created by completing training jobs in Operate
+3. **Publishing**: Toggle visibility (public/private) in Lab
+4. **Leaderboards**: Only public models count
+
+### Unlock Registry
+
+All gating logic lives in Convex (`unlockRegistry` table). UI reads availability status from the registry - no duplicated conditions.
 
 ### Settings Panel
 
 The settings panel is accessed via a gear icon in the top nav. It contains:
+
 - **Profile**: User name and founder type badge
 - **Organization**: Lab name and team roster (founder + hired employees)
 - **Sign out**: Always visible at bottom
-
-Team members are displayed with their role. Hired junior researchers will appear here alongside the founder.
 
 ---
 
@@ -195,9 +223,12 @@ endg4me/
 │   └── providers/           # Context providers
 ├── convex/                  # Game logic and data model
 │   ├── schema.ts            # Database schema
-│   ├── tasks.ts             # Task mutations/queries
+│   ├── tasks.ts             # Task/job mutations/queries
+│   ├── research.ts          # Research tree mutations/queries
 │   ├── labs.ts              # Lab operations
-│   └── lib/gameConstants.ts # Game balance constants
+│   └── lib/
+│       ├── gameConstants.ts # Game balance constants
+│       └── skillTree.ts     # Level milestone definitions (1-20)
 ├── hooks/                   # Custom React hooks
 ├── lib/                     # Utilities
 │   ├── game-types.ts        # TypeScript types for game
@@ -278,3 +309,16 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 ---
 
 _Last updated: 2026-01-03_
+
+---
+
+## Architecture Decisions (002 Progression Refactor)
+
+- **Reputation removed**: No REP in schema, rewards, or gating
+- **5-tab navigation**: operate / research / lab / inbox / world
+- **Max level 20**: Extended XP curve with milestone rewards
+- **RP spending**: Only in Research view (permanent unlocks)
+- **Model visibility**: trainedModels have public/private toggle
+- **Leaderboards**: Only count public models
+- **Unlock Registry**: Single source of truth in Convex for all gating
+- **Deep links**: Inbox notifications link to relevant views

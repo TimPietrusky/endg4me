@@ -23,12 +23,13 @@ export default defineSchema({
     labId: v.id("labs"),
     cash: v.number(),
     researchPoints: v.number(),
-    reputation: v.number(),
     computeUnits: v.number(),
     staffCapacity: v.number(),
     parallelTasks: v.number(),
     // Track staff hired
     juniorResearchers: v.number(),
+    // DEPRECATED: reputation removed in 002_progression, kept optional for migration
+    reputation: v.optional(v.number()),
   }).index("by_lab", ["labId"]),
 
   // Player State - personal progression
@@ -62,8 +63,9 @@ export default defineSchema({
       v.object({
         cash: v.optional(v.number()),
         researchPoints: v.optional(v.number()),
-        reputation: v.optional(v.number()),
         experience: v.optional(v.number()),
+        // DEPRECATED: reputation removed in 002_progression, kept optional for migration
+        reputation: v.optional(v.number()),
       })
     ),
   })
@@ -79,9 +81,13 @@ export default defineSchema({
     name: v.string(), // Generated name like "Model #1"
     score: v.number(), // Research points earned = model quality score
     trainedAt: v.number(),
+    // Visibility: public models appear on leaderboards and public lab page
+    // Optional for migration - existing models default to private
+    visibility: v.optional(v.union(v.literal("private"), v.literal("public"))),
   })
     .index("by_lab", ["labId"])
-    .index("by_lab_score", ["labId", "score"]),
+    .index("by_lab_score", ["labId", "score"])
+    .index("by_visibility", ["visibility"]),
 
   // Freelance cooldown tracking
   freelanceCooldowns: defineTable({
@@ -103,7 +109,8 @@ export default defineSchema({
       v.literal("task_complete"),
       v.literal("level_up"),
       v.literal("unlock"),
-      v.literal("hire_complete")
+      v.literal("hire_complete"),
+      v.literal("research_complete")
     ),
     title: v.string(),
     message: v.string(),
@@ -111,8 +118,73 @@ export default defineSchema({
     createdAt: v.number(),
     // Optional metadata
     taskId: v.optional(v.id("tasks")),
+    // Deep link for navigation
+    deepLink: v.optional(
+      v.object({
+        view: v.union(
+          v.literal("operate"),
+          v.literal("research"),
+          v.literal("lab"),
+          v.literal("inbox"),
+          v.literal("world")
+        ),
+        target: v.optional(v.string()),
+      })
+    ),
   })
     .index("by_user", ["userId"])
     .index("by_user_unread", ["userId", "read"]),
+
+  // Research Nodes - RP spending for permanent unlocks
+  researchNodes: defineTable({
+    nodeId: v.string(), // Unique identifier like "llm_17b_blueprint"
+    name: v.string(),
+    description: v.string(),
+    category: v.union(
+      v.literal("blueprints"),
+      v.literal("capabilities"),
+      v.literal("perks")
+    ),
+    rpCost: v.number(),
+    // Requirements
+    minLevel: v.number(),
+    prerequisiteNodes: v.array(v.string()), // nodeIds of required nodes
+    // What this unlocks
+    unlockType: v.union(
+      v.literal("blueprint"),
+      v.literal("job"),
+      v.literal("world_action"),
+      v.literal("perk")
+    ),
+    unlockTarget: v.string(), // ID of what gets unlocked
+    unlockDescription: v.string(),
+  }).index("by_node_id", ["nodeId"]),
+
+  // Player Research Progress - tracks which nodes a player has purchased
+  playerResearch: defineTable({
+    userId: v.id("users"),
+    nodeId: v.string(),
+    purchasedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_node", ["userId", "nodeId"]),
+
+  // Unlock Registry - single source of truth for all unlock gating
+  // This defines what's available and what gates it
+  unlockRegistry: defineTable({
+    unlockId: v.string(), // Unique identifier
+    name: v.string(),
+    category: v.string(), // job, blueprint, world_action, etc.
+    // Gating requirements (all must be met)
+    minLevel: v.optional(v.number()),
+    requiredResearchNode: v.optional(v.string()),
+    // Where this appears
+    appearsIn: v.union(
+      v.literal("operate"),
+      v.literal("research"),
+      v.literal("lab"),
+      v.literal("world")
+    ),
+  }).index("by_unlock_id", ["unlockId"]),
 });
 

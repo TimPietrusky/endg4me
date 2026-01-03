@@ -11,7 +11,8 @@ import { TopNav } from "./dashboard/top-nav"
 import { TasksView } from "./dashboard/tasks-view"
 import { CollectionView } from "./dashboard/collection-view"
 import { MsgsView } from "./dashboard/msgs-view"
-import { SkillTree } from "./skill-tree"
+import { ResearchView } from "./dashboard/research-view"
+import { WorldView } from "./dashboard/world-view"
 import { TaskToastContainer } from "./task-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/hooks/use-toast"
@@ -33,7 +34,7 @@ export function LabDashboard({
   userId,
 }: LabDashboardProps) {
   const { toast } = useToast()
-  const [currentView, setCurrentView] = useState<ViewType>("tasks")
+  const [currentView, setCurrentView] = useState<ViewType>("operate")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [showActiveOnly, setShowActiveOnly] = useState(false)
 
@@ -126,7 +127,7 @@ export function LabDashboard({
   const hireInfo = getHireDisabledInfo()
   const rentGpuInfo = getRentGpuDisabledInfo()
 
-  // Build actions list for the new UI
+  // Build actions list for the new UI (reputation rewards removed)
   const actions: Action[] = [
     {
       id: "train-small",
@@ -137,7 +138,6 @@ export function LabDashboard({
       cost: TASKS.train_small_model.cost,
       duration: Math.floor(TASKS.train_small_model.duration / 1000), // Convert ms to seconds
       rpReward: TASKS.train_small_model.baseRewards.researchPoints,
-      reputationReward: TASKS.train_small_model.baseRewards.reputation,
       xpReward: TASKS.train_small_model.baseRewards.experience,
       disabled: !!smallModelInfo.reason,
       disabledReason: smallModelInfo.reason,
@@ -155,7 +155,6 @@ export function LabDashboard({
       cost: TASKS.train_medium_model.cost,
       duration: Math.floor(TASKS.train_medium_model.duration / 1000),
       rpReward: TASKS.train_medium_model.baseRewards.researchPoints,
-      reputationReward: TASKS.train_medium_model.baseRewards.reputation,
       xpReward: TASKS.train_medium_model.baseRewards.experience,
       disabled: !!mediumModelInfo.reason,
       disabledReason: mediumModelInfo.reason,
@@ -174,7 +173,6 @@ export function LabDashboard({
       cost: 0,
       duration: Math.floor(TASKS.freelance_contract.duration / 1000),
       cashReward: TASKS.freelance_contract.baseRewards.cash,
-      reputationReward: TASKS.freelance_contract.baseRewards.reputation,
       xpReward: TASKS.freelance_contract.baseRewards.experience,
       disabled: !!freelanceInfo.reason,
       disabledReason: freelanceInfo.reason,
@@ -281,6 +279,7 @@ export function LabDashboard({
     title: n.title,
     message: n.message,
     timestamp: n.createdAt,
+    deepLink: n.deepLink as Notification["deepLink"],
   }))
 
   const handleMarkAsRead = async (id: string | number) => {
@@ -302,7 +301,6 @@ export function LabDashboard({
         maxXp={xpRequired}
         cash={labState.cash}
         rp={labState.researchPoints}
-        reputation={labState.reputation}
         gpus={labState.computeUnits}
         modelsTrained={modelStats?.totalModels || 0}
         currentView={currentView}
@@ -312,7 +310,8 @@ export function LabDashboard({
       />
 
       <div className="px-6 pb-6">
-        {currentView === "tasks" && (
+        {/* OPERATE: Run the lab day-to-day (formerly Tasks) */}
+        {currentView === "operate" && (
           <TasksView
             actions={actions}
             showActiveOnly={showActiveOnly}
@@ -324,25 +323,37 @@ export function LabDashboard({
           />
         )}
 
-        {currentView === "models" && (
-          <CollectionView
-            models={trainedModels}
-            bestScore={modelStats?.bestModel?.score}
-          />
-              )}
-
-        {currentView === "msgs" && (
-          <MsgsView
-            notifications={notifications}
-            onMarkAsRead={handleMarkAsRead}
+        {/* RESEARCH: Spend RP on permanent unlocks */}
+        {currentView === "research" && (
+          <ResearchView
+            userId={userId as Id<"users">}
+            currentRp={labState.researchPoints}
           />
         )}
 
-        {currentView === "skills" && (
-          <SkillTree
-            currentLevel={playerState.level}
-            currentXp={playerState.experience}
-            onClose={() => setCurrentView("tasks")}
+        {/* LAB: Your organization / ownership */}
+        {currentView === "lab" && (
+          <CollectionView
+            labName={lab.name}
+            models={trainedModels}
+            bestScore={modelStats?.bestModel?.score}
+          />
+        )}
+
+        {/* INBOX: Events/offers/notifications (formerly Messages) */}
+        {currentView === "inbox" && (
+          <MsgsView
+            notifications={notifications}
+            onMarkAsRead={handleMarkAsRead}
+            onNavigate={(view) => setCurrentView(view)}
+          />
+        )}
+
+        {/* WORLD: Global layer - leaderboards, public labs */}
+        {currentView === "world" && (
+          <WorldView
+            labName={lab.name}
+            playerLevel={playerState.level}
           />
         )}
       </div>

@@ -164,12 +164,6 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
         isGain: true,
       },
       {
-        icon: Star,
-        value: action.reputationReward && action.reputationReward > 0 ? action.reputationReward : undefined,
-        color: "text-white",
-        isGain: true,
-      },
-      {
         icon: undefined,
         value: action.xpReward && action.xpReward > 0 ? action.xpReward : undefined,
         color: "text-white",

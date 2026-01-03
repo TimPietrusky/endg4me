@@ -1,28 +1,52 @@
 "use client"
 
-import { Cube, Brain, Trophy, Star } from "@phosphor-icons/react"
+import { Cube, Brain, Trophy, Star, Eye, EyeSlash, GlobeHemisphereWest, Lock } from "@phosphor-icons/react"
 import { Card, CardContent } from "@/components/ui/card"
-import type { Doc } from "@/convex/_generated/dataModel"
+import { Button } from "@/components/ui/button"
+import { useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { formatCompact } from "@/lib/utils"
 
 interface CollectionViewProps {
+  labName: string
   models?: Doc<"trainedModels">[]
   bestScore?: number
 }
 
-export function CollectionView({ models, bestScore }: CollectionViewProps) {
+export function CollectionView({ labName, models, bestScore }: CollectionViewProps) {
+  const toggleVisibility = useMutation(api.tasks.toggleModelVisibility)
+
   if (!models || models.length === 0) {
     return (
-      <div className="text-center py-16">
-        <Cube className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30" />
-        <h3 className="text-lg font-bold mb-2">Model Collection</h3>
-        <p className="text-sm text-muted-foreground">Your trained models will appear here</p>
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">{labName}</h2>
+        <div className="text-center py-16">
+          <Cube className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30" />
+          <h3 className="text-lg font-bold mb-2">Model Collection</h3>
+          <p className="text-sm text-muted-foreground">Your trained models will appear here</p>
+          <p className="text-xs text-muted-foreground mt-2">Run training jobs in Operate to create models</p>
+        </div>
       </div>
     )
   }
 
+  const publicCount = models.filter((m) => m.visibility === "public").length
+  const privateCount = models.filter((m) => m.visibility !== "public").length // undefined = private
+
+  const handleToggleVisibility = async (modelId: Id<"trainedModels">) => {
+    try {
+      await toggleVisibility({ modelId })
+    } catch (error) {
+      console.error("Failed to toggle visibility:", error)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Lab Name */}
+      <h2 className="text-2xl font-bold">{labName}</h2>
+
       {/* Stats Header */}
       <div className="flex items-center gap-6 p-4 bg-card/50 rounded-lg border border-border">
         <div className="flex items-center gap-3">
@@ -45,19 +69,52 @@ export function CollectionView({ models, bestScore }: CollectionViewProps) {
             </div>
           </div>
         )}
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+            <GlobeHemisphereWest className="w-6 h-6 text-white" weight="fill" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{publicCount}</p>
+            <p className="text-sm text-muted-foreground">public</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg flex items-center justify-center">
+            <Lock className="w-6 h-6 text-white" weight="fill" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{privateCount}</p>
+            <p className="text-sm text-muted-foreground">private</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm">
+        <GlobeHemisphereWest className="inline w-4 h-4 mr-2 text-primary" />
+        Public models appear on leaderboards and your public lab profile in World.
       </div>
 
       {/* Model Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {models.map((model) => (
-          <ModelCard key={model._id} model={model} />
+          <ModelCard 
+            key={model._id} 
+            model={model} 
+            onToggleVisibility={() => handleToggleVisibility(model._id)}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-function ModelCard({ model }: { model: Doc<"trainedModels"> }) {
+interface ModelCardProps {
+  model: Doc<"trainedModels">
+  onToggleVisibility: () => void
+}
+
+function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
   const getModelSize = (type: string) => {
     if (type === "small_3b") return "3B"
     if (type === "medium_7b") return "7B"
@@ -78,6 +135,8 @@ function ModelCard({ model }: { model: Doc<"trainedModels"> }) {
     })
   }
 
+  const isPublic = model.visibility === "public" // undefined = private
+
   return (
     <Card className={`overflow-hidden bg-gradient-to-br ${getModelColor(model.modelType)}`}>
       <CardContent className="p-4">
@@ -94,9 +153,29 @@ function ModelCard({ model }: { model: Doc<"trainedModels"> }) {
           )}
         </div>
         <p className="text-xs text-muted-foreground mb-1 font-medium">{model.name}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mb-3">
           Trained {formatDate(model.trainedAt)}
         </p>
+        
+        {/* Visibility Toggle */}
+        <Button
+          variant={isPublic ? "default" : "outline"}
+          size="sm"
+          className="w-full text-xs h-7"
+          onClick={onToggleVisibility}
+        >
+          {isPublic ? (
+            <>
+              <Eye className="w-3 h-3 mr-1" />
+              Public
+            </>
+          ) : (
+            <>
+              <EyeSlash className="w-3 h-3 mr-1" />
+              Private
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   )

@@ -135,7 +135,7 @@ export const getAllClans = query({
   handler: async (ctx) => {
     const clans = await ctx.db.query("clans").order("desc").take(50);
 
-    // Get member counts
+    // Get member counts and total RP
     const clansWithCounts = await Promise.all(
       clans.map(async (clan) => {
         const members = await ctx.db
@@ -143,8 +143,8 @@ export const getAllClans = query({
           .filter((q) => q.eq(q.field("clanId"), clan._id))
           .collect();
 
-        // Calculate total reputation
-        const totalRep = await Promise.all(
+        // Calculate total research points (reputation removed)
+        const totalRpValues = await Promise.all(
           members.map(async (m) => {
             const lab = await ctx.db
               .query("labs")
@@ -155,14 +155,14 @@ export const getAllClans = query({
               .query("labState")
               .withIndex("by_lab", (q) => q.eq("labId", lab._id))
               .first();
-            return labState?.reputation || 0;
+            return labState?.researchPoints || 0;
           })
         );
 
         return {
           ...clan,
           memberCount: members.length,
-          totalReputation: totalRep.reduce((a, b) => a + b, 0),
+          totalResearchPoints: totalRpValues.reduce((a: number, b: number) => a + b, 0),
         };
       })
     );

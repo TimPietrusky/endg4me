@@ -16,11 +16,10 @@ export const FOUNDER_MODIFIERS = {
   },
 } as const;
 
-// Initial lab state
+// Initial lab state (reputation removed per user story 002)
 export const INITIAL_LAB_STATE = {
   cash: 5000,
   researchPoints: 0,
-  reputation: 0,
   computeUnits: 1,
   staffCapacity: 2,
   parallelTasks: 1,
@@ -33,25 +32,36 @@ export const INITIAL_PLAYER_STATE = {
   experience: 0,
 };
 
-// XP curve: level -> XP required for next level
+// XP curve: level -> XP required for next level (max level 20)
 export const XP_CURVE: Record<number, number> = {
   1: 100,
   2: 300,
   3: 700,
   4: 1500,
-  5: 3300, // ~2.2x growth continues
+  5: 3300,
   6: 7260,
   7: 15972,
   8: 35139,
   9: 77306,
   10: 170073,
+  11: 374160,
+  12: 823152,
+  13: 1810934,
+  14: 3984055,
+  15: 8764921,
+  16: 19282826,
+  17: 42422217,
+  18: 93328878,
+  19: 205323531,
+  20: Infinity, // Max level
 };
 
-// Task base reward type
+export const MAX_LEVEL = 20;
+
+// Task base reward type (reputation removed)
 export interface TaskBaseRewards {
   cash?: number;
   researchPoints?: number;
-  reputation?: number;
   experience?: number;
 }
 
@@ -70,7 +80,7 @@ export interface TaskConfig {
   randomRange: { min: number; max: number };
 }
 
-// Task definitions
+// Task definitions (reputation rewards removed)
 export const TASKS: Record<string, TaskConfig> = {
   train_small_model: {
     name: "Train Small Model (3B)",
@@ -79,7 +89,6 @@ export const TASKS: Record<string, TaskConfig> = {
     computeRequired: 1,
     baseRewards: {
       researchPoints: 120,
-      reputation: 5,
       experience: 25,
     },
     randomRange: { min: 0.9, max: 1.1 },
@@ -91,7 +100,6 @@ export const TASKS: Record<string, TaskConfig> = {
     computeRequired: 1,
     baseRewards: {
       researchPoints: 260,
-      reputation: 12,
       experience: 60,
     },
     randomRange: { min: 0.85, max: 1.15 },
@@ -104,7 +112,6 @@ export const TASKS: Record<string, TaskConfig> = {
     cooldown: 5 * 60 * 1000, // 5 minutes cooldown
     baseRewards: {
       cash: 400,
-      reputation: 2,
       experience: 10,
     },
     randomRange: { min: 1.0, max: 1.0 }, // No randomness
@@ -162,9 +169,9 @@ export function getQueueSlotsForLevel(level: number): number {
   return slots;
 }
 
-// Clan bonuses
+// Clan bonuses (reputation removed, now grants XP bonus)
 export const CLAN_BONUS = {
-  reputationGain: 1.05, // +5%
+  xpGain: 1.05, // +5% XP
 };
 
 export type TaskType = "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher" | "rent_gpu_cluster";

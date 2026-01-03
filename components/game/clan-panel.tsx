@@ -126,7 +126,7 @@ export function ClanPanel({ userId, playerState, onClose }: ClanPanelProps) {
               </div>
               <div className="flex items-center gap-2 text-sm text-emerald-400">
                 <Trophy className="w-4 h-4" />
-                +5% Reputation Gain Active
+                +5% XP Gain Active
               </div>
             </div>
           )}
@@ -228,7 +228,7 @@ export function ClanPanel({ userId, playerState, onClose }: ClanPanelProps) {
                               <p className="text-xs text-zinc-500">
                                 {clan.memberCount} member
                                 {clan.memberCount !== 1 && "s"} ·{" "}
-                                {formatCompact(clan.totalReputation)} Rep
+                                {formatCompact(clan.totalResearchPoints)} RP
                               </p>
                             </div>
                           </div>

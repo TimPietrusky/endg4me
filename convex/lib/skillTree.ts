@@ -1,4 +1,5 @@
-// Skill Tree - Level progression unlocks
+// Skill Tree - Level progression unlocks (now called Milestones)
+// Max level: 20
 
 export interface LevelUnlocks {
   level: number;
@@ -33,7 +34,7 @@ export type UnlockIcon =
   | "leaderboard"
   | "research";
 
-// XP required to reach each level
+// XP required to reach each level (max 20)
 export const XP_REQUIREMENTS: Record<number, number> = {
   1: 0,
   2: 100,
@@ -45,6 +46,16 @@ export const XP_REQUIREMENTS: Record<number, number> = {
   8: 15972,
   9: 35139,
   10: 77306,
+  11: 170073,
+  12: 374160,
+  13: 823152,
+  14: 1810934,
+  15: 3984055,
+  16: 8764921,
+  17: 19282826,
+  18: 42422217,
+  19: 93328878,
+  20: Infinity, // Max level
 };
 
 // Complete skill tree definition
@@ -101,7 +112,7 @@ export const SKILL_TREE: LevelUnlocks[] = [
       {
         category: "social",
         name: "Clans",
-        description: "Join or create a clan for +5% reputation",
+        description: "Join or create a clan for +5% XP bonus",
         icon: "clan",
       },
       {
@@ -304,6 +315,216 @@ export const SKILL_TREE: LevelUnlocks[] = [
         name: "+1 GPU",
         description: "Train 5 models simultaneously",
         icon: "gpu",
+      },
+    ],
+  },
+  {
+    level: 11,
+    xpRequired: 170073,
+    queueSlots: 8,
+    gpus: 5,
+    staffCapacity: 7,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Staff Capacity",
+        description: "Hire up to 7 researchers",
+        icon: "staff",
+      },
+    ],
+  },
+  {
+    level: 12,
+    xpRequired: 374160,
+    queueSlots: 9,
+    gpus: 6,
+    staffCapacity: 7,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 9 tasks",
+        icon: "queue",
+      },
+      {
+        category: "infrastructure",
+        name: "+1 GPU",
+        description: "Train 6 models simultaneously",
+        icon: "gpu",
+      },
+      {
+        category: "research",
+        name: "Large Models Category",
+        description: "Large model blueprints now visible",
+        icon: "model",
+      },
+    ],
+  },
+  {
+    level: 13,
+    xpRequired: 823152,
+    queueSlots: 9,
+    gpus: 6,
+    staffCapacity: 8,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Staff Capacity",
+        description: "Hire up to 8 researchers",
+        icon: "staff",
+      },
+    ],
+  },
+  {
+    level: 14,
+    xpRequired: 1810934,
+    queueSlots: 10,
+    gpus: 7,
+    staffCapacity: 8,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 10 tasks",
+        icon: "queue",
+      },
+      {
+        category: "infrastructure",
+        name: "+1 GPU",
+        description: "Train 7 models simultaneously",
+        icon: "gpu",
+      },
+    ],
+  },
+  {
+    level: 15,
+    xpRequired: 3984055,
+    queueSlots: 10,
+    gpus: 7,
+    staffCapacity: 9,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Staff Capacity",
+        description: "Hire up to 9 researchers",
+        icon: "staff",
+      },
+      {
+        category: "research",
+        name: "XL Model (34B)",
+        description: "Train 34 billion parameter models",
+        icon: "model",
+      },
+    ],
+  },
+  {
+    level: 16,
+    xpRequired: 8764921,
+    queueSlots: 11,
+    gpus: 8,
+    staffCapacity: 9,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 11 tasks",
+        icon: "queue",
+      },
+      {
+        category: "infrastructure",
+        name: "+1 GPU",
+        description: "Train 8 models simultaneously",
+        icon: "gpu",
+      },
+    ],
+  },
+  {
+    level: 17,
+    xpRequired: 19282826,
+    queueSlots: 11,
+    gpus: 8,
+    staffCapacity: 10,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Staff Capacity",
+        description: "Hire up to 10 researchers",
+        icon: "staff",
+      },
+    ],
+  },
+  {
+    level: 18,
+    xpRequired: 42422217,
+    queueSlots: 12,
+    gpus: 9,
+    staffCapacity: 10,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 12 tasks",
+        icon: "queue",
+      },
+      {
+        category: "infrastructure",
+        name: "+1 GPU",
+        description: "Train 9 models simultaneously",
+        icon: "gpu",
+      },
+      {
+        category: "research",
+        name: "XXL Model (70B)",
+        description: "Train 70 billion parameter models",
+        icon: "model",
+      },
+    ],
+  },
+  {
+    level: 19,
+    xpRequired: 93328878,
+    queueSlots: 12,
+    gpus: 9,
+    staffCapacity: 11,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Staff Capacity",
+        description: "Hire up to 11 researchers",
+        icon: "staff",
+      },
+      {
+        category: "social",
+        name: "All-Time Leaderboard",
+        description: "Compete for eternal glory",
+        icon: "leaderboard",
+      },
+    ],
+  },
+  {
+    level: 20,
+    xpRequired: Infinity,
+    queueSlots: 13,
+    gpus: 10,
+    staffCapacity: 12,
+    unlocks: [
+      {
+        category: "capacity",
+        name: "+1 Queue Slot",
+        description: "Run or queue up to 13 tasks",
+        icon: "queue",
+      },
+      {
+        category: "infrastructure",
+        name: "+1 GPU",
+        description: "Train 10 models simultaneously",
+        icon: "gpu",
+      },
+      {
+        category: "capacity",
+        name: "+1 Staff Capacity",
+        description: "Hire up to 12 researchers",
+        icon: "staff",
       },
       {
         category: "research",

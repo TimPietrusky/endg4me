@@ -174,7 +174,7 @@ export function ModelCollection({ labId, onClose }: ModelCollectionProps) {
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800 bg-zinc-900/50">
           <p className="text-xs text-zinc-600 text-center">
-            Train more models to increase your total score and reputation
+            Train more models to increase your total score
           </p>
         </div>
       </div>
