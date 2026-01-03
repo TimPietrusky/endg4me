@@ -112,13 +112,28 @@ Power comes from **systems**, not clicks.
 
 The game dashboard is **fully implemented** with:
 - Terminal-inspired design (cyan accent, JetBrains Mono font)
-- Three main views: Tasks, Models, Messages
+- Four main views: Tasks, Models, Messages, Skills
 - Action cards with images and progress visualization
 - Convex-powered reactive state
 - WorkOS authentication
 - Settings panel (slide-out sheet) with Profile, Organization/Team, and Sign out
+- Skill tree system for level progression
 
 The homepage (`app/page.tsx`) is the landing page. The game lives at `/play`.
+
+### Skill Tree
+
+Click the level badge in the top nav to open the skill tree. It shows:
+- **Snake pattern grid**: Levels 1-5 left-to-right, levels 6-10 right-to-left (connected path)
+- **Level status**: Completed (cyan), current (white/pulsing), locked (dim)
+- **Detail panel**: Click any level to see stats and unlocks
+
+**Progression unlocks** (defined in `convex/lib/skillTree.ts`):
+- **Capacity**: Queue slots (0→5), parallel tasks (1→3), staff capacity (2→6)
+- **Infrastructure**: Compute units/GPUs (1→5)
+- **Research**: Model sizes (3B→405B), AGI research at level 10
+- **Income**: Freelance (L1), Government contracts (L7), Research partnerships (L9)
+- **Social**: Clans (L3), Leaderboards (Weekly L5, Monthly L7, All-time L9)
 
 ### Settings Panel
 
@@ -262,4 +277,4 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 
 ---
 
-_Last updated: 2026-01-02_
+_Last updated: 2026-01-03_

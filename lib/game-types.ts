@@ -51,5 +51,5 @@ export interface Notification {
   timestamp: number
 }
 
-export type ViewType = "tasks" | "models" | "msgs"
+export type ViewType = "tasks" | "models" | "msgs" | "skills"
 

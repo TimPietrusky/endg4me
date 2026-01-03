@@ -111,10 +111,15 @@ export function TopNav({
           {/* Right Side - Stats and Sign out */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5 text-sm">
+              <button
+                onClick={() => setCurrentView("skills")}
+                className={`flex items-center gap-1.5 text-sm hover:bg-white/10 px-2 py-1 rounded transition-colors ${
+                  currentView === "skills" ? "bg-white/10" : ""
+                }`}
+              >
                 <span className="text-xs font-bold text-muted-foreground lowercase">lvl</span>
                 <span className="text-base font-bold text-white border border-white px-1.5 rounded">{level}</span>
-              </div>
+              </button>
 
               <div className="flex items-center gap-1.5 text-sm">
                 <XpIcon className="text-white" />

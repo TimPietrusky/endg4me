@@ -11,6 +11,7 @@ import { TopNav } from "./dashboard/top-nav"
 import { TasksView } from "./dashboard/tasks-view"
 import { CollectionView } from "./dashboard/collection-view"
 import { MsgsView } from "./dashboard/msgs-view"
+import { SkillTree } from "./skill-tree"
 import { TaskToastContainer } from "./task-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/hooks/use-toast"
@@ -306,8 +307,16 @@ export function LabDashboard({
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}
           />
-              )}
-            </div>
+        )}
+
+        {currentView === "skills" && (
+          <SkillTree
+            currentLevel={playerState.level}
+            currentXp={playerState.experience}
+            onClose={() => setCurrentView("tasks")}
+          />
+        )}
+      </div>
 
       {/* Toast notifications for task completions */}
       <TaskToastContainer userId={userId} />

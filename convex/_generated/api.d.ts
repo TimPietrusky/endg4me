@@ -11,6 +11,7 @@
 import type * as clans from "../clans.js";
 import type * as labs from "../labs.js";
 import type * as lib_gameConstants from "../lib/gameConstants.js";
+import type * as lib_skillTree from "../lib/skillTree.js";
 import type * as notifications from "../notifications.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
@@ -25,6 +26,7 @@ declare const fullApi: ApiFromModules<{
   clans: typeof clans;
   labs: typeof labs;
   "lib/gameConstants": typeof lib_gameConstants;
+  "lib/skillTree": typeof lib_skillTree;
   notifications: typeof notifications;
   tasks: typeof tasks;
   users: typeof users;
