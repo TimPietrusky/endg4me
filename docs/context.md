@@ -88,7 +88,7 @@ Power comes from **systems**, not clicks.
 
 ### UI Component Baseline
 
-- **Style**: Terminal-inspired dark theme with cyan accent
+- **Style**: Terminal-inspired dark theme with white accent
 - **Base color**: Custom dark palette (oklch)
 - **Icon library**: Phosphor
 - **Font**: JetBrains Mono (dashboard), Geist (landing)
@@ -115,7 +115,7 @@ Power comes from **systems**, not clicks.
 
 The game dashboard is **fully implemented** with:
 
-- Terminal-inspired design (cyan accent, JetBrains Mono font)
+- Terminal-inspired design (white accent, JetBrains Mono font)
 - Five main views: Operate, Research, Lab, Inbox, World
 - Action cards with images and progress visualization
 - Convex-powered reactive state
@@ -210,7 +210,7 @@ endg4me/
 │   │   ├── layout.tsx       # Auth check + Convex provider
 │   │   └── play/page.tsx    # Main game dashboard
 │   ├── api/                 # API routes (auth callbacks)
-│   ├── globals.css          # Terminal theme (cyan accent)
+│   ├── globals.css          # Terminal theme (white accent)
 │   ├── layout.tsx           # Root layout
 │   └── page.tsx             # Landing page
 ├── components/
@@ -308,7 +308,7 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 
 ---
 
-_Last updated: 2026-01-03_
+_Last updated: 2026-01-03 (white accent, top nav simplified)_
 
 ---
 

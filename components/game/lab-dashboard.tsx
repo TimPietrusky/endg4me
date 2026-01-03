@@ -302,11 +302,9 @@ export function LabDashboard({
         cash={labState.cash}
         rp={labState.researchPoints}
         gpus={labState.computeUnits}
-        modelsTrained={modelStats?.totalModels || 0}
         currentView={currentView}
         setCurrentView={setCurrentView}
         notificationCount={unreadCount || 0}
-        actionsCount={actions.length}
       />
 
       <div className="px-6 pb-6">

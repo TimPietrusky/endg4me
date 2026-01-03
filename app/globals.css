@@ -4,14 +4,14 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Terminal-inspired minimal theme with cyan accent */
+  /* Terminal-inspired minimal theme with white accent */
   --background: oklch(0.09 0.005 264);
   --foreground: oklch(0.98 0.005 264);
   --card: oklch(0.12 0.01 264);
   --card-foreground: oklch(0.98 0.005 264);
   --popover: oklch(0.11 0.01 264);
   --popover-foreground: oklch(0.98 0.005 264);
-  --primary: oklch(0.7 0.15 195);
+  --primary: oklch(0.98 0 0);
   --primary-foreground: oklch(0.09 0.005 264);
   --secondary: oklch(0.15 0.01 264);
   --secondary-foreground: oklch(0.98 0.005 264);
@@ -49,7 +49,7 @@
   --card-foreground: oklch(0.98 0.005 264);
   --popover: oklch(0.11 0.01 264);
   --popover-foreground: oklch(0.98 0.005 264);
-  --primary: oklch(0.7 0.15 195);
+  --primary: oklch(0.98 0 0);
   --primary-foreground: oklch(0.09 0.005 264);
   --secondary: oklch(0.15 0.01 264);
   --secondary-foreground: oklch(0.98 0.005 264);

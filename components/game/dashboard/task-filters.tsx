@@ -31,7 +31,7 @@ export function TaskFilters({
         onClick={() => setShowActiveOnly(!showActiveOnly)}
         className={`text-xs rounded-none border-b-4 ${
           showActiveOnly
-            ? "border-primary text-primary font-bold"
+            ? "border-white text-white font-bold"
             : "border-transparent hover:border-muted-foreground/30"
         }`}
       >
@@ -48,7 +48,7 @@ export function TaskFilters({
           onClick={() => toggleCategory(category)}
           className={`text-xs rounded-none border-b-4 ${
             selectedCategories.includes(category)
-              ? "border-primary text-primary font-bold"
+              ? "border-white text-white font-bold"
               : "border-transparent hover:border-muted-foreground/30"
           }`}
         >

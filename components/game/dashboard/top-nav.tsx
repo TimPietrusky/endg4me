@@ -19,11 +19,9 @@ interface TopNavProps {
   cash: number
   rp: number
   gpus: number
-  modelsTrained: number
   currentView: ViewType
   setCurrentView: (view: ViewType) => void
   notificationCount: number
-  actionsCount: number
 }
 
 export function TopNav({
@@ -36,17 +34,16 @@ export function TopNav({
   cash,
   rp,
   gpus,
-  modelsTrained,
   currentView,
   setCurrentView,
   notificationCount,
-  actionsCount,
 }: TopNavProps) {
   // Navigation items in order: operate, research, lab, inbox, world
+  // Only inbox shows badge count - other counts were noise
   const navItems: { id: ViewType; label: string; badge?: number | string }[] = [
-    { id: "operate", label: "operate", badge: actionsCount > 0 ? actionsCount : undefined },
+    { id: "operate", label: "operate" },
     { id: "research", label: "research" },
-    { id: "lab", label: "lab", badge: modelsTrained > 0 ? modelsTrained : undefined },
+    { id: "lab", label: "lab" },
     { id: "inbox", label: "inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined },
     { id: "world", label: "world" },
   ]
@@ -66,10 +63,10 @@ export function TopNav({
                   variant="ghost"
                   size="sm"
                   onClick={() => setCurrentView(item.id)}
-                  className={`text-xs h-8 lowercase ${
+                  className={`text-xs h-8 lowercase transition-all hover:!bg-white hover:!text-black ${
                     currentView === item.id
-                      ? "bg-primary text-black font-bold hover:text-white hover:bg-primary/90"
-                      : "hover:bg-muted"
+                      ? "bg-white text-black font-bold"
+                      : ""
                   }`}
                 >
                   {item.label}
