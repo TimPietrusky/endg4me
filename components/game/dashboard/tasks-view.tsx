@@ -7,8 +7,8 @@ import type { Action } from "@/lib/game-types"
 
 interface TasksViewProps {
   actions: Action[]
-  showRunningOnly: boolean
-  setShowRunningOnly: (show: boolean) => void
+  showActiveOnly: boolean
+  setShowActiveOnly: (show: boolean) => void
   selectedCategories: string[]
   toggleCategory: (category: string) => void
   onStartAction: (action: Action) => void
@@ -17,14 +17,14 @@ interface TasksViewProps {
 
 export function TasksView({
   actions,
-  showRunningOnly,
-  setShowRunningOnly,
+  showActiveOnly,
+  setShowActiveOnly,
   selectedCategories,
   toggleCategory,
   onStartAction,
   maxParallelTasks,
 }: TasksViewProps) {
-  const runningCount = actions.filter((a) => a.isRunning).length
+  const activeCount = actions.filter((a) => a.isActive).length
 
   const actionsByCategory = actions.reduce(
     (acc, action) => {
@@ -37,7 +37,7 @@ export function TasksView({
     {} as Record<string, Action[]>,
   )
 
-  const hasActiveFilters = selectedCategories.length > 0 || showRunningOnly
+  const hasActiveFilters = selectedCategories.length > 0 || showActiveOnly
 
   const filteredActions = actions.filter((action) => {
     if (!hasActiveFilters) {
@@ -47,9 +47,9 @@ export function TasksView({
     const hasCategoryFilters = selectedCategories.length > 0
     const categoryMatch = hasCategoryFilters ? selectedCategories.includes(action.category) : true
 
-    const runningMatch = showRunningOnly ? action.isRunning : true
+    const activeMatch = showActiveOnly ? action.isActive : true
 
-    return categoryMatch && runningMatch
+    return categoryMatch && activeMatch
   })
 
   const filteredByCategory = filteredActions.reduce(
@@ -66,12 +66,12 @@ export function TasksView({
   return (
     <div>
       <TaskFilters
-        showRunningOnly={showRunningOnly}
-        setShowRunningOnly={setShowRunningOnly}
+        showActiveOnly={showActiveOnly}
+        setShowActiveOnly={setShowActiveOnly}
         selectedCategories={selectedCategories}
         toggleCategory={toggleCategory}
         actionsByCategory={actionsByCategory}
-        runningCount={runningCount}
+        activeCount={activeCount}
         maxParallelTasks={maxParallelTasks}
       />
 
@@ -80,7 +80,7 @@ export function TasksView({
           <Star className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30" />
           <h3 className="text-lg font-bold mb-2">No Tasks Found</h3>
           <p className="text-sm text-muted-foreground">
-            {showRunningOnly ? "No tasks are currently running" : "Adjust your filters to see tasks"}
+            {showActiveOnly ? "No tasks are currently active" : "Adjust your filters to see tasks"}
           </p>
         </div>
       ) : (

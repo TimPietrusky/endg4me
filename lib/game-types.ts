@@ -38,7 +38,7 @@ export interface Action {
   disabledReason?: string
   fundsShortfall?: number
   image?: string
-  isRunning?: boolean
+  isActive?: boolean
   remainingTime?: number
   isQueued?: boolean
 }

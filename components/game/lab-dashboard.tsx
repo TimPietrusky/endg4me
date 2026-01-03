@@ -35,7 +35,7 @@ export function LabDashboard({
   const { toast } = useToast()
   const [currentView, setCurrentView] = useState<ViewType>("tasks")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [showRunningOnly, setShowRunningOnly] = useState(false)
+  const [showActiveOnly, setShowActiveOnly] = useState(false)
 
   // Convex queries
   const activeTasks = useQuery(api.tasks.getActiveTasks, { labId: lab._id })
@@ -70,8 +70,8 @@ export function LabDashboard({
 
   // Calculate capacity
   const maxParallelTasks = labState.parallelTasks + labState.juniorResearchers
-  const runningTaskCount = inProgressTasks.length
-  const isQueueFull = runningTaskCount >= maxParallelTasks
+  const activeTaskCount = inProgressTasks.length
+  const isQueueFull = activeTaskCount >= maxParallelTasks
   const isStaffFull = labState.juniorResearchers >= labState.staffCapacity
   const isFreelanceOnCooldown = freelanceCooldown && freelanceCooldown > Date.now()
 
@@ -143,7 +143,7 @@ export function LabDashboard({
       disabledReason: smallModelInfo.reason,
       fundsShortfall: smallModelInfo.shortfall,
       image: "/ai-neural-network-training-blue-glow.jpg",
-      isRunning: inProgressTasks.some((t) => t.type === "train_small_model"),
+      isActive: inProgressTasks.some((t) => t.type === "train_small_model"),
       remainingTime: getTaskRemainingTime("train_small_model"),
     },
     {
@@ -161,7 +161,7 @@ export function LabDashboard({
       disabledReason: mediumModelInfo.reason,
       fundsShortfall: mediumModelInfo.shortfall,
       image: "/advanced-ai-training-purple-cyber.jpg",
-      isRunning: inProgressTasks.some((t) => t.type === "train_medium_model"),
+      isActive: inProgressTasks.some((t) => t.type === "train_medium_model"),
       remainingTime: getTaskRemainingTime("train_medium_model"),
     },
     {
@@ -179,7 +179,7 @@ export function LabDashboard({
       disabled: !!freelanceInfo.reason,
       disabledReason: freelanceInfo.reason,
       image: "/cyberpunk-freelance-coding-terminal.jpg",
-      isRunning: inProgressTasks.some((t) => t.type === "freelance_contract"),
+      isActive: inProgressTasks.some((t) => t.type === "freelance_contract"),
       remainingTime: getTaskRemainingTime("freelance_contract"),
     },
     {
@@ -195,7 +195,7 @@ export function LabDashboard({
       disabledReason: hireInfo.reason,
       fundsShortfall: hireInfo.shortfall,
       image: "/hiring-tech-researcher-futuristic.jpg",
-      isRunning: inProgressTasks.some((t) => t.type === "hire_junior_researcher"),
+      isActive: inProgressTasks.some((t) => t.type === "hire_junior_researcher"),
       remainingTime: getTaskRemainingTime("hire_junior_researcher"),
     },
     {
@@ -211,7 +211,7 @@ export function LabDashboard({
       disabledReason: rentGpuInfo.reason,
       fundsShortfall: rentGpuInfo.shortfall,
       image: "/massive-ai-datacenter-training.jpg",
-      isRunning: inProgressTasks.some((t) => t.type === "rent_gpu_cluster"),
+      isActive: inProgressTasks.some((t) => t.type === "rent_gpu_cluster"),
       remainingTime: getTaskRemainingTime("rent_gpu_cluster"),
     },
   ]
@@ -315,8 +315,8 @@ export function LabDashboard({
         {currentView === "tasks" && (
           <TasksView
             actions={actions}
-            showRunningOnly={showRunningOnly}
-            setShowRunningOnly={setShowRunningOnly}
+            showActiveOnly={showActiveOnly}
+            setShowActiveOnly={setShowActiveOnly}
             selectedCategories={selectedCategories}
             toggleCategory={toggleCategory}
             onStartAction={handleStartAction}

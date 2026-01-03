@@ -5,22 +5,22 @@ import { Badge } from "@/components/ui/badge"
 import type { Action } from "@/lib/game-types"
 
 interface TaskFiltersProps {
-  showRunningOnly: boolean
-  setShowRunningOnly: (show: boolean) => void
+  showActiveOnly: boolean
+  setShowActiveOnly: (show: boolean) => void
   selectedCategories: string[]
   toggleCategory: (category: string) => void
   actionsByCategory: Record<string, Action[]>
-  runningCount: number
+  activeCount: number
   maxParallelTasks: number
 }
 
 export function TaskFilters({
-  showRunningOnly,
-  setShowRunningOnly,
+  showActiveOnly,
+  setShowActiveOnly,
   selectedCategories,
   toggleCategory,
   actionsByCategory,
-  runningCount,
+  activeCount,
   maxParallelTasks,
 }: TaskFiltersProps) {
   return (
@@ -28,16 +28,16 @@ export function TaskFilters({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setShowRunningOnly(!showRunningOnly)}
+        onClick={() => setShowActiveOnly(!showActiveOnly)}
         className={`text-xs rounded-none border-b-4 ${
-          showRunningOnly
+          showActiveOnly
             ? "border-primary text-primary font-bold"
             : "border-transparent hover:border-muted-foreground/30"
         }`}
       >
-        RUNNING
+        ACTIVE
         <Badge variant="secondary" className="ml-2 h-4 px-1.5">
-          {runningCount}/{maxParallelTasks}
+          {activeCount}/{maxParallelTasks}
         </Badge>
       </Button>
       {Object.keys(actionsByCategory).map((category) => (

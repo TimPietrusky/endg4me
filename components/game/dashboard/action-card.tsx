@@ -20,7 +20,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
   const initialTimeRef = useRef(action.remainingTime || action.duration)
 
   useEffect(() => {
-    if (!action.isRunning) {
+    if (!action.isActive) {
       setDisplayTime(action.remainingTime || action.duration)
       return
     }
@@ -44,7 +44,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [action.isRunning, action.remainingTime])
+  }, [action.isActive, action.remainingTime])
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -67,7 +67,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     red: "from-red-500/20 to-red-500/5 border-red-500/30 text-red-400",
   }
 
-  const progressPercent = action.isRunning ? ((action.duration - displayTime) / action.duration) * 100 : 0
+  const progressPercent = action.isActive ? ((action.duration - displayTime) / action.duration) * 100 : 0
 
   const getButtonLabel = (action: Action): string => {
     switch (action.category) {
@@ -205,7 +205,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
       </div>
 
       <CardContent className="p-0 flex-1 flex flex-col">
-        {action.isRunning ? (
+        {action.isActive ? (
           <div className="w-full bg-muted/30 border-b border-border relative overflow-hidden">
             <div
               className="absolute inset-0 bg-primary/20 transition-all duration-100"
