@@ -68,10 +68,13 @@ export const getLabState = query({
   },
 });
 
-// Get full lab data (lab + state)
+// Get full lab data (lab + state + user)
 export const getFullLabData = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+
     const lab = await ctx.db
       .query("labs")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -90,6 +93,7 @@ export const getFullLabData = query({
       .first();
 
     return {
+      user,
       lab,
       labState,
       playerState,

@@ -1,13 +1,15 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CurrencyDollar, Lightning, Star, SignOut } from "@phosphor-icons/react"
+import { Button } from "@/components/ui/button"
+import { CurrencyDollar, Lightning, Star } from "@phosphor-icons/react"
+import { SettingsPanel } from "../settings-panel"
 import { XpIcon } from "./xp-icon"
 import type { ViewType } from "@/lib/game-types"
 
 interface TopNavProps {
   labName: string
+  founderName: string
   founderType: string
   level: number
   xp: number
@@ -24,6 +26,7 @@ interface TopNavProps {
 
 export function TopNav({
   labName,
+  founderName,
   founderType,
   level,
   xp,
@@ -37,18 +40,6 @@ export function TopNav({
   notificationCount,
   actionsCount,
 }: TopNavProps) {
-  const getFounderBadge = (type: string) => {
-    switch (type) {
-      case "technical":
-        return "TF"
-      case "business":
-        return "BF"
-      case "research":
-        return "RF"
-      default:
-        return "TF"
-    }
-  }
 
   return (
     <div className="border-b border-white/20 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -60,14 +51,7 @@ export function TopNav({
               <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
                 <Star weight="fill" className="w-5 h-5 text-black" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-bold">{labName}</span>
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-gradient-to-r from-cyan-500 to-purple-500 text-white">
-                    {getFounderBadge(founderType)}
-                  </span>
-                </div>
-              </div>
+              <span className="text-base font-bold">{labName}</span>
             </div>
 
             <div className="flex items-center gap-1">
@@ -160,11 +144,11 @@ export function TopNav({
               </div>
             </div>
 
-            <a href="/api/auth/signout">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <SignOut className="w-4 h-4" />
-              </Button>
-            </a>
+            <SettingsPanel
+              labName={labName}
+              founderName={founderName}
+              founderType={founderType}
+            />
           </div>
         </div>
       </div>

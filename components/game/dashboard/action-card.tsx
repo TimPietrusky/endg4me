@@ -174,7 +174,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
   return (
     <Card
-      className="overflow-hidden flex flex-col h-full"
+      className="overflow-hidden flex flex-col h-full pt-0 gap-0"
     >
       <div className={`relative h-24 overflow-hidden bg-gradient-to-br ${colorClasses[paramColor]}`}>
         <img
@@ -202,7 +202,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
               className="absolute inset-0 bg-primary/20 transition-all duration-100"
               style={{ width: `${progressPercent}%` }}
             />
-            <div className="flex items-center justify-center py-4 border-b border-white/10 relative z-10">
+            <div className="flex items-center justify-center h-[72px] border-b border-white/10 relative z-10">
               <span className="text-3xl font-black text-white font-mono tabular-nums">{formatTime(displayTime)}</span>
             </div>
 
@@ -222,7 +222,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
           </div>
         ) : showConfirm ? (
           <div className="w-full bg-muted/30 border-b border-border">
-            <div className="flex items-center justify-center gap-4 py-4 border-b border-white/10">
+            <div className="flex items-center justify-center gap-4 h-[72px] border-b border-white/10">
               <span className="text-lg font-bold text-muted-foreground lowercase">
                 are you sure?
               </span>
@@ -259,7 +259,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
           </div>
         ) : action.disabled ? (
           <div className="w-full bg-muted/30 border-b border-border">
-            <div className="flex flex-col items-center justify-center py-4 border-b border-white/10 gap-1">
+            <div className="flex flex-col items-center justify-center h-[72px] border-b border-white/10 gap-1">
               <span className="text-lg font-bold text-muted-foreground lowercase">
                 {action.disabledReason || "unavailable"}
               </span>
@@ -291,7 +291,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
             onClick={() => setShowConfirm(true)}
             className="w-full bg-muted/30 hover:bg-muted border-b border-border transition-all group cursor-pointer"
           >
-            <div className="flex items-center justify-center py-4 border-b border-white/10">
+            <div className="flex items-center justify-center h-[72px] border-b border-white/10">
               <span className="text-3xl font-black text-white lowercase">
                 {getButtonLabel(action)}
               </span>

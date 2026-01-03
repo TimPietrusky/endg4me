@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { ViewType, Action, Notification } from "@/lib/game-types"
 
 interface LabDashboardProps {
+  user: Doc<"users">
   lab: Doc<"labs">
   labState: Doc<"labState">
   playerState: Doc<"playerState">
@@ -24,6 +25,7 @@ interface LabDashboardProps {
 }
 
 export function LabDashboard({
+  user,
   lab,
   labState,
   playerState,
@@ -264,6 +266,7 @@ export function LabDashboard({
     <div className="min-h-screen bg-background text-foreground">
       <TopNav
         labName={lab.name}
+        founderName={user.name || user.email}
         founderType={lab.founderType}
         level={playerState.level}
         xp={playerState.experience}

@@ -59,6 +59,7 @@ function GameContent({ userId }: { userId: string }) {
 
   return (
     <LabDashboard
+      user={labData.user!}
       lab={labData.lab}
       labState={labData.labState!}
       playerState={labData.playerState!}

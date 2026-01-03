@@ -116,8 +116,18 @@ The game dashboard is **fully implemented** with:
 - Action cards with images and progress visualization
 - Convex-powered reactive state
 - WorkOS authentication
+- Settings panel (slide-out sheet) with Profile, Organization/Team, and Sign out
 
 The homepage (`app/page.tsx`) is the landing page. The game lives at `/play`.
+
+### Settings Panel
+
+The settings panel is accessed via a gear icon in the top nav. It contains:
+- **Profile**: User name and founder type badge
+- **Organization**: Lab name and team roster (founder + hired employees)
+- **Sign out**: Always visible at bottom
+
+Team members are displayed with their role. Hired junior researchers will appear here alongside the founder.
 
 ---
 
