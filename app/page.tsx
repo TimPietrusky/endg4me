@@ -2,7 +2,8 @@ import { withAuth, getSignInUrl } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { GlitchBackground } from "@/components/glitch-background";
-import { ArrowRight, Warning } from "@phosphor-icons/react/dist/ssr";
+import { Button } from "@/components/ui/button";
+import { Warning } from "@phosphor-icons/react/dist/ssr";
 
 interface HomePageProps {
   searchParams: Promise<{ error?: string; message?: string; from?: string }>;
@@ -53,13 +54,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         )}
 
         {/* Action Button */}
-        <a
-          href={isLoggedIn ? "/operate" : signInUrl}
-          className="mt-6 group px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 font-semibold text-lg text-white hover:from-emerald-400 hover:to-cyan-400 transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2"
+        <Button
+          render={<a href={isLoggedIn ? "/operate" : signInUrl} />}
+          nativeButton={false}
+          className="mt-6 p-12 rounded-2xl bg-white font-semibold text-lg text-black hover:bg-white/90 transition-all shadow-lg"
         >
-          {isLoggedIn ? "Continue Playing" : "Start Playing"}
-          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-        </a>
+          {isLoggedIn ? "continue" : "start"}
+        </Button>
       </div>
     </div>
   );

@@ -119,6 +119,32 @@ export const purchaseResearchNode = mutation({
       researchPoints: labState.researchPoints - node.rpCost,
     });
 
+    // Apply attribute upgrades if this is an attribute node
+    if (node.unlockType === "attribute" && node.attributeType && node.attributeValue) {
+      const updates: Record<string, number> = {};
+      switch (node.attributeType) {
+        case "queue_slots":
+          updates.parallelTasks = labState.parallelTasks + node.attributeValue;
+          break;
+        case "staff_capacity":
+          updates.staffCapacity = labState.staffCapacity + node.attributeValue;
+          break;
+        case "compute_units":
+          updates.computeUnits = labState.computeUnits + node.attributeValue;
+          break;
+        case "research_speed":
+          updates.researchSpeedBonus = (labState.researchSpeedBonus || 0) + node.attributeValue;
+          break;
+        case "money_multiplier":
+          // Additive: base 1.0 + bonuses
+          updates.moneyMultiplier = (labState.moneyMultiplier || 1.0) + (node.attributeValue - 1.0);
+          break;
+      }
+      if (Object.keys(updates).length > 0) {
+        await ctx.db.patch(labState._id, updates);
+      }
+    }
+
     // Record purchase
     await ctx.db.insert("playerResearch", {
       userId: args.userId,

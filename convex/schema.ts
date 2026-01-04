@@ -28,6 +28,9 @@ export default defineSchema({
     parallelTasks: v.number(),
     // Track staff hired
     juniorResearchers: v.number(),
+    // Attribute bonuses (from Research spending)
+    researchSpeedBonus: v.optional(v.number()), // Percentage bonus, e.g., 10 = 10% faster
+    moneyMultiplier: v.optional(v.number()),    // Multiplier, e.g., 1.1 = 10% more
     // DEPRECATED: reputation removed in 002_progression, kept optional for migration
     reputation: v.optional(v.number()),
   }).index("by_lab", ["labId"]),
@@ -141,9 +144,10 @@ export default defineSchema({
     name: v.string(),
     description: v.string(),
     category: v.union(
-      v.literal("blueprints"),
-      v.literal("capabilities"),
-      v.literal("perks")
+      v.literal("attributes"),   // Global stats: queue, staff, CU, speed, money
+      v.literal("blueprints"),   // Model blueprints
+      v.literal("capabilities"), // New job types, features
+      v.literal("perks")         // Passive bonuses
     ),
     rpCost: v.number(),
     // Requirements
@@ -151,6 +155,7 @@ export default defineSchema({
     prerequisiteNodes: v.array(v.string()), // nodeIds of required nodes
     // What this unlocks
     unlockType: v.union(
+      v.literal("attribute"),    // Increases global stat
       v.literal("blueprint"),
       v.literal("job"),
       v.literal("world_action"),
@@ -158,7 +163,22 @@ export default defineSchema({
     ),
     unlockTarget: v.string(), // ID of what gets unlocked
     unlockDescription: v.string(),
-  }).index("by_node_id", ["nodeId"]),
+    // For attributes: which stat and how much
+    attributeType: v.optional(v.union(
+      v.literal("queue_slots"),
+      v.literal("staff_capacity"),
+      v.literal("compute_units"),
+      v.literal("research_speed"),
+      v.literal("money_multiplier")
+    )),
+    attributeValue: v.optional(v.number()), // How much to add/multiply
+    // Visual positioning for skill tree (optional)
+    position: v.optional(v.object({
+      x: v.number(),
+      y: v.number(),
+    })),
+  }).index("by_node_id", ["nodeId"])
+   .index("by_category", ["category"]),
 
   // Player Research Progress - tracks which nodes a player has purchased
   playerResearch: defineTable({

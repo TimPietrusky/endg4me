@@ -1,40 +1,102 @@
-// Skill Tree - Level progression unlocks (now called Milestones)
-// Max level: 20
+// Skill Tree - Now represents purchasable RP upgrades, NOT automatic rewards
+// Players choose how to spend RP on attributes and perks
+// Level still exists but only gates access to certain nodes
 
-export interface LevelUnlocks {
-  level: number;
-  xpRequired: number;
-  queueSlots: number;
-  gpus: number;
-  staffCapacity: number;
-  unlocks: LevelUnlock[];
+// =============================================================================
+// ATTRIBUTE UPGRADES - Global stats purchasable with RP
+// =============================================================================
+
+export type AttributeType = 
+  | "queue_slots"
+  | "staff_capacity"
+  | "compute_units"
+  | "research_speed"
+  | "money_multiplier"
+
+export interface AttributeNode {
+  nodeId: string
+  name: string
+  description: string
+  category: "attributes"
+  attributeType: AttributeType
+  attributeValue: number
+  rpCost: number
+  minLevel: number
+  prerequisiteNodes: string[]
+  unlockType: "attribute"
+  unlockTarget: string
+  unlockDescription: string
 }
 
-export interface LevelUnlock {
-  category: UnlockCategory;
-  name: string;
-  description: string;
-  icon: UnlockIcon;
+// Base values at start (before any upgrades)
+export const BASE_STATS = {
+  queueSlots: 1,
+  staffCapacity: 1,
+  computeUnits: 1,
+  researchSpeedBonus: 0,
+  moneyMultiplier: 1.0,
 }
 
-export type UnlockCategory = 
-  | "capacity"
-  | "infrastructure" 
-  | "research"
-  | "income"
-  | "social";
+// Attribute upgrade definitions
+// Each attribute has a progression of nodes with increasing costs
+export const ATTRIBUTE_NODES: AttributeNode[] = [
+  // Queue Slots - from 1 to 13 (12 upgrades)
+  { nodeId: "queue_1", name: "+1 Queue Slot", description: "Run 2 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 50, minLevel: 1, prerequisiteNodes: [], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 2" },
+  { nodeId: "queue_2", name: "+1 Queue Slot", description: "Run 3 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 100, minLevel: 2, prerequisiteNodes: ["queue_1"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 3" },
+  { nodeId: "queue_3", name: "+1 Queue Slot", description: "Run 4 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 200, minLevel: 4, prerequisiteNodes: ["queue_2"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 4" },
+  { nodeId: "queue_4", name: "+1 Queue Slot", description: "Run 5 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 400, minLevel: 6, prerequisiteNodes: ["queue_3"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 5" },
+  { nodeId: "queue_5", name: "+1 Queue Slot", description: "Run 6 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 800, minLevel: 8, prerequisiteNodes: ["queue_4"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 6" },
+  { nodeId: "queue_6", name: "+1 Queue Slot", description: "Run 7 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 1600, minLevel: 10, prerequisiteNodes: ["queue_5"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 7" },
+  { nodeId: "queue_7", name: "+1 Queue Slot", description: "Run 8 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 3200, minLevel: 12, prerequisiteNodes: ["queue_6"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 8" },
+  { nodeId: "queue_8", name: "+1 Queue Slot", description: "Run 9 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 6400, minLevel: 14, prerequisiteNodes: ["queue_7"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 9" },
+  { nodeId: "queue_9", name: "+1 Queue Slot", description: "Run 10 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 12800, minLevel: 16, prerequisiteNodes: ["queue_8"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 10" },
+  { nodeId: "queue_10", name: "+1 Queue Slot", description: "Run 11 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 25600, minLevel: 17, prerequisiteNodes: ["queue_9"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 11" },
+  { nodeId: "queue_11", name: "+1 Queue Slot", description: "Run 12 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 51200, minLevel: 18, prerequisiteNodes: ["queue_10"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 12" },
+  { nodeId: "queue_12", name: "+1 Queue Slot", description: "Run 13 tasks in parallel", category: "attributes", attributeType: "queue_slots", attributeValue: 1, rpCost: 102400, minLevel: 20, prerequisiteNodes: ["queue_11"], unlockType: "attribute", unlockTarget: "queue_slots", unlockDescription: "Queue capacity: 13" },
 
-export type UnlockIcon =
-  | "queue"
-  | "staff"
-  | "gpu"
-  | "model"
-  | "money"
-  | "clan"
-  | "leaderboard"
-  | "research";
+  // Staff Capacity - from 1 to 12 (11 upgrades)
+  { nodeId: "staff_1", name: "+1 Staff Capacity", description: "Hire up to 2 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 75, minLevel: 1, prerequisiteNodes: [], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 2" },
+  { nodeId: "staff_2", name: "+1 Staff Capacity", description: "Hire up to 3 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 150, minLevel: 3, prerequisiteNodes: ["staff_1"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 3" },
+  { nodeId: "staff_3", name: "+1 Staff Capacity", description: "Hire up to 4 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 300, minLevel: 5, prerequisiteNodes: ["staff_2"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 4" },
+  { nodeId: "staff_4", name: "+1 Staff Capacity", description: "Hire up to 5 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 600, minLevel: 7, prerequisiteNodes: ["staff_3"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 5" },
+  { nodeId: "staff_5", name: "+1 Staff Capacity", description: "Hire up to 6 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 1200, minLevel: 9, prerequisiteNodes: ["staff_4"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 6" },
+  { nodeId: "staff_6", name: "+1 Staff Capacity", description: "Hire up to 7 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 2400, minLevel: 11, prerequisiteNodes: ["staff_5"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 7" },
+  { nodeId: "staff_7", name: "+1 Staff Capacity", description: "Hire up to 8 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 4800, minLevel: 13, prerequisiteNodes: ["staff_6"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 8" },
+  { nodeId: "staff_8", name: "+1 Staff Capacity", description: "Hire up to 9 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 9600, minLevel: 15, prerequisiteNodes: ["staff_7"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 9" },
+  { nodeId: "staff_9", name: "+1 Staff Capacity", description: "Hire up to 10 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 19200, minLevel: 17, prerequisiteNodes: ["staff_8"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 10" },
+  { nodeId: "staff_10", name: "+1 Staff Capacity", description: "Hire up to 11 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 38400, minLevel: 19, prerequisiteNodes: ["staff_9"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 11" },
+  { nodeId: "staff_11", name: "+1 Staff Capacity", description: "Hire up to 12 researchers", category: "attributes", attributeType: "staff_capacity", attributeValue: 1, rpCost: 76800, minLevel: 20, prerequisiteNodes: ["staff_10"], unlockType: "attribute", unlockTarget: "staff_capacity", unlockDescription: "Staff capacity: 12" },
 
-// XP required to reach each level (max 20)
+  // Compute Units (GPUs) - from 1 to 10 (9 upgrades)
+  { nodeId: "cu_1", name: "+1 Compute Unit", description: "2 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 100, minLevel: 2, prerequisiteNodes: [], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 2 CU" },
+  { nodeId: "cu_2", name: "+1 Compute Unit", description: "3 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 250, minLevel: 4, prerequisiteNodes: ["cu_1"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 3 CU" },
+  { nodeId: "cu_3", name: "+1 Compute Unit", description: "4 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 500, minLevel: 6, prerequisiteNodes: ["cu_2"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 4 CU" },
+  { nodeId: "cu_4", name: "+1 Compute Unit", description: "5 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 1000, minLevel: 8, prerequisiteNodes: ["cu_3"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 5 CU" },
+  { nodeId: "cu_5", name: "+1 Compute Unit", description: "6 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 2000, minLevel: 10, prerequisiteNodes: ["cu_4"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 6 CU" },
+  { nodeId: "cu_6", name: "+1 Compute Unit", description: "7 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 4000, minLevel: 12, prerequisiteNodes: ["cu_5"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 7 CU" },
+  { nodeId: "cu_7", name: "+1 Compute Unit", description: "8 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 8000, minLevel: 14, prerequisiteNodes: ["cu_6"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 8 CU" },
+  { nodeId: "cu_8", name: "+1 Compute Unit", description: "9 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 16000, minLevel: 16, prerequisiteNodes: ["cu_7"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 9 CU" },
+  { nodeId: "cu_9", name: "+1 Compute Unit", description: "10 GPUs for parallel training", category: "attributes", attributeType: "compute_units", attributeValue: 1, rpCost: 32000, minLevel: 18, prerequisiteNodes: ["cu_8"], unlockType: "attribute", unlockTarget: "compute_units", unlockDescription: "Compute: 10 CU" },
+
+  // Research Speed - 5 tiers of +10% each (up to +50%)
+  { nodeId: "speed_1", name: "+10% Research Speed", description: "Tasks complete 10% faster", category: "attributes", attributeType: "research_speed", attributeValue: 10, rpCost: 200, minLevel: 3, prerequisiteNodes: [], unlockType: "attribute", unlockTarget: "research_speed", unlockDescription: "+10% task speed" },
+  { nodeId: "speed_2", name: "+10% Research Speed", description: "Tasks complete 20% faster", category: "attributes", attributeType: "research_speed", attributeValue: 10, rpCost: 500, minLevel: 6, prerequisiteNodes: ["speed_1"], unlockType: "attribute", unlockTarget: "research_speed", unlockDescription: "+20% task speed" },
+  { nodeId: "speed_3", name: "+10% Research Speed", description: "Tasks complete 30% faster", category: "attributes", attributeType: "research_speed", attributeValue: 10, rpCost: 1500, minLevel: 10, prerequisiteNodes: ["speed_2"], unlockType: "attribute", unlockTarget: "research_speed", unlockDescription: "+30% task speed" },
+  { nodeId: "speed_4", name: "+10% Research Speed", description: "Tasks complete 40% faster", category: "attributes", attributeType: "research_speed", attributeValue: 10, rpCost: 5000, minLevel: 14, prerequisiteNodes: ["speed_3"], unlockType: "attribute", unlockTarget: "research_speed", unlockDescription: "+40% task speed" },
+  { nodeId: "speed_5", name: "+10% Research Speed", description: "Tasks complete 50% faster", category: "attributes", attributeType: "research_speed", attributeValue: 10, rpCost: 15000, minLevel: 18, prerequisiteNodes: ["speed_4"], unlockType: "attribute", unlockTarget: "research_speed", unlockDescription: "+50% task speed" },
+
+  // Money Multiplier - 5 tiers of +0.1x each (up to 1.5x)
+  { nodeId: "money_1", name: "+10% Income", description: "All cash rewards increased by 10%", category: "attributes", attributeType: "money_multiplier", attributeValue: 1.1, rpCost: 150, minLevel: 2, prerequisiteNodes: [], unlockType: "attribute", unlockTarget: "money_multiplier", unlockDescription: "1.1x cash" },
+  { nodeId: "money_2", name: "+10% Income", description: "All cash rewards increased by 20%", category: "attributes", attributeType: "money_multiplier", attributeValue: 1.1, rpCost: 400, minLevel: 5, prerequisiteNodes: ["money_1"], unlockType: "attribute", unlockTarget: "money_multiplier", unlockDescription: "1.2x cash" },
+  { nodeId: "money_3", name: "+10% Income", description: "All cash rewards increased by 30%", category: "attributes", attributeType: "money_multiplier", attributeValue: 1.1, rpCost: 1200, minLevel: 9, prerequisiteNodes: ["money_2"], unlockType: "attribute", unlockTarget: "money_multiplier", unlockDescription: "1.3x cash" },
+  { nodeId: "money_4", name: "+10% Income", description: "All cash rewards increased by 40%", category: "attributes", attributeType: "money_multiplier", attributeValue: 1.1, rpCost: 4000, minLevel: 13, prerequisiteNodes: ["money_3"], unlockType: "attribute", unlockTarget: "money_multiplier", unlockDescription: "1.4x cash" },
+  { nodeId: "money_5", name: "+10% Income", description: "All cash rewards increased by 50%", category: "attributes", attributeType: "money_multiplier", attributeValue: 1.1, rpCost: 12000, minLevel: 17, prerequisiteNodes: ["money_4"], unlockType: "attribute", unlockTarget: "money_multiplier", unlockDescription: "1.5x cash" },
+]
+
+// =============================================================================
+// XP REQUIREMENTS - Level still exists for gating, just no automatic rewards
+// =============================================================================
+
 export const XP_REQUIREMENTS: Record<number, number> = {
   1: 0,
   2: 100,
@@ -56,523 +118,94 @@ export const XP_REQUIREMENTS: Record<number, number> = {
   18: 42422217,
   19: 93328878,
   20: Infinity, // Max level
-};
-
-// Complete skill tree definition
-export const SKILL_TREE: LevelUnlocks[] = [
-  {
-    level: 1,
-    xpRequired: 0,
-    queueSlots: 1,
-    gpus: 1,
-    staffCapacity: 2,
-    unlocks: [
-      {
-        category: "research",
-        name: "Small Model (3B)",
-        description: "Train 3 billion parameter models",
-        icon: "model",
-      },
-      {
-        category: "income",
-        name: "Freelance Contracts",
-        description: "Basic income source",
-        icon: "money",
-      },
-    ],
-  },
-  {
-    level: 2,
-    xpRequired: 100,
-    queueSlots: 2,
-    gpus: 1,
-    staffCapacity: 2,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 2 tasks",
-        icon: "queue",
-      },
-      {
-        category: "research",
-        name: "Medium Model (7B)",
-        description: "Train 7 billion parameter models",
-        icon: "model",
-      },
-    ],
-  },
-  {
-    level: 3,
-    xpRequired: 300,
-    queueSlots: 2,
-    gpus: 2,
-    staffCapacity: 3,
-    unlocks: [
-      {
-        category: "social",
-        name: "Clans",
-        description: "Join or create a clan for +5% XP bonus",
-        icon: "clan",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 2 models simultaneously",
-        icon: "gpu",
-      },
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 3 researchers",
-        icon: "staff",
-      },
-    ],
-  },
-  {
-    level: 4,
-    xpRequired: 700,
-    queueSlots: 3,
-    gpus: 2,
-    staffCapacity: 3,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 3 tasks",
-        icon: "queue",
-      },
-      {
-        category: "research",
-        name: "Large Model (13B)",
-        description: "Train 13 billion parameter models",
-        icon: "model",
-      },
-      {
-        category: "capacity",
-        name: "Senior Researcher",
-        description: "Hire senior researchers",
-        icon: "staff",
-      },
-    ],
-  },
-  {
-    level: 5,
-    xpRequired: 1500,
-    queueSlots: 4,
-    gpus: 2,
-    staffCapacity: 4,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 4 tasks",
-        icon: "queue",
-      },
-      {
-        category: "social",
-        name: "Weekly Leaderboard",
-        description: "Compete in weekly rankings",
-        icon: "leaderboard",
-      },
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 4 researchers",
-        icon: "staff",
-      },
-    ],
-  },
-  {
-    level: 6,
-    xpRequired: 3300,
-    queueSlots: 5,
-    gpus: 3,
-    staffCapacity: 4,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 5 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 3 models simultaneously",
-        icon: "gpu",
-      },
-      {
-        category: "research",
-        name: "XL Model (34B)",
-        description: "Train 34 billion parameter models",
-        icon: "model",
-      },
-    ],
-  },
-  {
-    level: 7,
-    xpRequired: 7260,
-    queueSlots: 5,
-    gpus: 3,
-    staffCapacity: 5,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 5 researchers",
-        icon: "staff",
-      },
-      {
-        category: "income",
-        name: "Government Contracts",
-        description: "High-value government AI projects",
-        icon: "money",
-      },
-      {
-        category: "social",
-        name: "Monthly Leaderboard",
-        description: "Compete in monthly rankings",
-        icon: "leaderboard",
-      },
-    ],
-  },
-  {
-    level: 8,
-    xpRequired: 15972,
-    queueSlots: 6,
-    gpus: 4,
-    staffCapacity: 5,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 6 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 4 models simultaneously",
-        icon: "gpu",
-      },
-      {
-        category: "research",
-        name: "XXL Model (70B)",
-        description: "Train 70 billion parameter models",
-        icon: "model",
-      },
-    ],
-  },
-  {
-    level: 9,
-    xpRequired: 35139,
-    queueSlots: 7,
-    gpus: 4,
-    staffCapacity: 6,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 7 tasks",
-        icon: "queue",
-      },
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 6 researchers",
-        icon: "staff",
-      },
-      {
-        category: "income",
-        name: "Research Partnerships",
-        description: "Collaborate with other labs for bonus income",
-        icon: "money",
-      },
-      {
-        category: "social",
-        name: "All-Time Leaderboard",
-        description: "Compete for eternal glory",
-        icon: "leaderboard",
-      },
-    ],
-  },
-  {
-    level: 10,
-    xpRequired: 77306,
-    queueSlots: 8,
-    gpus: 5,
-    staffCapacity: 6,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 8 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 5 models simultaneously",
-        icon: "gpu",
-      },
-    ],
-  },
-  {
-    level: 11,
-    xpRequired: 170073,
-    queueSlots: 8,
-    gpus: 5,
-    staffCapacity: 7,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 7 researchers",
-        icon: "staff",
-      },
-    ],
-  },
-  {
-    level: 12,
-    xpRequired: 374160,
-    queueSlots: 9,
-    gpus: 6,
-    staffCapacity: 7,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 9 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 6 models simultaneously",
-        icon: "gpu",
-      },
-      {
-        category: "research",
-        name: "Large Models Category",
-        description: "Large model blueprints now visible",
-        icon: "model",
-      },
-    ],
-  },
-  {
-    level: 13,
-    xpRequired: 823152,
-    queueSlots: 9,
-    gpus: 6,
-    staffCapacity: 8,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 8 researchers",
-        icon: "staff",
-      },
-    ],
-  },
-  {
-    level: 14,
-    xpRequired: 1810934,
-    queueSlots: 10,
-    gpus: 7,
-    staffCapacity: 8,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 10 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 7 models simultaneously",
-        icon: "gpu",
-      },
-    ],
-  },
-  {
-    level: 15,
-    xpRequired: 3984055,
-    queueSlots: 10,
-    gpus: 7,
-    staffCapacity: 9,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 9 researchers",
-        icon: "staff",
-      },
-      {
-        category: "research",
-        name: "XL Model (34B)",
-        description: "Train 34 billion parameter models",
-        icon: "model",
-      },
-    ],
-  },
-  {
-    level: 16,
-    xpRequired: 8764921,
-    queueSlots: 11,
-    gpus: 8,
-    staffCapacity: 9,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 11 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 8 models simultaneously",
-        icon: "gpu",
-      },
-    ],
-  },
-  {
-    level: 17,
-    xpRequired: 19282826,
-    queueSlots: 11,
-    gpus: 8,
-    staffCapacity: 10,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 10 researchers",
-        icon: "staff",
-      },
-    ],
-  },
-  {
-    level: 18,
-    xpRequired: 42422217,
-    queueSlots: 12,
-    gpus: 9,
-    staffCapacity: 10,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 12 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 9 models simultaneously",
-        icon: "gpu",
-      },
-      {
-        category: "research",
-        name: "XXL Model (70B)",
-        description: "Train 70 billion parameter models",
-        icon: "model",
-      },
-    ],
-  },
-  {
-    level: 19,
-    xpRequired: 93328878,
-    queueSlots: 12,
-    gpus: 9,
-    staffCapacity: 11,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 11 researchers",
-        icon: "staff",
-      },
-      {
-        category: "social",
-        name: "All-Time Leaderboard",
-        description: "Compete for eternal glory",
-        icon: "leaderboard",
-      },
-    ],
-  },
-  {
-    level: 20,
-    xpRequired: Infinity,
-    queueSlots: 13,
-    gpus: 10,
-    staffCapacity: 12,
-    unlocks: [
-      {
-        category: "capacity",
-        name: "+1 Queue Slot",
-        description: "Run or queue up to 13 tasks",
-        icon: "queue",
-      },
-      {
-        category: "infrastructure",
-        name: "+1 GPU",
-        description: "Train 10 models simultaneously",
-        icon: "gpu",
-      },
-      {
-        category: "capacity",
-        name: "+1 Staff Capacity",
-        description: "Hire up to 12 researchers",
-        icon: "staff",
-      },
-      {
-        category: "research",
-        name: "Frontier Model (405B)",
-        description: "Train 405 billion parameter models",
-        icon: "model",
-      },
-      {
-        category: "research",
-        name: "AGI Research",
-        description: "Begin the path to AGI",
-        icon: "research",
-      },
-    ],
-  },
-];
-
-// Helper: get unlocks for a specific level
-export function getLevelData(level: number): LevelUnlocks | undefined {
-  return SKILL_TREE.find((l) => l.level === level);
 }
 
-// Helper: get all unlocks up to and including a level
-export function getUnlocksUpToLevel(level: number): LevelUnlock[] {
-  return SKILL_TREE
-    .filter((l) => l.level <= level)
-    .flatMap((l) => l.unlocks);
+// =============================================================================
+// LEGACY - Keep for reference but these are now in ATTRIBUTE_NODES
+// =============================================================================
+
+export interface LevelUnlocks {
+  level: number
+  xpRequired: number
+  queueSlots: number
+  gpus: number
+  staffCapacity: number
+  unlocks: LevelUnlock[]
 }
 
-// Helper: check if a specific unlock is available at level
-export function hasUnlock(level: number, unlockName: string): boolean {
-  const unlocks = getUnlocksUpToLevel(level);
-  return unlocks.some((u) => u.name === unlockName);
+export interface LevelUnlock {
+  category: UnlockCategory
+  name: string
+  description: string
+  icon: UnlockIcon
 }
 
-// Helper: get capacity values for a level
-export function getCapacityForLevel(level: number): {
-  queueSlots: number;
-  gpus: number;
-  staffCapacity: number;
-} {
-  const levelData = SKILL_TREE.find((l) => l.level === level);
-  if (!levelData) {
-    return { queueSlots: 1, gpus: 1, staffCapacity: 2 };
+export type UnlockCategory = 
+  | "capacity"
+  | "infrastructure" 
+  | "research"
+  | "income"
+  | "social"
+
+export type UnlockIcon =
+  | "queue"
+  | "staff"
+  | "gpu"
+  | "model"
+  | "money"
+  | "clan"
+  | "leaderboard"
+  | "research"
+
+// DEPRECATED: Old automatic milestone system
+// Keeping for reference but no longer used
+export const SKILL_TREE: LevelUnlocks[] = []
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+// Get all attribute nodes for a specific attribute type
+export function getAttributeNodes(type: AttributeType): AttributeNode[] {
+  return ATTRIBUTE_NODES.filter(n => n.attributeType === type)
+}
+
+// Get next available upgrade for an attribute (based on purchased nodes)
+export function getNextAttributeUpgrade(
+  type: AttributeType, 
+  purchasedNodeIds: Set<string>
+): AttributeNode | undefined {
+  const nodes = getAttributeNodes(type)
+  return nodes.find(n => !purchasedNodeIds.has(n.nodeId))
+}
+
+// Calculate current value for an attribute based on purchased upgrades
+export function calculateAttributeValue(
+  type: AttributeType,
+  purchasedNodeIds: Set<string>
+): number {
+  const base = {
+    queue_slots: BASE_STATS.queueSlots,
+    staff_capacity: BASE_STATS.staffCapacity,
+    compute_units: BASE_STATS.computeUnits,
+    research_speed: BASE_STATS.researchSpeedBonus,
+    money_multiplier: BASE_STATS.moneyMultiplier,
+  }[type]
+
+  const nodes = getAttributeNodes(type)
+  let value = base
+
+  for (const node of nodes) {
+    if (purchasedNodeIds.has(node.nodeId)) {
+      if (type === "money_multiplier") {
+        // Multiplicative for money
+        value = value * node.attributeValue
+      } else {
+        // Additive for everything else
+        value += node.attributeValue
+      }
+    }
   }
-  return {
-    queueSlots: levelData.queueSlots,
-    gpus: levelData.gpus,
-    staffCapacity: levelData.staffCapacity,
-  };
+
+  return value
 }

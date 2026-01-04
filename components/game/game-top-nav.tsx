@@ -93,11 +93,11 @@ export function GameTopNav({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4">
               <Link
-                href="/lab"
+                href="/research"
                 className={`flex items-center gap-1.5 text-sm hover:bg-white/10 px-2 py-1 rounded transition-colors ${
-                  currentView === "lab" ? "bg-white/10" : ""
+                  currentView === "research" ? "bg-white/10" : ""
                 }`}
-                title="View milestones"
+                title="View skill tree and upgrades"
               >
                 <span className="text-xs font-bold text-muted-foreground lowercase">lvl</span>
                 <span className="text-base font-bold text-white border border-white px-1.5 rounded">{level}</span>

@@ -128,25 +128,45 @@ The homepage (`app/page.tsx`) is the landing page. The game uses top-level route
 ### Navigation (5 top-level views)
 
 1. **Operate**: Run the lab day-to-day (queue management, job catalog, run jobs)
-2. **Research**: Spend RP on permanent unlocks (blueprints, capabilities, perks)
+2. **Research**: Spend RP on all upgrades (Attributes, Blueprints, Capabilities, Perks)
 3. **Lab**: Your organization/ownership (model inventory, publishing controls, people)
 4. **Inbox**: Events/offers/notifications with deep links
 5. **World**: Global layer (leaderboards, public labs)
+
+### Research View Structure (Cyberpunk-inspired)
+
+Research is the central hub for all player progression:
+
+1. **Attributes** (Hexagonal grid): Global stats - queue, staff, CU, research speed, income boost
+2. **Blueprints**: Model training capabilities (branching tree)
+3. **Capabilities**: Job types, features, world actions (branching tree)
+4. **Perks**: Passive bonuses (branching tree)
+
+Each node has:
+
+- RP cost
+- Min level requirement
+- Prerequisite nodes (must purchase in order)
+- Immediate effect on purchase
 
 ### Progression System
 
 **XP / Level (max 20)**:
 
 - Earned by completing jobs
-- Grants automatic rewards: queue slots, GPU capacity, staff capacity
-- Gates visibility of higher-tier content (e.g., Large Models at L12)
+- **Gates access** to research nodes (min level requirements)
 - XP is never spent
+- Level no longer grants automatic rewards - players choose where to invest RP
 
 **Research Points (RP)**:
 
 - Earned by training jobs and research jobs
-- Spent only in Research view for permanent unlocks
-- Unlocks blueprints, new job types, perks
+- Spent in Research view for **all** permanent upgrades:
+  - **Attributes**: queue slots, staff capacity, compute units, research speed, money multiplier
+  - **Blueprints**: model training capabilities
+  - **Capabilities**: new job types, features
+  - **Perks**: passive bonuses
+- Single currency for simplicity - accessible for non-hardcore gamers
 
 **Money**:
 
@@ -236,7 +256,7 @@ endg4me/
 │   ├── labs.ts              # Lab operations
 │   └── lib/
 │       ├── gameConstants.ts # Game balance constants
-│       └── skillTree.ts     # Level milestone definitions (1-20)
+│       └── skillTree.ts     # Attribute nodes, XP requirements (no auto rewards)
 ├── hooks/                   # Custom React hooks
 ├── lib/                     # Utilities
 │   ├── game-types.ts        # TypeScript types for game
@@ -324,12 +344,24 @@ _Last updated: 2026-01-04 (route-based navigation)_
 
 - **Reputation removed**: No REP in schema, rewards, or gating
 - **5-tab navigation**: operate / research / lab / inbox / world
-- **Max level 20**: Extended XP curve with milestone rewards
-- **RP spending**: Only in Research view (permanent unlocks)
+- **Max level 20**: Extended XP curve, level gates access to nodes
+- **RP is the only upgrade currency**: Simplicity over complexity
+- **No automatic level rewards**: Players choose where to spend RP
 - **Model visibility**: trainedModels have public/private toggle
 - **Leaderboards**: Only count public models
 - **Unlock Registry**: Single source of truth in Convex for all gating
 - **Deep links**: Inbox notifications link to relevant views
+
+## Architecture Decisions (004 Skill Tree Rework)
+
+- **Level badge click**: Goes to Research (not Lab)
+- **Research sub-nav**: Attributes | Blueprints | Capabilities | Perks
+- **Attributes panel**: Cyberpunk hex-style grid for 5 global stats
+- **Perk trees**: Branching dependency trees for blueprints/capabilities/perks
+- **Base stats**: Start with 1 queue, 1 staff, 1 CU, 0% speed bonus, 1.0x money
+- **All upgrades purchased**: Nothing is automatic, full player agency
+- **researchNodes table**: Extended with attributeType and attributeValue fields
+- **Seed migration**: `convex/migrations/seedAttributeNodes.ts` populates attribute nodes
 
 ## Architecture Decisions (003 Route-based Navigation)
 

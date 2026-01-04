@@ -13,6 +13,7 @@ import type * as labs from "../labs.js";
 import type * as lib_gameConstants from "../lib/gameConstants.js";
 import type * as lib_skillTree from "../lib/skillTree.js";
 import type * as migrations_removeReputation from "../migrations/removeReputation.js";
+import type * as migrations_seedAttributeNodes from "../migrations/seedAttributeNodes.js";
 import type * as notifications from "../notifications.js";
 import type * as research from "../research.js";
 import type * as tasks from "../tasks.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   "lib/gameConstants": typeof lib_gameConstants;
   "lib/skillTree": typeof lib_skillTree;
   "migrations/removeReputation": typeof migrations_removeReputation;
+  "migrations/seedAttributeNodes": typeof migrations_seedAttributeNodes;
   notifications: typeof notifications;
   research: typeof research;
   tasks: typeof tasks;
