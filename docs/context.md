@@ -123,7 +123,7 @@ The game dashboard is **fully implemented** with:
 - Settings panel (slide-out sheet) with Profile, Organization/Team, and Sign out
 - Level-based milestone system (max level 20)
 
-The homepage (`app/page.tsx`) is the landing page. The game lives at `/play`.
+The homepage (`app/page.tsx`) is the landing page. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/world`.
 
 ### Navigation (5 top-level views)
 
@@ -206,21 +206,29 @@ The settings panel is accessed via a gear icon in the top nav. It contains:
 ```
 endg4me/
 ├── app/
-│   ├── (game)/              # Protected game routes
-│   │   ├── layout.tsx       # Auth check + Convex provider
-│   │   └── play/page.tsx    # Main game dashboard
+│   ├── (game)/              # Protected game routes (route group)
+│   │   ├── layout.tsx       # Auth + Convex + GameDataProvider + GameShell
+│   │   ├── page.tsx         # Redirects to /operate
+│   │   ├── operate/page.tsx # TasksView (day-to-day operations)
+│   │   ├── research/page.tsx # ResearchView (RP spending)
+│   │   ├── lab/page.tsx     # CollectionView (models, organization)
+│   │   ├── inbox/page.tsx   # MsgsView (notifications)
+│   │   └── world/page.tsx   # WorldView (leaderboards)
 │   ├── api/                 # API routes (auth callbacks)
 │   ├── globals.css          # Terminal theme (white accent)
 │   ├── layout.tsx           # Root layout
 │   └── page.tsx             # Landing page
 ├── components/
 │   ├── game/
-│   │   ├── dashboard/       # Dashboard view components
-│   │   ├── lab-dashboard.tsx
+│   │   ├── dashboard/       # View components (TasksView, ResearchView, etc.)
+│   │   ├── game-shell.tsx   # Layout wrapper with TopNav + loading states
+│   │   ├── game-top-nav.tsx # Navigation with Link-based routing
 │   │   ├── founder-selection.tsx
 │   │   └── ...
 │   ├── ui/                  # shadcn components
-│   └── providers/           # Context providers
+│   └── providers/
+│       ├── convex-provider.tsx
+│       └── game-data-provider.tsx # GameDataContext (shared state)
 ├── convex/                  # Game logic and data model
 │   ├── schema.ts            # Database schema
 │   ├── tasks.ts             # Task/job mutations/queries
@@ -290,7 +298,7 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 - **Understand the product rules**: no duplicated game logic, no real AI yet, anti-snowballing matters.
 - **Stay server-first**: default to React Server Components; add `"use client"` only when you need interactivity.
 - **Game logic lives in Convex**: UI is presentation-only.
-- **Dashboard at `/play`**: requires authentication, uses terminal-style design.
+- **Routes are top-level**: `/operate`, `/research`, `/lab`, `/inbox`, `/world` (not nested under `/play`).
 - **Prefer adding UI via shadcn** instead of bespoke components.
 
 ---
@@ -308,7 +316,7 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 
 ---
 
-_Last updated: 2026-01-03 (white accent, top nav simplified)_
+_Last updated: 2026-01-04 (route-based navigation)_
 
 ---
 
@@ -322,5 +330,15 @@ _Last updated: 2026-01-03 (white accent, top nav simplified)_
 - **Leaderboards**: Only count public models
 - **Unlock Registry**: Single source of truth in Convex for all gating
 - **Deep links**: Inbox notifications link to relevant views
+
+## Architecture Decisions (003 Route-based Navigation)
+
+- **Top-level routes**: Views are real Next.js routes (`/operate`, `/research`, `/lab`, `/inbox`, `/world`)
+- **Route group**: `(game)` provides shared layout without adding URL segment
+- **GameDataProvider**: All Convex queries live in provider, persist across route changes
+- **GameShell**: Handles loading states, founder selection, wraps TopNav
+- **Link-based nav**: TopNav uses `<Link>` + `usePathname()` instead of state
+- **Browser history**: Back/forward navigation works, URLs are bookmarkable/shareable
+- **Subscription persistence**: Convex subscriptions stay alive in layout, no re-fetch on navigation
 - **Unified Navigation**: PageHeader + SubNav system for consistent navigation across all views. SubNav is view-specific and optional. First SubNav element has no left padding to align with logo.
 - **Compute Units as blocking resource**: Training tasks consume Compute Units (CU). With 1 CU and 1 training running, cannot start another training even if queue allows. Action cards display CU cost after cash in the attribute grid.

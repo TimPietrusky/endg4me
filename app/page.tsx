@@ -5,7 +5,7 @@ import { GlitchBackground } from "@/components/glitch-background";
 import { ArrowRight, Warning } from "@phosphor-icons/react/dist/ssr";
 
 interface HomePageProps {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{ error?: string; message?: string; from?: string }>;
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
@@ -13,12 +13,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const signInUrl = await getSignInUrl();
   const params = await searchParams;
 
-  // If user is logged in, redirect to play
-  if (user) {
-    redirect("/play");
+  // If user is logged in and not coming from game, redirect to operate
+  if (user && params.from !== "game") {
+    redirect("/operate");
   }
 
   const hasError = params.error === "auth_failed";
+  const isLoggedIn = !!user;
 
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center overflow-hidden">
@@ -51,12 +52,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
         )}
 
-        {/* Sign In Button */}
+        {/* Action Button */}
         <a
-          href={signInUrl}
+          href={isLoggedIn ? "/operate" : signInUrl}
           className="mt-6 group px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 font-semibold text-lg text-white hover:from-emerald-400 hover:to-cyan-400 transition-all shadow-lg shadow-emerald-500/25 flex items-center gap-2"
         >
-          Start Playing
+          {isLoggedIn ? "Continue Playing" : "Start Playing"}
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </a>
       </div>
