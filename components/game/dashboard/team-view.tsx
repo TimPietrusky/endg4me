@@ -2,7 +2,6 @@
 
 import { 
   User, 
-  Code, 
   ChartLineUp, 
   Users, 
   Clock,
@@ -49,25 +48,19 @@ export function TeamView({
               <div className="flex items-center gap-4">
                 {/* Founder Avatar/Image */}
                 <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/20 bg-gradient-to-br from-white/10 to-white/5">
-                  {/* Placeholder - shows icon, can be replaced with actual image */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    {founderType === "technical" ? (
-                      <div className="w-full h-full bg-gradient-to-br from-cyan-500/30 to-blue-600/30 flex items-center justify-center">
-                        <Code className="w-8 h-8 text-cyan-300" weight="bold" />
-                      </div>
-                    ) : (
+                  {founderType === "technical" ? (
+                    <img 
+                      src="/assets/founder-technical.jpg" 
+                      alt={founderName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-full h-full bg-gradient-to-br from-amber-500/30 to-orange-600/30 flex items-center justify-center">
                         <ChartLineUp className="w-8 h-8 text-amber-300" weight="bold" />
                       </div>
-                    )}
-                  </div>
-                  {/* When you have a real image, use this instead:
-                  <img 
-                    src="/founder-avatar.jpg" 
-                    alt={founderName}
-                    className="w-full h-full object-cover"
-                  />
-                  */}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <CardTitle className="text-base">{founderName}</CardTitle>
