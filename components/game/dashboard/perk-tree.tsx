@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { 
@@ -8,13 +9,15 @@ import {
   CheckCircle, 
   Brain,
   Wrench,
-  Sparkle,
-  CaretRight
+  Sparkle
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
+import { SubSubNav, SubSubNavFilter } from "./sub-nav"
 import { useToast } from "@/hooks/use-toast"
 import type { Id } from "@/convex/_generated/dataModel"
 import { formatCompact, cn } from "@/lib/utils"
+
+type StatusFilter = "available" | "locked" | "researched"
 
 interface PerkTreeProps {
   userId: Id<"users">
@@ -62,32 +65,12 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
   const { toast } = useToast()
   const researchState = useQuery(api.research.getResearchTreeState, { userId })
   const purchaseNode = useMutation(api.research.purchaseResearchNode)
+  const [activeFilters, setActiveFilters] = useState<Set<StatusFilter>>(new Set())
 
   const config = CATEGORY_CONFIG[category]
-  const Icon = config.icon
 
   // Filter nodes by category
   const nodes = researchState?.filter((node) => node.category === category) || []
-
-  // Build dependency graph for visualization
-  // Group nodes into tiers based on prerequisites
-  const nodeMap = new Map(nodes.map(n => [n.nodeId, n]))
-  
-  const getTier = (nodeId: string, visited = new Set<string>()): number => {
-    if (visited.has(nodeId)) return 0
-    visited.add(nodeId)
-    const node = nodeMap.get(nodeId)
-    if (!node || node.prerequisiteNodes.length === 0) return 0
-    return Math.max(...node.prerequisiteNodes.map(p => getTier(p, visited))) + 1
-  }
-
-  // Group nodes by tier
-  const nodesByTier: Record<number, typeof nodes> = {}
-  nodes.forEach(node => {
-    const tier = getTier(node.nodeId)
-    if (!nodesByTier[tier]) nodesByTier[tier] = []
-    nodesByTier[tier].push(node)
-  })
 
   const handlePurchase = async (nodeId: string, nodeName: string) => {
     try {
@@ -106,170 +89,188 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
     }
   }
 
+  const toggleFilter = (filter: StatusFilter) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev)
+      if (next.has(filter)) {
+        next.delete(filter)
+      } else {
+        next.add(filter)
+      }
+      return next
+    })
+  }
+
+  // Check if a status should be shown based on active filters
+  const shouldShowStatus = (status: StatusFilter) => {
+    if (activeFilters.size === 0) return true
+    return activeFilters.has(status)
+  }
+
   if (nodes.length === 0) {
+    const Icon = config.icon
     return (
-      <div className="mt-4">
+      <div className="mt-2">
+      <SubSubNav>
+        <SubSubNavFilter label="available" count={0} />
+        <SubSubNavFilter label="locked" count={0} />
+        <SubSubNavFilter label="researched" count={0} />
+      </SubSubNav>
         <div className="text-center py-16 text-muted-foreground">
           <Icon className="w-16 h-16 mx-auto mb-4 opacity-30" />
           <p className="text-lg mb-2">{config.name}</p>
           <p className="text-sm">No research nodes available yet.</p>
-          <p className="text-xs mt-2">Research nodes will be added in future updates.</p>
         </div>
       </div>
     )
   }
 
-  const tiers = Object.keys(nodesByTier).map(Number).sort((a, b) => a - b)
+  // Group nodes by status: available, locked, researched
+  const availableNodes = nodes.filter(n => !n.isPurchased && !n.isLocked)
+  const lockedNodes = nodes.filter(n => n.isLocked)
+  const researchedNodes = nodes.filter(n => n.isPurchased)
+
+  // Stats for sub-sub-nav
+  const purchasedCount = researchedNodes.length
+  const availableCount = availableNodes.length
+  const lockedCount = lockedNodes.length
+
+  // Render a single node card
+  const renderNode = (node: typeof nodes[0]) => {
+    const canAfford = currentRp >= node.rpCost
+    const isReady = !node.isPurchased && !node.isLocked && canAfford
+
+    return (
+      <div
+        key={node.nodeId}
+        className={cn(
+          "relative w-full md:w-72",
+          "rounded-lg border p-4",
+          node.isPurchased 
+            ? "bg-gradient-to-br from-green-500/20 to-green-500/5 border-green-500/50"
+            : cn("border", config.nodeBorder)
+        )}
+      >
+        {/* Status indicator */}
+        <div className="absolute top-3 right-3">
+          {node.isPurchased ? (
+            <CheckCircle className="w-5 h-5 text-green-400" weight="fill" />
+          ) : node.isLocked ? (
+            <Lock className="w-4 h-4 text-muted-foreground" />
+          ) : null}
+        </div>
+
+        {/* Node content */}
+        <div className="pr-6">
+          <h3 className="font-bold text-sm mb-1">{node.name}</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            {node.description}
+          </p>
+
+          {/* Requirements badges */}
+          {(node.minLevel > 1 || node.prerequisiteNodes.length > 0) && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {node.minLevel > 1 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-muted-foreground">
+                  LVL {node.minLevel}+
+                </span>
+              )}
+              {node.prerequisiteNodes.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-muted-foreground">
+                  {node.prerequisiteNodes.length} prereq
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Action */}
+          {!node.isPurchased && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <Lightning className={cn("w-4 h-4", config.accentColor)} />
+                <span className={cn("font-bold text-sm", !canAfford && "text-red-400")}>
+                  {formatCompact(node.rpCost)}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant={isReady ? "default" : "outline"}
+                disabled={!isReady}
+                onClick={() => handlePurchase(node.nodeId, node.name)}
+                className={cn(
+                  "text-xs h-7",
+                  isReady && "bg-white text-black hover:bg-white/90"
+                )}
+              >
+                {node.isLocked 
+                  ? node.lockReason?.replace("Requires ", "") || "Locked"
+                  : !canAfford 
+                    ? "Need RP" 
+                    : "Research"
+                }
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="mt-4">
-      {/* Header */}
-      <div className="mb-8 flex items-center gap-4">
-        <Icon className={cn("w-8 h-8", config.accentColor)} weight="bold" />
-        <p className="text-lg text-white">{config.description}</p>
-      </div>
+    <div className="mt-2">
+      {/* Sub-sub-nav with clickable filters */}
+      <SubSubNav>
+        <SubSubNavFilter 
+          label="available" 
+          count={availableCount} 
+          isActive={activeFilters.has("available")}
+          onClick={() => toggleFilter("available")}
+        />
+        <SubSubNavFilter 
+          label="locked" 
+          count={lockedCount}
+          isActive={activeFilters.has("locked")}
+          onClick={() => toggleFilter("locked")}
+        />
+        <SubSubNavFilter 
+          label="researched" 
+          count={purchasedCount}
+          isActive={activeFilters.has("researched")}
+          onClick={() => toggleFilter("researched")}
+        />
+      </SubSubNav>
 
-      {/* Skill Tree visualization */}
-      <div className="relative">
-        {/* Tier rows */}
-        <div className="space-y-8">
-          {tiers.map((tier, tierIndex) => (
-            <div key={tier} className="relative">
-              {/* Tier label */}
-              {tier === 0 && (
-                <div className="absolute -left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground uppercase tracking-wider -rotate-90 origin-center">
-                  base
-                </div>
-              )}
-              
-              {/* Connection lines to previous tier */}
-              {tierIndex > 0 && (
-                <div className="absolute -top-4 left-0 right-0 flex justify-center">
-                  <CaretRight className="w-4 h-4 text-white/20 rotate-90" />
-                </div>
-              )}
-
-              {/* Nodes in this tier */}
-              <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                {nodesByTier[tier].map((node) => {
-                  const canAfford = currentRp >= node.rpCost
-                  const isReady = node.isAvailable && canAfford
-
-                  return (
-                    <div
-                      key={node.nodeId}
-                      className={cn(
-                        "relative w-full md:w-72",
-                        "bg-gradient-to-br rounded-lg border p-4",
-                        config.nodeGradient,
-                        node.isPurchased 
-                          ? "border-white/40 opacity-70" 
-                          : node.isAvailable 
-                            ? cn(config.nodeActive, "shadow-lg")
-                            : cn(config.nodeBorder, "opacity-60")
-                      )}
-                    >
-                      {/* Status indicator */}
-                      <div className="absolute top-3 right-3">
-                        {node.isPurchased ? (
-                          <CheckCircle className="w-5 h-5 text-green-400" weight="fill" />
-                        ) : node.isLocked ? (
-                          <Lock className="w-4 h-4 text-muted-foreground" />
-                        ) : null}
-                      </div>
-
-                      {/* Node content */}
-                      <div className="pr-6">
-                        <h3 className="font-bold text-sm mb-1">{node.name}</h3>
-                        <p className="text-xs text-muted-foreground mb-3">
-                          {node.description}
-                        </p>
-
-                        {/* Requirements badges */}
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {node.minLevel > 1 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-muted-foreground">
-                              LVL {node.minLevel}+
-                            </span>
-                          )}
-                          {node.prerequisiteNodes.length > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-muted-foreground">
-                              {node.prerequisiteNodes.length} prereq
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Unlock description */}
-                        <div className={cn(
-                          "text-xs mb-3 flex items-start gap-1.5",
-                          node.isPurchased ? "text-green-400" : config.accentColor
-                        )}>
-                          <CaretRight className="w-3 h-3 mt-0.5 shrink-0" />
-                          <span>{node.unlockDescription}</span>
-                        </div>
-
-                        {/* Action */}
-                        {!node.isPurchased && (
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1">
-                              <Lightning className={cn("w-4 h-4", config.accentColor)} />
-                              <span className={cn("font-bold text-sm", !canAfford && "text-red-400")}>
-                                {formatCompact(node.rpCost)}
-                              </span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant={isReady ? "default" : "outline"}
-                              disabled={!isReady}
-                              onClick={() => handlePurchase(node.nodeId, node.name)}
-                              className={cn(
-                                "text-xs h-7",
-                                isReady && "bg-white text-black hover:bg-white/90"
-                              )}
-                            >
-                              {node.isLocked 
-                                ? node.lockReason?.replace("Requires ", "") || "Locked"
-                                : !canAfford 
-                                  ? "Need RP" 
-                                  : "Research"
-                              }
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Prerequisites connection indicator */}
-                      {node.prerequisiteNodes.length > 0 && !node.isPurchased && (
-                        <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
-                            node.isAvailable ? config.bgAccent : "bg-white/20"
-                          )} />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+      {/* Sections by status */}
+      <div className="space-y-8">
+        {/* AVAILABLE section */}
+        {availableNodes.length > 0 && shouldShowStatus("available") && (
+          <div>
+            <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-4">AVAILABLE</h3>
+            <div className="flex flex-wrap gap-4">
+              {availableNodes.map(renderNode)}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        )}
 
-      {/* Summary stats */}
-      <div className="mt-8 pt-4 border-t border-white/10 flex items-center gap-6 text-xs text-muted-foreground">
-        <div>
-          <span className="text-white font-bold">{nodes.filter(n => n.isPurchased).length}</span>
-          <span className="ml-1">researched</span>
-        </div>
-        <div>
-          <span className="text-white font-bold">{nodes.filter(n => n.isAvailable).length}</span>
-          <span className="ml-1">available</span>
-        </div>
-        <div>
-          <span className="text-white font-bold">{nodes.filter(n => n.isLocked).length}</span>
-          <span className="ml-1">locked</span>
-        </div>
+        {/* LOCKED section */}
+        {lockedNodes.length > 0 && shouldShowStatus("locked") && (
+          <div>
+            <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-4">LOCKED</h3>
+            <div className="flex flex-wrap gap-4">
+              {lockedNodes.map(renderNode)}
+            </div>
+          </div>
+        )}
+
+        {/* RESEARCHED section */}
+        {researchedNodes.length > 0 && shouldShowStatus("researched") && (
+          <div>
+            <h3 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-4">RESEARCHED</h3>
+            <div className="flex flex-wrap gap-4">
+              {researchedNodes.map(renderNode)}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

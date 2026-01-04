@@ -108,3 +108,58 @@ export function SubNavButton({
     </button>
   )
 }
+
+// Sub-sub-nav: secondary row below main sub-nav for filters
+interface SubSubNavProps {
+  children: ReactNode
+  className?: string
+}
+
+export function SubSubNav({ children, className = "" }: SubSubNavProps) {
+  return (
+    <div className={`flex items-center gap-4 pt-2 pb-6 text-xs ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+// Clickable filter button for SubSubNav (same pattern as SubNavButton)
+interface SubSubNavFilterProps {
+  label: string
+  count: number
+  isActive?: boolean
+  onClick?: () => void
+  className?: string
+}
+
+export function SubSubNavFilter({ label, count, isActive, onClick, className = "" }: SubSubNavFilterProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center text-xs lowercase transition-colors cursor-pointer ${
+        isActive
+          ? "text-white font-bold"
+          : "text-white hover:text-white/70"
+      } ${className}`}
+    >
+      <span>{label}</span>
+      <span className="ml-1">({count})</span>
+    </button>
+  )
+}
+
+// Stat item for SubSubNav (non-clickable version)
+interface SubSubNavStatProps {
+  value: number
+  label: string
+  className?: string
+}
+
+export function SubSubNavStat({ value, label, className = "" }: SubSubNavStatProps) {
+  return (
+    <div className={`flex items-center gap-1.5 ${className}`}>
+      <span className="text-white font-bold">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+    </div>
+  )
+}
