@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { CurrencyDollar, Lightning, Cpu } from "@phosphor-icons/react"
 import { SettingsPanel } from "./settings-panel"
-import { XpIcon } from "./dashboard/xp-icon"
+import { LevelProgress } from "./dashboard/level-progress"
 import { Logo } from "@/components/logo"
 import type { ViewType } from "@/lib/game-types"
 import { formatCompact } from "@/lib/utils"
@@ -94,31 +94,12 @@ export function GameTopNav({
           {/* Right Side - Stats and Settings */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4">
-              <Link
-                href="/level"
-                className={`flex items-center gap-1.5 text-sm hover:bg-white/10 px-2 py-1 rounded transition-colors ${
-                  currentView === "level" ? "bg-white/10" : ""
-                }`}
-                title="View level progression and RP rewards"
-              >
-                <span className="text-xs font-bold text-muted-foreground lowercase">lvl</span>
-                <span className="text-base font-bold text-white border border-white px-1.5 rounded">{level}</span>
-              </Link>
-
-              <div className="flex items-center gap-1.5 text-sm">
-                <XpIcon className="text-white" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-bold leading-none">
-                    {xp}/{maxXp}
-                  </span>
-                  <div className="h-0.5 w-12 bg-white/20 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-white transition-all"
-                      style={{ width: `${Math.min((xp / maxXp) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
+              <LevelProgress
+                level={level}
+                xp={xp}
+                maxXp={maxXp}
+                isActive={currentView === "level"}
+              />
 
               <div className="flex items-center gap-1.5 text-sm">
                 <CurrencyDollar className="w-5 h-5 text-white" />
