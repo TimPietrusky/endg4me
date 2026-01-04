@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -46,6 +47,7 @@ const FOUNDER_OPTIONS = [
 ];
 
 export function FounderSelection({ userId }: FounderSelectionProps) {
+  const router = useRouter();
   const [selectedType, setSelectedType] = useState<FounderType | null>(null);
   const [labName, setLabName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -65,6 +67,8 @@ export function FounderSelection({ userId }: FounderSelectionProps) {
         name: labName.trim(),
         founderType: selectedType,
       });
+      // Redirect to operate page after successful creation
+      router.replace("/operate");
     } catch (err: any) {
       setError(err.message || "Failed to create lab");
       setIsCreating(false);

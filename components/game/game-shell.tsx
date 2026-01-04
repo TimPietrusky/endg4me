@@ -1,7 +1,8 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useGameData } from "@/components/providers/game-data-provider"
-import { FounderSelection } from "./founder-selection"
 import { GameTopNav } from "./game-top-nav"
 import { TaskToastContainer } from "./task-toast"
 import { Toaster } from "@/components/ui/toaster"
@@ -12,6 +13,7 @@ interface GameShellProps {
 }
 
 export function GameShell({ children }: GameShellProps) {
+  const router = useRouter()
   const { 
     isLoading, 
     needsFounderSelection, 
@@ -26,6 +28,13 @@ export function GameShell({ children }: GameShellProps) {
     upgradePoints,
   } = useGameData()
 
+  // Redirect to /new if user needs to create a lab
+  useEffect(() => {
+    if (needsFounderSelection) {
+      router.replace("/new")
+    }
+  }, [needsFounderSelection, router])
+
   if (isLoading) {
     return <LoadingScreen />
   }
@@ -35,7 +44,7 @@ export function GameShell({ children }: GameShellProps) {
   }
 
   if (needsFounderSelection) {
-    return <FounderSelection userId={userId} />
+    return <LoadingScreen message="Redirecting to lab setup..." />
   }
 
   // At this point we have all data

@@ -17,6 +17,19 @@ export const getOrCreateUser = mutation({
       .first();
 
     if (existingUser) {
+      // Ensure playerState exists (may have been deleted by reset)
+      const existingPlayerState = await ctx.db
+        .query("playerState")
+        .withIndex("by_user", (q) => q.eq("userId", existingUser._id))
+        .first();
+      
+      if (!existingPlayerState) {
+        await ctx.db.insert("playerState", {
+          userId: existingUser._id,
+          ...INITIAL_PLAYER_STATE,
+        });
+      }
+      
       return existingUser._id;
     }
 
