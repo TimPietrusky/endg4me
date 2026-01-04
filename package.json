@@ -8,7 +8,9 @@
     "dev:all": "concurrently -n next,convex -c cyan,magenta \"pnpm dev\" \"pnpm dev:convex\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "reset": "node scripts/reset-game.mjs",
+    "reset:all": "node scripts/reset-game.mjs --all"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

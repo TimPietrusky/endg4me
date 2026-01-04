@@ -43,15 +43,19 @@ export default defineSchema({
     computeRank: v.optional(v.number()),   // Compute upgrade rank (0 = base)
   }).index("by_user", ["userId"]),
 
-  // Tasks - queued actions
+  // Player Unlocks - tracks what blueprints, jobs, and system flags are unlocked
+  playerUnlocks: defineTable({
+    userId: v.id("users"),
+    unlockedBlueprintIds: v.array(v.string()),
+    unlockedJobIds: v.array(v.string()),
+    enabledSystemFlags: v.array(v.string()),
+  }).index("by_user", ["userId"]),
+
+  // Tasks - queued actions (supports both legacy and new job IDs)
   tasks: defineTable({
     labId: v.id("labs"),
-    type: v.union(
-      v.literal("train_small_model"),
-      v.literal("train_medium_model"),
-      v.literal("freelance_contract"),
-      v.literal("hire_junior_researcher")
-    ),
+    // Job type - supports both legacy task types and new job IDs from contentCatalog
+    type: v.string(), // Now accepts any job ID string
     status: v.union(
       v.literal("queued"),
       v.literal("in_progress"),
@@ -77,17 +81,23 @@ export default defineSchema({
   trainedModels: defineTable({
     labId: v.id("labs"),
     taskId: v.id("tasks"),
-    modelType: v.union(v.literal("small_3b"), v.literal("medium_7b")),
-    name: v.string(), // Generated name like "Model #1"
-    score: v.number(), // Research points earned = model quality score
+    blueprintId: v.string(),                     // e.g., "bp_tts_3b"
+    modelType: v.union(                          // Model category
+      v.literal("llm"),
+      v.literal("tts"),
+      v.literal("vlm")
+    ),
+    name: v.string(),
+    version: v.number(),
+    score: v.number(),
     trainedAt: v.number(),
-    // Visibility: public models appear on leaderboards and public lab page
-    // Optional for migration - existing models default to private
     visibility: v.optional(v.union(v.literal("private"), v.literal("public"))),
   })
     .index("by_lab", ["labId"])
+    .index("by_lab_blueprint", ["labId", "blueprintId"])
     .index("by_lab_score", ["labId", "score"])
-    .index("by_visibility", ["visibility"]),
+    .index("by_visibility", ["visibility"])
+    .index("by_model_type", ["modelType"]),
 
   // Freelance cooldown tracking
   freelanceCooldowns: defineTable({
@@ -110,7 +120,8 @@ export default defineSchema({
       v.literal("level_up"),
       v.literal("unlock"),
       v.literal("hire_complete"),
-      v.literal("research_complete")
+      v.literal("research_complete"),
+      v.literal("milestone")  // New type for inbox events
     ),
     title: v.string(),
     message: v.string(),
@@ -118,6 +129,7 @@ export default defineSchema({
     createdAt: v.number(),
     // Optional metadata
     taskId: v.optional(v.id("tasks")),
+    eventId: v.optional(v.string()), // For milestone events
     // Deep link for navigation
     deepLink: v.optional(
       v.object({
@@ -133,18 +145,19 @@ export default defineSchema({
     ),
   })
     .index("by_user", ["userId"])
-    .index("by_user_unread", ["userId", "read"]),
+    .index("by_user_unread", ["userId", "read"])
+    .index("by_user_event", ["userId", "eventId"]),
 
   // Research Nodes - RP spending for perks (speed, money bonuses)
-  // NOTE: Queue, Staff, Compute are now UP-based (see playerState ranks)
+  // NOTE: This table is for DB storage if needed, but nodes come from contentCatalog
   researchNodes: defineTable({
     nodeId: v.string(),
     name: v.string(),
     description: v.string(),
     category: v.union(
-      v.literal("blueprints"),
-      v.literal("capabilities"),
-      v.literal("perks")
+      v.literal("blueprint"),
+      v.literal("capability"),
+      v.literal("perk")
     ),
     rpCost: v.number(),
     minLevel: v.number(),
@@ -153,7 +166,8 @@ export default defineSchema({
       v.literal("blueprint"),
       v.literal("job"),
       v.literal("world_action"),
-      v.literal("perk")
+      v.literal("perk"),
+      v.literal("system_flag")
     ),
     unlockTarget: v.string(),
     unlockDescription: v.string(),
@@ -193,4 +207,3 @@ export default defineSchema({
     ),
   }).index("by_unlock_id", ["unlockId"]),
 });
-

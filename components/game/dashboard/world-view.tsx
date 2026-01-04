@@ -1,12 +1,23 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { GlobeHemisphereWest, Trophy, Medal, Crown, Star } from "@phosphor-icons/react"
+import { 
+  GlobeHemisphereWest, 
+  Trophy, 
+  Medal, 
+  Crown, 
+  Star,
+  TextAa,
+  Microphone,
+  Image as ImageIcon
+} from "@phosphor-icons/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatCompact } from "@/lib/utils"
 
 export type LeaderboardType = "weekly" | "monthly" | "allTime"
+export type ModelTypeFilter = "all" | "llm" | "tts" | "vlm"
 
 interface WorldViewProps {
   labName: string
@@ -15,12 +26,18 @@ interface WorldViewProps {
 }
 
 export function WorldView({ labName, playerLevel, leaderboardType }: WorldViewProps) {
+  const [modelTypeFilter, setModelTypeFilter] = useState<ModelTypeFilter>("all")
+
   const leaderboard = useQuery(api.tasks.getLeaderboard, { 
     type: leaderboardType,
+    modelType: modelTypeFilter === "all" ? undefined : modelTypeFilter,
     limit: 20 
   })
 
-  const publicModels = useQuery(api.tasks.getPublicModels, { limit: 10 })
+  const publicModels = useQuery(api.tasks.getPublicModels, { 
+    limit: 10,
+    modelType: modelTypeFilter === "all" ? undefined : modelTypeFilter
+  })
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="w-5 h-5 text-amber-400" weight="fill" />
@@ -29,8 +46,66 @@ export function WorldView({ labName, playerLevel, leaderboardType }: WorldViewPr
     return <span className="text-sm text-muted-foreground w-5 text-center">{rank}</span>
   }
 
+  const getModelTypeIcon = (type: string) => {
+    switch (type) {
+      case "llm":
+        return <TextAa className="w-4 h-4 text-blue-400" />
+      case "tts":
+        return <Microphone className="w-4 h-4 text-cyan-400" />
+      case "vlm":
+        return <ImageIcon className="w-4 h-4 text-purple-400" />
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="space-y-6 mt-4">
+      {/* Model Type Filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground mr-2">Filter by model type:</span>
+        <button
+          onClick={() => setModelTypeFilter("all")}
+          className={`text-xs px-3 py-1.5 rounded transition-colors ${
+            modelTypeFilter === "all" 
+              ? "bg-white text-black font-bold" 
+              : "bg-white/10 hover:bg-white/20"
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setModelTypeFilter("llm")}
+          className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${
+            modelTypeFilter === "llm" 
+              ? "bg-blue-500 text-black font-bold" 
+              : "bg-white/10 hover:bg-white/20"
+          }`}
+        >
+          <TextAa className="w-3 h-3" /> LLM
+        </button>
+        <button
+          onClick={() => setModelTypeFilter("tts")}
+          className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${
+            modelTypeFilter === "tts" 
+              ? "bg-cyan-500 text-black font-bold" 
+              : "bg-white/10 hover:bg-white/20"
+          }`}
+        >
+          <Microphone className="w-3 h-3" /> TTS
+        </button>
+        <button
+          onClick={() => setModelTypeFilter("vlm")}
+          className={`text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 ${
+            modelTypeFilter === "vlm" 
+              ? "bg-purple-500 text-black font-bold" 
+              : "bg-white/10 hover:bg-white/20"
+          }`}
+        >
+          <ImageIcon className="w-3 h-3" /> VLM
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Leaderboard */}
         <Card>
@@ -40,6 +115,11 @@ export function WorldView({ labName, playerLevel, leaderboardType }: WorldViewPr
               {leaderboardType === "weekly" && "Weekly Leaderboard"}
               {leaderboardType === "monthly" && "Monthly Leaderboard"}
               {leaderboardType === "allTime" && "All-Time Leaderboard"}
+              {modelTypeFilter !== "all" && (
+                <span className="text-xs font-normal text-muted-foreground ml-2">
+                  ({modelTypeFilter.toUpperCase()} only)
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -86,6 +166,11 @@ export function WorldView({ labName, playerLevel, leaderboardType }: WorldViewPr
             <CardTitle className="text-lg flex items-center gap-2">
               <Star className="w-5 h-5 text-primary" />
               Top Public Models
+              {modelTypeFilter !== "all" && (
+                <span className="text-xs font-normal text-muted-foreground ml-2">
+                  ({modelTypeFilter.toUpperCase()} only)
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -103,6 +188,9 @@ export function WorldView({ labName, playerLevel, leaderboardType }: WorldViewPr
                   >
                     <div className="w-6 flex justify-center">
                       {getRankIcon(index + 1)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getModelTypeIcon(model.modelType)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{model.name}</p>

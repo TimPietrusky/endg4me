@@ -9,7 +9,9 @@
  */
 
 import type * as clans from "../clans.js";
+import type * as dev from "../dev.js";
 import type * as labs from "../labs.js";
+import type * as lib_contentCatalog from "../lib/contentCatalog.js";
 import type * as lib_gameConfig from "../lib/gameConfig.js";
 import type * as lib_gameConstants from "../lib/gameConstants.js";
 import type * as lib_skillTree from "../lib/skillTree.js";
@@ -27,7 +29,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   clans: typeof clans;
+  dev: typeof dev;
   labs: typeof labs;
+  "lib/contentCatalog": typeof lib_contentCatalog;
   "lib/gameConfig": typeof lib_gameConfig;
   "lib/gameConstants": typeof lib_gameConstants;
   "lib/skillTree": typeof lib_skillTree;

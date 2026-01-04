@@ -12,30 +12,37 @@ import {
   Lock,
   SortAscending,
   CheckCircle,
-  XCircle
+  XCircle,
+  Microphone,
+  Image as ImageIcon,
+  TextAa
 } from "@phosphor-icons/react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useMutation } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { formatCompact } from "@/lib/utils"
 
 export type VisibilityFilter = "all" | "public" | "private"
-export type ModelTypeFilter = "all" | "small_3b" | "medium_7b"
+export type ModelTypeFilter = "all" | "llm" | "tts" | "vlm"
 export type SortOption = "newest" | "oldest" | "highest_score" | "lowest_score"
 
 interface CollectionViewProps {
   labName: string
+  userId: Id<"users">
   models?: Doc<"trainedModels">[]
   bestScore?: number
 }
 
-export function CollectionView({ labName, models, bestScore }: CollectionViewProps) {
+export function CollectionView({ labName, userId, models, bestScore }: CollectionViewProps) {
   const toggleVisibility = useMutation(api.tasks.toggleModelVisibility)
+  const playerUnlocks = useQuery(api.research.getPlayerUnlocks, { userId })
   const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
   const [typeFilter, setTypeFilter] = useState<ModelTypeFilter>("all")
   const [sortOption, setSortOption] = useState<SortOption>("newest")
+
+  const publishingUnlocked = playerUnlocks?.enabledSystemFlags?.includes("publishing") ?? false
 
   // Filter models by visibility and type
   let filteredModels = models?.filter((model) => {
@@ -67,8 +74,9 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
 
   const publicCount = models?.filter((m) => m.visibility === "public").length || 0
   const privateCount = models?.filter((m) => m.visibility !== "public").length || 0
-  const smallCount = models?.filter((m) => m.modelType === "small_3b").length || 0
-  const mediumCount = models?.filter((m) => m.modelType === "medium_7b").length || 0
+  const llmCount = models?.filter((m) => m.modelType === "llm").length || 0
+  const ttsCount = models?.filter((m) => m.modelType === "tts").length || 0
+  const vlmCount = models?.filter((m) => m.modelType === "vlm").length || 0
 
   if (!models || models.length === 0) {
     return (
@@ -84,8 +92,8 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
   const handleToggleVisibility = async (modelId: Id<"trainedModels">) => {
     try {
       await toggleVisibility({ modelId })
-    } catch (error) {
-      console.error("Failed to toggle visibility:", error)
+    } catch (error: any) {
+      console.error("Failed to toggle visibility:", error?.message || error)
     }
   }
 
@@ -184,24 +192,34 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
             All Types
           </button>
           <button
-            onClick={() => setTypeFilter("small_3b")}
-            className={`text-xs px-2 py-1 rounded transition-colors ${
-              typeFilter === "small_3b" 
+            onClick={() => setTypeFilter("llm")}
+            className={`text-xs px-2 py-1 rounded transition-colors flex items-center gap-1 ${
+              typeFilter === "llm" 
+                ? "bg-blue-500 text-black font-bold" 
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            <TextAa className="w-3 h-3" /> LLM ({llmCount})
+          </button>
+          <button
+            onClick={() => setTypeFilter("tts")}
+            className={`text-xs px-2 py-1 rounded transition-colors flex items-center gap-1 ${
+              typeFilter === "tts" 
                 ? "bg-cyan-500 text-black font-bold" 
                 : "bg-white/10 hover:bg-white/20"
             }`}
           >
-            3B ({smallCount})
+            <Microphone className="w-3 h-3" /> TTS ({ttsCount})
           </button>
           <button
-            onClick={() => setTypeFilter("medium_7b")}
-            className={`text-xs px-2 py-1 rounded transition-colors ${
-              typeFilter === "medium_7b" 
+            onClick={() => setTypeFilter("vlm")}
+            className={`text-xs px-2 py-1 rounded transition-colors flex items-center gap-1 ${
+              typeFilter === "vlm" 
                 ? "bg-purple-500 text-black font-bold" 
                 : "bg-white/10 hover:bg-white/20"
             }`}
           >
-            7B ({mediumCount})
+            <ImageIcon className="w-3 h-3" /> VLM ({vlmCount})
           </button>
         </div>
 
@@ -222,12 +240,21 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
       </div>
 
       {/* Info Banner */}
-      <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-sm flex items-center gap-2">
-        <GlobeHemisphereWest className="w-4 h-4 text-green-400 flex-shrink-0" />
-        <span className="text-white/70">
-          Public models are eligible for leaderboards and visible on your public lab profile.
-        </span>
-      </div>
+      {publishingUnlocked ? (
+        <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-sm flex items-center gap-2">
+          <GlobeHemisphereWest className="w-4 h-4 text-green-400 flex-shrink-0" />
+          <span className="text-white/70">
+            Public models are eligible for leaderboards and visible on your public lab profile.
+          </span>
+        </div>
+      ) : (
+        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm flex items-center gap-2">
+          <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+          <span className="text-amber-200/70">
+            Publishing locked. Research &quot;Model Publishing&quot; to publish models and compete on leaderboards.
+          </span>
+        </div>
+      )}
 
       {/* Model Grid */}
       {filteredModels && filteredModels.length > 0 ? (
@@ -236,6 +263,7 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
             <ModelCard 
               key={model._id} 
               model={model} 
+              publishingUnlocked={publishingUnlocked}
               onToggleVisibility={() => handleToggleVisibility(model._id)}
             />
           ))}
@@ -251,25 +279,48 @@ export function CollectionView({ labName, models, bestScore }: CollectionViewPro
 
 interface ModelCardProps {
   model: Doc<"trainedModels">
+  publishingUnlocked: boolean
   onToggleVisibility: () => void
 }
 
-function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
-  const getModelSize = (type: string) => {
-    if (type === "small_3b") return "3B"
-    if (type === "medium_7b") return "7B"
-    return "?"
+function ModelCard({ model, publishingUnlocked, onToggleVisibility }: ModelCardProps) {
+  const getModelTypeIcon = (type: string) => {
+    switch (type) {
+      case "llm":
+        return <TextAa className="w-5 h-5 text-blue-400" weight="bold" />
+      case "tts":
+        return <Microphone className="w-5 h-5 text-cyan-400" weight="bold" />
+      case "vlm":
+        return <ImageIcon className="w-5 h-5 text-purple-400" weight="bold" />
+      default:
+        return <Brain className="w-5 h-5 text-primary" weight="bold" />
+    }
   }
 
   const getModelTypeName = (type: string) => {
-    if (type === "small_3b") return "TTS"
-    if (type === "medium_7b") return "VLM"
-    return "Unknown"
+    switch (type) {
+      case "llm":
+        return "LLM"
+      case "tts":
+        return "TTS"
+      case "vlm":
+        return "VLM"
+      default:
+        return "Unknown"
+    }
   }
 
   const getModelColor = (type: string) => {
-    if (type === "medium_7b") return "from-purple-500/20 to-purple-500/5 border-purple-500/30"
-    return "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30"
+    switch (type) {
+      case "llm":
+        return "from-blue-500/20 to-blue-500/5 border-blue-500/30"
+      case "tts":
+        return "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30"
+      case "vlm":
+        return "from-purple-500/20 to-purple-500/5 border-purple-500/30"
+      default:
+        return "from-gray-500/20 to-gray-500/5 border-gray-500/30"
+    }
   }
 
   const formatDate = (timestamp: number) => {
@@ -281,7 +332,7 @@ function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
     })
   }
 
-  const isPublic = model.visibility === "public" // undefined = private
+  const isPublic = model.visibility === "public"
 
   return (
     <Card className={`overflow-hidden bg-gradient-to-br ${getModelColor(model.modelType)}`}>
@@ -289,10 +340,10 @@ function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
         {/* Header with type and score */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-primary" weight="bold" />
+            {getModelTypeIcon(model.modelType)}
             <div>
               <span className="font-bold">{getModelTypeName(model.modelType)}</span>
-              <span className="text-xs text-muted-foreground ml-1">({getModelSize(model.modelType)})</span>
+              <span className="text-xs text-muted-foreground ml-1">v{model.version}</span>
             </div>
           </div>
           {model.score && (
@@ -329,24 +380,36 @@ function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
         </div>
         
         {/* Visibility Toggle */}
-        <Button
-          variant={isPublic ? "default" : "outline"}
-          size="sm"
-          className="w-full text-xs h-8"
-          onClick={onToggleVisibility}
-        >
-          {isPublic ? (
-            <>
-              <Eye className="w-3 h-3 mr-1" />
-              Public - Click to make Private
-            </>
-          ) : (
-            <>
-              <EyeSlash className="w-3 h-3 mr-1" />
-              Private - Click to Publish
-            </>
-          )}
-        </Button>
+        {publishingUnlocked ? (
+          <Button
+            variant={isPublic ? "default" : "outline"}
+            size="sm"
+            className="w-full text-xs h-8"
+            onClick={onToggleVisibility}
+          >
+            {isPublic ? (
+              <>
+                <Eye className="w-3 h-3 mr-1" />
+                Public - Click to make Private
+              </>
+            ) : (
+              <>
+                <EyeSlash className="w-3 h-3 mr-1" />
+                Private - Click to Publish
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs h-8 opacity-50"
+            disabled
+          >
+            <Lock className="w-3 h-3 mr-1" />
+            Publishing Locked
+          </Button>
+        )}
       </CardContent>
     </Card>
   )

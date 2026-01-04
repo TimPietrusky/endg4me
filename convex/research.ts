@@ -1,12 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { PERK_NODES } from "./lib/skillTree";
+import { RESEARCH_NODES, getResearchNodeById, INBOX_EVENTS } from "./lib/contentCatalog";
 
-// All research nodes come directly from config - NO DATABASE SEEDING NEEDED
-// Just edit skillTree.ts and changes take effect immediately
-// NOTE: Queue/Staff/Compute have moved to UP system (lab → upgrades)
-// This now only handles RP perks (research_speed, money_multiplier)
-const ALL_NODES = PERK_NODES;
+// All research nodes come directly from contentCatalog - NO DATABASE SEEDING NEEDED
+// Just edit contentCatalog.ts and changes take effect immediately
+const ALL_NODES = RESEARCH_NODES;
 
 // Get all research nodes (from config, not database)
 export const getResearchNodes = query({
@@ -41,10 +39,102 @@ export const hasResearchNode = query({
   },
 });
 
-// Helper to get node from config
-function getNodeFromConfig(nodeId: string) {
-  return ALL_NODES.find((n) => n.nodeId === nodeId);
+// Get starter unlocks (for new players)
+function getStarterUnlocks() {
+  const starterBlueprintIds: string[] = [];
+  const starterJobIds: string[] = ["job_research_literature"]; // Always available
+  const starterFlags: string[] = [];
+
+  // Auto-unlock free research nodes
+  for (const node of ALL_NODES) {
+    if (node.costRP === 0 && node.minLevel === 1 && node.prerequisiteNodes.length === 0) {
+      if (node.unlocks.unlocksBlueprintIds) {
+        starterBlueprintIds.push(...node.unlocks.unlocksBlueprintIds);
+      }
+      if (node.unlocks.unlocksJobIds) {
+        starterJobIds.push(...node.unlocks.unlocksJobIds);
+      }
+      if (node.unlocks.enablesSystemFlags) {
+        starterFlags.push(...node.unlocks.enablesSystemFlags);
+      }
+    }
+  }
+
+  return {
+    unlockedBlueprintIds: starterBlueprintIds,
+    unlockedJobIds: starterJobIds,
+    enabledSystemFlags: starterFlags,
+  };
 }
+
+// Get player unlocks (read-only, returns defaults if not found)
+async function getPlayerUnlocksOrDefaults(ctx: any, userId: any) {
+  const unlocks = await ctx.db
+    .query("playerUnlocks")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .first();
+
+  if (!unlocks) {
+    // Return defaults without creating a record (for queries)
+    return { _id: null, userId, ...getStarterUnlocks() };
+  }
+
+  return unlocks;
+}
+
+// Get or create player unlocks record (for mutations only)
+async function getOrCreatePlayerUnlocks(ctx: any, userId: any) {
+  let unlocks = await ctx.db
+    .query("playerUnlocks")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .first();
+
+  if (!unlocks) {
+    const starter = getStarterUnlocks();
+    const newId = await ctx.db.insert("playerUnlocks", {
+      userId,
+      ...starter,
+    });
+    unlocks = await ctx.db.get(newId);
+  }
+
+  return unlocks;
+}
+
+// Get player unlocks
+export const getPlayerUnlocks = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await getPlayerUnlocksOrDefaults(ctx, args.userId);
+  },
+});
+
+// Check if a specific job is unlocked
+export const isJobUnlocked = query({
+  args: { userId: v.id("users"), jobId: v.string() },
+  handler: async (ctx, args) => {
+    const unlocks = await getPlayerUnlocksOrDefaults(ctx, args.userId);
+    return unlocks?.unlockedJobIds?.includes(args.jobId) ?? false;
+  },
+});
+
+// Check if a specific blueprint is unlocked
+export const isBlueprintUnlocked = query({
+  args: { userId: v.id("users"), blueprintId: v.string() },
+  handler: async (ctx, args) => {
+    const unlocks = await getPlayerUnlocksOrDefaults(ctx, args.userId);
+    return unlocks?.unlockedBlueprintIds?.includes(args.blueprintId) ?? false;
+  },
+});
+
+// Check if a system flag is enabled
+export const isSystemFlagEnabled = query({
+  args: { userId: v.id("users"), flag: v.string() },
+  handler: async (ctx, args) => {
+    const unlocks = await getPlayerUnlocksOrDefaults(ctx, args.userId);
+    return unlocks?.enabledSystemFlags?.includes(args.flag) ?? false;
+  },
+});
 
 // Purchase a research node
 export const purchaseResearchNode = mutation({
@@ -54,7 +144,7 @@ export const purchaseResearchNode = mutation({
   },
   handler: async (ctx, args) => {
     // Get the research node FROM CONFIG (not database)
-    const node = getNodeFromConfig(args.nodeId);
+    const node = getResearchNodeById(args.nodeId);
 
     if (!node) {
       throw new Error("Research node not found");
@@ -96,7 +186,8 @@ export const purchaseResearchNode = mutation({
         .first();
 
       if (!hasPrereq) {
-        throw new Error(`Requires prerequisite research: ${prereqId}`);
+        const prereqNode = getResearchNodeById(prereqId);
+        throw new Error(`Requires prerequisite research: ${prereqNode?.name || prereqId}`);
       }
     }
 
@@ -119,29 +210,135 @@ export const purchaseResearchNode = mutation({
       throw new Error("Lab state not found");
     }
 
-    if (labState.researchPoints < node.rpCost) {
+    if (labState.researchPoints < node.costRP) {
       throw new Error("Not enough Research Points");
     }
 
     // Deduct RP
     await ctx.db.patch(labState._id, {
-      researchPoints: labState.researchPoints - node.rpCost,
+      researchPoints: labState.researchPoints - node.costRP,
     });
 
-    // Apply perk upgrades
-    if (node.unlockType === "perk" && node.perkType && node.perkValue !== undefined) {
-      const updates: Record<string, number> = {};
-      switch (node.perkType) {
+    // Get or create player unlocks
+    const unlocks = await getOrCreatePlayerUnlocks(ctx, args.userId);
+
+    // Apply unlock outputs based on node type
+    const updates: {
+      unlockedBlueprintIds?: string[];
+      unlockedJobIds?: string[];
+      enabledSystemFlags?: string[];
+    } = {};
+
+    // Unlock blueprints
+    if (node.unlocks.unlocksBlueprintIds && node.unlocks.unlocksBlueprintIds.length > 0) {
+      const currentBlueprints = unlocks.unlockedBlueprintIds || [];
+      const newBlueprints = node.unlocks.unlocksBlueprintIds.filter(
+        (id: string) => !currentBlueprints.includes(id)
+      );
+      if (newBlueprints.length > 0) {
+        updates.unlockedBlueprintIds = [...currentBlueprints, ...newBlueprints];
+      }
+    }
+
+    // Unlock jobs
+    if (node.unlocks.unlocksJobIds && node.unlocks.unlocksJobIds.length > 0) {
+      const currentJobs = unlocks.unlockedJobIds || [];
+      const newJobs = node.unlocks.unlocksJobIds.filter(
+        (id: string) => !currentJobs.includes(id)
+      );
+      if (newJobs.length > 0) {
+        updates.unlockedJobIds = [...currentJobs, ...newJobs];
+      }
+    }
+
+    // Enable system flags
+    if (node.unlocks.enablesSystemFlags && node.unlocks.enablesSystemFlags.length > 0) {
+      const currentFlags = unlocks.enabledSystemFlags || [];
+      const newFlags = node.unlocks.enablesSystemFlags.filter(
+        (flag: string) => !currentFlags.includes(flag)
+      );
+      if (newFlags.length > 0) {
+        updates.enabledSystemFlags = [...currentFlags, ...newFlags];
+      }
+    }
+
+    // Apply perk bonuses
+    if (node.category === "perk" && node.unlocks.perkType && node.unlocks.perkValue !== undefined) {
+      const labUpdates: Record<string, number> = {};
+      switch (node.unlocks.perkType) {
         case "research_speed":
-          updates.researchSpeedBonus = (labState.researchSpeedBonus || 0) + node.perkValue;
+          labUpdates.researchSpeedBonus = (labState.researchSpeedBonus || 0) + node.unlocks.perkValue;
           break;
         case "money_multiplier":
           // Additive: base 1.0 + bonuses (+0.1 per tier)
-          updates.moneyMultiplier = (labState.moneyMultiplier || 1.0) + node.perkValue;
+          labUpdates.moneyMultiplier = (labState.moneyMultiplier || 1.0) + node.unlocks.perkValue;
           break;
       }
-      if (Object.keys(updates).length > 0) {
-        await ctx.db.patch(labState._id, updates);
+      if (Object.keys(labUpdates).length > 0) {
+        await ctx.db.patch(labState._id, labUpdates);
+      }
+    }
+
+    // Update player unlocks if there are changes
+    if (Object.keys(updates).length > 0) {
+      await ctx.db.patch(unlocks._id, updates);
+
+      // Check for first research milestone
+      const purchasedCount = await ctx.db
+        .query("playerResearch")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect();
+
+      if (purchasedCount.length === 0) {
+        // This is their first research purchase - send milestone event
+        const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "first_research");
+        if (milestoneEvent) {
+          const existingEvent = await ctx.db
+            .query("notifications")
+            .withIndex("by_user_event", (q) =>
+              q.eq("userId", args.userId).eq("eventId", milestoneEvent.eventId)
+            )
+            .first();
+
+          if (!existingEvent) {
+            await ctx.db.insert("notifications", {
+              userId: args.userId,
+              type: "milestone",
+              title: milestoneEvent.title,
+              message: milestoneEvent.message,
+              read: false,
+              createdAt: Date.now(),
+              eventId: milestoneEvent.eventId,
+              deepLink: milestoneEvent.deepLink,
+            });
+          }
+        }
+      }
+
+      // Check for publishing unlock milestone
+      if (node.unlocks.enablesSystemFlags?.includes("publishing")) {
+        const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "publishing_unlocked");
+        if (milestoneEvent) {
+          const existingEvent = await ctx.db
+            .query("notifications")
+            .withIndex("by_user_event", (q) =>
+              q.eq("userId", args.userId).eq("eventId", milestoneEvent.eventId)
+            )
+            .first();
+
+          if (!existingEvent) {
+            await ctx.db.insert("notifications", {
+              userId: args.userId,
+              type: "milestone",
+              title: milestoneEvent.title,
+              message: milestoneEvent.message,
+              read: false,
+              createdAt: Date.now(),
+              eventId: milestoneEvent.eventId,
+              deepLink: milestoneEvent.deepLink,
+            });
+          }
+        }
       }
     }
 
@@ -152,17 +349,28 @@ export const purchaseResearchNode = mutation({
       purchasedAt: Date.now(),
     });
 
-    // Create notification
+    // Create completion notification
+    let unlockDescription = node.description;
+    if (node.unlocks.unlocksBlueprintIds?.length) {
+      unlockDescription = `Unlocked blueprint: ${node.unlocks.unlocksBlueprintIds.join(", ")}`;
+    } else if (node.unlocks.unlocksJobIds?.length) {
+      unlockDescription = `Unlocked job: ${node.unlocks.unlocksJobIds.join(", ")}`;
+    } else if (node.unlocks.enablesSystemFlags?.length) {
+      unlockDescription = `Enabled: ${node.unlocks.enablesSystemFlags.join(", ")}`;
+    } else if (node.unlocks.perkType) {
+      unlockDescription = `Perk bonus applied: ${node.unlocks.perkType}`;
+    }
+
     await ctx.db.insert("notifications", {
       userId: args.userId,
       type: "research_complete",
       title: `Research Complete: ${node.name}`,
-      message: node.unlockDescription,
+      message: unlockDescription,
       read: false,
       createdAt: Date.now(),
       deepLink: {
         view: "research",
-        target: node.unlockTarget,
+        target: node.category,
       },
     });
 
@@ -186,8 +394,28 @@ export const getResearchTreeState = query({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
 
+    const lab = await ctx.db
+      .query("labs")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    const labState = lab
+      ? await ctx.db
+          .query("labState")
+          .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+          .first()
+      : null;
+
     const purchasedIds = new Set(purchased.map((p) => p.nodeId));
     const playerLevel = playerState?.level || 1;
+    const currentRP = labState?.researchPoints || 0;
+
+    // Map singular categories to plural for UI consistency
+    const categoryMap: Record<string, string> = {
+      blueprint: "blueprints",
+      capability: "capabilities",
+      perk: "perks",
+    };
 
     return nodes.map((node) => {
       const isPurchased = purchasedIds.has(node.nodeId);
@@ -195,6 +423,7 @@ export const getResearchTreeState = query({
       const meetsPrereqs = node.prerequisiteNodes.every((prereq) =>
         purchasedIds.has(prereq)
       );
+      const canAfford = currentRP >= node.costRP;
 
       let lockReason: string | undefined;
       if (!meetsLevel) {
@@ -203,16 +432,53 @@ export const getResearchTreeState = query({
         const missingPrereq = node.prerequisiteNodes.find(
           (prereq) => !purchasedIds.has(prereq)
         );
-        lockReason = `Requires research: ${missingPrereq}`;
+        const prereqNode = getResearchNodeById(missingPrereq || "");
+        lockReason = `Requires: ${prereqNode?.name || missingPrereq}`;
+      } else if (!canAfford && !isPurchased) {
+        lockReason = `Need ${node.costRP} RP`;
       }
 
       return {
         ...node,
+        // Map category to plural for UI
+        category: categoryMap[node.category] || node.category,
+        // Flatten unlocks for easier UI access
+        rpCost: node.costRP,
+        unlockType: node.category,
+        unlockTarget: node.unlocks.unlocksBlueprintIds?.[0] ||
+                      node.unlocks.unlocksJobIds?.[0] ||
+                      node.unlocks.enablesSystemFlags?.[0] ||
+                      node.unlocks.perkType ||
+                      node.nodeId,
+        unlockDescription: getUnlockDescription(node),
+        perkType: node.unlocks.perkType,
+        perkValue: node.unlocks.perkValue,
+        // Status flags
         isPurchased,
-        isAvailable: !isPurchased && meetsLevel && meetsPrereqs,
+        isAvailable: !isPurchased && meetsLevel && meetsPrereqs && canAfford,
         isLocked: !isPurchased && (!meetsLevel || !meetsPrereqs),
         lockReason,
       };
     });
   },
 });
+
+// Helper to generate unlock description
+function getUnlockDescription(node: typeof RESEARCH_NODES[0]): string {
+  if (node.unlocks.unlocksBlueprintIds?.length) {
+    return `Unlock training: ${node.unlocks.unlocksBlueprintIds.join(", ")}`;
+  }
+  if (node.unlocks.unlocksJobIds?.length) {
+    return `Unlock job: ${node.unlocks.unlocksJobIds.join(", ")}`;
+  }
+  if (node.unlocks.enablesSystemFlags?.length) {
+    return `Enable: ${node.unlocks.enablesSystemFlags.join(", ")}`;
+  }
+  if (node.unlocks.perkType === "research_speed") {
+    return `+${node.unlocks.perkValue}% research speed`;
+  }
+  if (node.unlocks.perkType === "money_multiplier") {
+    return `+${(node.unlocks.perkValue || 0) * 100}% income`;
+  }
+  return node.description;
+}
