@@ -22,6 +22,7 @@ export function GameShell({ children }: GameShellProps) {
     playerState,
     xpRequired,
     unreadCount,
+    computeCapacity,
   } = useGameData()
 
   if (isLoading) {
@@ -52,7 +53,7 @@ export function GameShell({ children }: GameShellProps) {
         maxXp={xpRequired}
         cash={labState.cash}
         rp={labState.researchPoints}
-        gpus={labState.computeUnits}
+        gpus={computeCapacity}
         notificationCount={unreadCount}
       />
       

@@ -1,10 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { ATTRIBUTE_NODES } from "./lib/skillTree";
+import { PERK_NODES } from "./lib/skillTree";
 
 // All research nodes come directly from config - NO DATABASE SEEDING NEEDED
 // Just edit skillTree.ts and changes take effect immediately
-const ALL_NODES = ATTRIBUTE_NODES;
+// NOTE: Queue/Staff/Compute have moved to UP system (lab → upgrades)
+// This now only handles RP perks (research_speed, money_multiplier)
+const ALL_NODES = PERK_NODES;
 
 // Get all research nodes (from config, not database)
 export const getResearchNodes = query({
@@ -126,25 +128,16 @@ export const purchaseResearchNode = mutation({
       researchPoints: labState.researchPoints - node.rpCost,
     });
 
-    // Apply attribute upgrades if this is an attribute node
-    if (node.unlockType === "attribute" && node.attributeType && node.attributeValue) {
+    // Apply perk upgrades
+    if (node.unlockType === "perk" && node.perkType && node.perkValue !== undefined) {
       const updates: Record<string, number> = {};
-      switch (node.attributeType) {
-        case "queue_slots":
-          updates.parallelTasks = labState.parallelTasks + node.attributeValue;
-          break;
-        case "staff_capacity":
-          updates.staffCapacity = labState.staffCapacity + node.attributeValue;
-          break;
-        case "compute_units":
-          updates.computeUnits = labState.computeUnits + node.attributeValue;
-          break;
+      switch (node.perkType) {
         case "research_speed":
-          updates.researchSpeedBonus = (labState.researchSpeedBonus || 0) + node.attributeValue;
+          updates.researchSpeedBonus = (labState.researchSpeedBonus || 0) + node.perkValue;
           break;
         case "money_multiplier":
-          // Additive: base 1.0 + bonuses
-          updates.moneyMultiplier = (labState.moneyMultiplier || 1.0) + (node.attributeValue - 1.0);
+          // Additive: base 1.0 + bonuses (+0.1 per tier)
+          updates.moneyMultiplier = (labState.moneyMultiplier || 1.0) + node.perkValue;
           break;
       }
       if (Object.keys(updates).length > 0) {

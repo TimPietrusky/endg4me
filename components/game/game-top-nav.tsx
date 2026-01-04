@@ -44,7 +44,6 @@ export function GameTopNav({
     if (pathname === "/lab") return "lab"
     if (pathname === "/inbox") return "inbox"
     if (pathname === "/world") return "world"
-    if (pathname === "/level") return "level"
     return null // No nav item active for unknown routes
   }
   
@@ -98,7 +97,6 @@ export function GameTopNav({
                 level={level}
                 xp={xp}
                 maxXp={maxXp}
-                isActive={currentView === "level"}
               />
 
               <div className="flex items-center gap-1.5 text-sm">

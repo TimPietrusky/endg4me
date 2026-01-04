@@ -6,19 +6,16 @@ interface LevelProgressProps {
   level: number
   xp: number
   maxXp: number
-  isActive?: boolean
 }
 
-export function LevelProgress({ level, xp, maxXp, isActive }: LevelProgressProps) {
+export function LevelProgress({ level, xp, maxXp }: LevelProgressProps) {
   const progressPercent = Math.min((xp / maxXp) * 100, 100)
 
   return (
     <Link
-      href="/level"
-      className={`flex items-center gap-1.5 hover:bg-white/10 px-2 py-1 rounded transition-colors ${
-        isActive ? "bg-white/10" : ""
-      }`}
-      title="View level progression and RP rewards"
+      href="/lab/levels"
+      className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-1 rounded transition-colors"
+      title="View level progression and UP rewards"
     >
       {/* Level number - large */}
       <span className="text-xl font-bold text-white leading-none">{level}</span>

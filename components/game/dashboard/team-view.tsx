@@ -12,7 +12,7 @@ import {
   UserPlus
 } from "@phosphor-icons/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { FOUNDER_MODIFIERS } from "@/convex/lib/gameConstants"
+import { FOUNDER_MODIFIERS } from "@/convex/lib/gameConfig"
 
 interface TeamViewProps {
   founderName: string

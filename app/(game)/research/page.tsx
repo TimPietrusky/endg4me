@@ -3,13 +3,12 @@
 import { useState } from "react"
 import { useGameData } from "@/components/providers/game-data-provider"
 import { SubNavContainer, SubNavButton } from "@/components/game/dashboard/sub-nav"
-import { AttributesPanel } from "@/components/game/dashboard/attributes-panel"
 import { PerkTree } from "@/components/game/dashboard/perk-tree"
 import type { Id } from "@/convex/_generated/dataModel"
 
-// Research view tabs - no icons, clean text only
+// Research view tabs - RP-only (queue/staff/compute moved to Lab > Upgrades)
+// Attributes tab removed per 004_upgrade_points user story
 const RESEARCH_TABS = [
-  { id: "attributes", label: "ATTRIBUTES" },
   { id: "blueprints", label: "BLUEPRINTS" },
   { id: "capabilities", label: "CAPABILITIES" },
   { id: "perks", label: "PERKS" },
@@ -18,10 +17,10 @@ const RESEARCH_TABS = [
 type ResearchTab = typeof RESEARCH_TABS[number]["id"]
 
 export default function ResearchPage() {
-  const { userId, lab, labState, playerState } = useGameData()
-  const [activeTab, setActiveTab] = useState<ResearchTab>("attributes")
+  const { userId, labState } = useGameData()
+  const [activeTab, setActiveTab] = useState<ResearchTab>("blueprints")
 
-  if (!userId || !labState || !lab) {
+  if (!userId || !labState) {
     return null
   }
 
@@ -43,21 +42,6 @@ export default function ResearchPage() {
 
       {/* Main content */}
       <div>
-        {activeTab === "attributes" && (
-          <AttributesPanel
-            userId={userId as Id<"users">}
-            currentRp={labState.researchPoints}
-            queueSlots={labState.parallelTasks}
-            staffCapacity={labState.staffCapacity}
-            computeUnits={labState.computeUnits}
-            researchSpeedBonus={labState.researchSpeedBonus || 0}
-            moneyMultiplier={labState.moneyMultiplier || 1.0}
-            founderType={lab.founderType}
-            juniorResearchers={labState.juniorResearchers}
-            playerLevel={playerState?.level || 1}
-          />
-        )}
-
         {activeTab === "blueprints" && (
           <PerkTree
             userId={userId as Id<"users">}

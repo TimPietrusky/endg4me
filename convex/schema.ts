@@ -18,21 +18,16 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
 
-  // Lab State - resources and capacity
+  // Lab State - resources and RP-based bonuses
+  // NOTE: Queue/Staff/Compute capacity now comes from playerState ranks (UP system)
   labState: defineTable({
     labId: v.id("labs"),
     cash: v.number(),
     researchPoints: v.number(),
-    computeUnits: v.number(),
-    staffCapacity: v.number(),
-    parallelTasks: v.number(),
-    // Track staff hired
     juniorResearchers: v.number(),
-    // Attribute bonuses (from Research spending)
+    // RP-based perk bonuses (from Research spending)
     researchSpeedBonus: v.optional(v.number()), // Percentage bonus, e.g., 10 = 10% faster
     moneyMultiplier: v.optional(v.number()),    // Multiplier, e.g., 1.1 = 10% more
-    // DEPRECATED: reputation removed in 002_progression, kept optional for migration
-    reputation: v.optional(v.number()),
   }).index("by_lab", ["labId"]),
 
   // Player State - personal progression
@@ -41,6 +36,11 @@ export default defineSchema({
     level: v.number(),
     experience: v.number(),
     clanId: v.optional(v.id("clans")),
+    // Upgrade Points system (004_upgrade_points)
+    upgradePoints: v.optional(v.number()), // UP balance (earned on level up)
+    queueRank: v.optional(v.number()),     // Queue upgrade rank (0 = base)
+    staffRank: v.optional(v.number()),     // Staff upgrade rank (0 = base)
+    computeRank: v.optional(v.number()),   // Compute upgrade rank (0 = base)
   }).index("by_user", ["userId"]),
 
   // Tasks - queued actions
@@ -50,8 +50,7 @@ export default defineSchema({
       v.literal("train_small_model"),
       v.literal("train_medium_model"),
       v.literal("freelance_contract"),
-      v.literal("hire_junior_researcher"),
-      v.literal("rent_gpu_cluster")
+      v.literal("hire_junior_researcher")
     ),
     status: v.union(
       v.literal("queued"),
@@ -67,8 +66,6 @@ export default defineSchema({
         cash: v.optional(v.number()),
         researchPoints: v.optional(v.number()),
         experience: v.optional(v.number()),
-        // DEPRECATED: reputation removed in 002_progression, kept optional for migration
-        reputation: v.optional(v.number()),
       })
     ),
   })
@@ -129,8 +126,7 @@ export default defineSchema({
           v.literal("research"),
           v.literal("lab"),
           v.literal("inbox"),
-          v.literal("world"),
-          v.literal("level")
+          v.literal("world")
         ),
         target: v.optional(v.string()),
       })
@@ -139,45 +135,34 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_unread", ["userId", "read"]),
 
-  // Research Nodes - RP spending for permanent unlocks
+  // Research Nodes - RP spending for perks (speed, money bonuses)
+  // NOTE: Queue, Staff, Compute are now UP-based (see playerState ranks)
   researchNodes: defineTable({
-    nodeId: v.string(), // Unique identifier like "llm_17b_blueprint"
+    nodeId: v.string(),
     name: v.string(),
     description: v.string(),
     category: v.union(
-      v.literal("attributes"),   // Global stats: queue, staff, CU, speed, money
-      v.literal("blueprints"),   // Model blueprints
-      v.literal("capabilities"), // New job types, features
-      v.literal("perks")         // Passive bonuses
+      v.literal("blueprints"),
+      v.literal("capabilities"),
+      v.literal("perks")
     ),
     rpCost: v.number(),
-    // Requirements
     minLevel: v.number(),
-    prerequisiteNodes: v.array(v.string()), // nodeIds of required nodes
-    // What this unlocks
+    prerequisiteNodes: v.array(v.string()),
     unlockType: v.union(
-      v.literal("attribute"),    // Increases global stat
       v.literal("blueprint"),
       v.literal("job"),
       v.literal("world_action"),
       v.literal("perk")
     ),
-    unlockTarget: v.string(), // ID of what gets unlocked
+    unlockTarget: v.string(),
     unlockDescription: v.string(),
-    // For attributes: which stat and how much
-    attributeType: v.optional(v.union(
-      v.literal("queue_slots"),
-      v.literal("staff_capacity"),
-      v.literal("compute_units"),
+    // For perks: which bonus and how much
+    perkType: v.optional(v.union(
       v.literal("research_speed"),
       v.literal("money_multiplier")
     )),
-    attributeValue: v.optional(v.number()), // How much to add/multiply
-    // Visual positioning for skill tree (optional)
-    position: v.optional(v.object({
-      x: v.number(),
-      y: v.number(),
-    })),
+    perkValue: v.optional(v.number()),
   }).index("by_node_id", ["nodeId"])
    .index("by_category", ["category"]),
 

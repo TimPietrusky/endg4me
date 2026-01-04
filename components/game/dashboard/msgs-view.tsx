@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EnvelopeSimple, Trophy, CheckCircle, User, Star, UserPlus, Lightning, ArrowRight } from "@phosphor-icons/react"
@@ -11,10 +13,19 @@ interface MsgsViewProps {
   notifications: Notification[]
   filter: InboxFilter
   onMarkAsRead?: (id: string | number) => void
-  onNavigate?: (view: ViewType, target?: string) => void
 }
 
-export function MsgsView({ notifications, filter, onMarkAsRead, onNavigate }: MsgsViewProps) {
+// Build URL from deepLink data
+function getDeepLinkUrl(view: ViewType, target?: string): string {
+  if (view === "lab" && target) {
+    return `/lab/${target}`
+  }
+  return `/${view}`
+}
+
+export function MsgsView({ notifications, filter, onMarkAsRead }: MsgsViewProps) {
+  const router = useRouter()
+
   // Filter notifications based on read status
   const filteredNotifications = notifications.filter((n) => {
     if (filter === "all") return true
@@ -68,8 +79,9 @@ export function MsgsView({ notifications, filter, onMarkAsRead, onNavigate }: Ms
 
   const handleClick = (notification: Notification) => {
     onMarkAsRead?.(notification.id)
-    if (notification.deepLink && onNavigate) {
-      onNavigate(notification.deepLink.view, notification.deepLink.target)
+    if (notification.deepLink) {
+      const url = getDeepLinkUrl(notification.deepLink.view, notification.deepLink.target)
+      router.push(url)
     }
   }
 
@@ -101,19 +113,18 @@ export function MsgsView({ notifications, filter, onMarkAsRead, onNavigate }: Ms
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                {notification.deepLink && onNavigate && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs h-6 px-0 mt-2 text-primary"
+                {notification.deepLink && (
+                  <Link
+                    href={getDeepLinkUrl(notification.deepLink.view, notification.deepLink.target)}
+                    className="inline-flex items-center text-xs h-6 mt-2 text-primary hover:underline"
                     onClick={(e) => {
                       e.stopPropagation()
-                      onNavigate(notification.deepLink!.view, notification.deepLink!.target)
+                      onMarkAsRead?.(notification.id)
                     }}
                   >
                     {getDeepLinkLabel(notification.deepLink.view)}
                     <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
+                  </Link>
                 )}
               </div>
             </CardContent>

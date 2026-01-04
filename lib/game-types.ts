@@ -57,6 +57,6 @@ export interface Notification {
   deepLink?: { view: ViewType; target?: string }
 }
 
-// New 5-tab navigation: operate / research / lab / inbox / world
-export type ViewType = "operate" | "research" | "lab" | "inbox" | "world" | "level"
+// 5-tab navigation: operate / research / lab / inbox / world
+export type ViewType = "operate" | "research" | "lab" | "inbox" | "world"
 

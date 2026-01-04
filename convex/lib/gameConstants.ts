@@ -1,28 +1,16 @@
 // Game constants based on planning doc
+// NOTE: Core progression (XP, levels, UP, upgrades) in ./gameConfig.ts
+// This file contains task/job definitions
 
-// Founder modifiers
-export const FOUNDER_MODIFIERS = {
-  technical: {
-    researchSpeed: 1.25, // +25%
-    modelScore: 1.1, // +10%
-    moneyRewards: 0.8, // -20%
-    hiringSpeed: 1.0,
-  },
-  business: {
-    researchSpeed: 0.8, // -20%
-    modelScore: 1.0,
-    moneyRewards: 1.3, // +30%
-    hiringSpeed: 1.2, // +20%
-  },
-} as const;
+import { FOUNDER_MODIFIERS, BASE_STATS } from "./gameConfig";
 
-// Initial lab state (reputation removed per user story 002)
+// Re-export for backwards compatibility
+export { FOUNDER_MODIFIERS };
+
+// Initial lab state
 export const INITIAL_LAB_STATE = {
-  cash: 5000,
-  researchPoints: 0,
-  computeUnits: 1,
-  staffCapacity: 2,
-  parallelTasks: 1,
+  cash: BASE_STATS.cash,
+  researchPoints: BASE_STATS.researchPoints,
   juniorResearchers: 0,
 };
 
@@ -30,33 +18,11 @@ export const INITIAL_LAB_STATE = {
 export const INITIAL_PLAYER_STATE = {
   level: 1,
   experience: 0,
+  upgradePoints: 0,
+  queueRank: 0,
+  staffRank: 0,
+  computeRank: 0,
 };
-
-// XP curve: level -> XP required for next level (max level 20)
-export const XP_CURVE: Record<number, number> = {
-  1: 100,
-  2: 300,
-  3: 700,
-  4: 1500,
-  5: 3300,
-  6: 7260,
-  7: 15972,
-  8: 35139,
-  9: 77306,
-  10: 170073,
-  11: 374160,
-  12: 823152,
-  13: 1810934,
-  14: 3984055,
-  15: 8764921,
-  16: 19282826,
-  17: 42422217,
-  18: 93328878,
-  19: 205323531,
-  20: Infinity, // Max level
-};
-
-export const MAX_LEVEL = 20;
 
 // Task base reward type (reputation removed)
 export interface TaskBaseRewards {
@@ -130,50 +96,20 @@ export const TASKS: Record<string, TaskConfig> = {
     },
     randomRange: { min: 1.0, max: 1.0 },
   },
-  rent_gpu_cluster: {
-    name: "Rent GPU Cluster",
-    duration: 1 * 60 * 1000, // 1 minute in ms
-    cost: 3000,
-    computeRequired: 0,
-    effects: {
-      computeBonus: 1, // +1 GPU
-    },
-    baseRewards: {
-      experience: 30,
-    },
-    randomRange: { min: 1.0, max: 1.0 },
-  },
 };
 
 // Level rewards and unlocks
+// Note: Queue slots now come from UP upgrades, not level-based unlocks
 export const LEVEL_REWARDS = {
   globalEfficiencyPerLevel: 0.01, // +1% per level
   clanUnlockLevel: 3,
-  // Queue system - unlocks progressively
-  queueUnlocks: {
-    2: 1, // Level 2: unlock queue with 1 slot
-    4: 2, // Level 4: 2 queue slots
-    6: 3, // Level 6: 3 queue slots
-    8: 4, // Level 8: 4 queue slots
-  } as Record<number, number>,
 };
-
-// Get queue slots for a level
-export function getQueueSlotsForLevel(level: number): number {
-  let slots = 0;
-  for (const [unlockLevel, slotCount] of Object.entries(LEVEL_REWARDS.queueUnlocks)) {
-    if (level >= parseInt(unlockLevel)) {
-      slots = slotCount;
-    }
-  }
-  return slots;
-}
 
 // Clan bonuses (reputation removed, now grants XP bonus)
 export const CLAN_BONUS = {
   xpGain: 1.05, // +5% XP
 };
 
-export type TaskType = "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher" | "rent_gpu_cluster";
+export type TaskType = "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher";
 export type FounderType = keyof typeof FOUNDER_MODIFIERS;
 

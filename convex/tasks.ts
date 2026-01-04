@@ -2,16 +2,18 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import {
   TASKS,
-  FOUNDER_MODIFIERS,
-  XP_CURVE,
   LEVEL_REWARDS,
   CLAN_BONUS,
-  MAX_LEVEL,
-  getQueueSlotsForLevel,
   type TaskType,
   type TaskConfig,
 } from "./lib/gameConstants";
-import { RP_REWARDS } from "./lib/skillTree";
+import {
+  FOUNDER_MODIFIERS,
+  MAX_LEVEL,
+  XP_THRESHOLDS,
+  UP_PER_LEVEL,
+  getUpgradeValue,
+} from "./lib/gameConfig";
 import { internal } from "./_generated/api";
 
 // Helper to calculate random factor
@@ -27,8 +29,7 @@ export const startTask = mutation({
       v.literal("train_small_model"),
       v.literal("train_medium_model"),
       v.literal("freelance_contract"),
-      v.literal("hire_junior_researcher"),
-      v.literal("rent_gpu_cluster")
+      v.literal("hire_junior_researcher")
     ),
   },
   handler: async (ctx, args) => {
@@ -59,19 +60,33 @@ export const startTask = mutation({
         )
         .collect();
       
+      // Get compute capacity from UP rank
+      const playerStateForCompute = await ctx.db
+        .query("playerState")
+        .withIndex("by_user", (q) => q.eq("userId", lab.userId))
+        .first();
+      const computeRank = playerStateForCompute?.computeRank ?? 0;
+      const computeCapacity = getUpgradeValue("compute", computeRank);
+      
       const usedCompute = activeTasks.filter(
         (t) => t.type === "train_small_model" || t.type === "train_medium_model"
       ).length;
 
-      if (usedCompute >= labState.computeUnits) {
+      if (usedCompute >= computeCapacity) {
         throw new Error("Not enough compute units");
       }
     }
 
-    // Check staff capacity (for hiring)
+    // Check staff capacity (for hiring) - uses UP rank-based capacity
     if (args.taskType === "hire_junior_researcher") {
-      const staffUsed = labState.juniorResearchers;
-      if (staffUsed >= labState.staffCapacity) {
+      const playerState = await ctx.db
+        .query("playerState")
+        .withIndex("by_user", (q) => q.eq("userId", lab.userId))
+        .first();
+      const staffRank = playerState?.staffRank ?? 0;
+      const staffCapacity = getUpgradeValue("staff", staffRank);
+      
+      if (labState.juniorResearchers >= staffCapacity) {
         throw new Error("Staff capacity full");
       }
     }
@@ -103,40 +118,13 @@ export const startTask = mutation({
       .first();
 
     const playerLevel = playerState?.level || 1;
-    const queueSlots = getQueueSlotsForLevel(playerLevel);
+    // Parallel task slots come from queue upgrade rank + junior researchers
+    const queueRank = playerState?.queueRank ?? 0;
+    const baseQueueSlots = getUpgradeValue("queue", queueRank);
+    const maxParallelTasks = baseQueueSlots + labState.juniorResearchers;
 
-    if (inProgressTasks.length >= labState.parallelTasks) {
-      // Check if player has queue unlocked
-      if (queueSlots === 0) {
-        throw new Error("Task queue not unlocked yet. Reach level 2 to unlock!");
-      }
-
-      // Check queue capacity
-      const queuedTasks = await ctx.db
-        .query("tasks")
-        .withIndex("by_lab_status", (q) =>
-          q.eq("labId", args.labId).eq("status", "queued")
-        )
-        .collect();
-
-      if (queuedTasks.length >= queueSlots) {
-        throw new Error(`Queue full! You have ${queueSlots} queue slot(s) at level ${playerLevel}.`);
-      }
-
-      // Queue the task
-      const taskId = await ctx.db.insert("tasks", {
-        labId: args.labId,
-        type: args.taskType,
-        status: "queued",
-        createdAt: Date.now(),
-      });
-
-      // Deduct cost
-      await ctx.db.patch(labState._id, {
-        cash: labState.cash - taskConfig.cost,
-      });
-
-      return { taskId, status: "queued", queuePosition: queuedTasks.length + 1 };
+    if (inProgressTasks.length >= maxParallelTasks) {
+      throw new Error(`All ${maxParallelTasks} task slot(s) in use. Wait for a task to complete or upgrade Queue Capacity.`);
     }
 
     // Calculate duration with modifiers
@@ -285,10 +273,6 @@ export const completeTask = internalMutation({
       updates.juniorResearchers = labState.juniorResearchers + 1;
     }
 
-    // Handle GPU rental completion
-    if (task.type === "rent_gpu_cluster") {
-      updates.computeUnits = labState.computeUnits + 1;
-    }
 
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(labState._id, updates);
@@ -320,42 +304,29 @@ export const completeTask = internalMutation({
     // Update player XP and check level up (max level 20)
     if (rewards.experience) {
       const newXP = playerState.experience + rewards.experience;
-      const xpRequired = XP_CURVE[playerState.level] || Infinity;
+      // XP_THRESHOLDS is cumulative - check if we've reached next level's threshold
+      const nextLevelThreshold = XP_THRESHOLDS[playerState.level + 1] ?? Infinity;
 
-      if (newXP >= xpRequired && playerState.level < MAX_LEVEL) {
+      if (newXP >= nextLevelThreshold && playerState.level < MAX_LEVEL) {
         // Level up!
         const newLevel = playerState.level + 1;
+        const currentUP = playerState.upgradePoints ?? 0;
+        
         await ctx.db.patch(playerState._id, {
-          experience: newXP - xpRequired,
+          experience: newXP, // Keep total XP (cumulative system)
           level: newLevel,
+          upgradePoints: currentUP + UP_PER_LEVEL,
         });
 
-        // Grant RP reward for leveling up
-        const rpReward = RP_REWARDS[newLevel] || 0;
-        if (rpReward > 0) {
-          // Get fresh lab state for accurate RP
-          const freshLabState = await ctx.db
-            .query("labState")
-            .withIndex("by_lab", (q) => q.eq("labId", task.labId))
-            .first();
-          if (freshLabState) {
-            await ctx.db.patch(freshLabState._id, {
-              researchPoints: freshLabState.researchPoints + rpReward,
-            });
-          }
-        }
-
-        // Create level up notification with RP reward
+        // Create level up notification with UP reward
         await ctx.db.insert("notifications", {
           userId: lab.userId,
           type: "level_up",
           title: "Level Up!",
-          message: rpReward > 0 
-            ? `You've reached level ${newLevel}! +${rpReward} RP`
-            : `You've reached level ${newLevel}!`,
+          message: `You've reached level ${newLevel}! +${UP_PER_LEVEL} UP`,
           read: false,
           createdAt: Date.now(),
-          deepLink: { view: "level" as const },
+          deepLink: { view: "lab" as const, target: "upgrades" },
         });
 
         // Check for clan unlock
@@ -416,7 +387,12 @@ export const completeTask = internalMutation({
         .withIndex("by_lab", (q) => q.eq("labId", task.labId))
         .first();
 
-      if (freshLabState && inProgressCount.length < freshLabState.parallelTasks) {
+      // Calculate max parallel tasks from UP rank
+      const queueRank = playerState.queueRank ?? 0;
+      const baseQueueSlots = getUpgradeValue("queue", queueRank);
+      const maxParallelTasks = baseQueueSlots + (freshLabState?.juniorResearchers || 0);
+
+      if (freshLabState && inProgressCount.length < maxParallelTasks) {
         // Start the queued task
         const now = Date.now();
         const queuedTaskConfig = TASKS[nextQueued.type] as TaskConfig;
@@ -515,8 +491,7 @@ export const canAffordTask = query({
       v.literal("train_small_model"),
       v.literal("train_medium_model"),
       v.literal("freelance_contract"),
-      v.literal("hire_junior_researcher"),
-      v.literal("rent_gpu_cluster")
+      v.literal("hire_junior_researcher")
     ),
   },
   handler: async (ctx, args) => {
@@ -534,7 +509,21 @@ export const canAffordTask = query({
     }
 
     if (args.taskType === "hire_junior_researcher") {
-      if (labState.juniorResearchers >= labState.staffCapacity) {
+      // Get staff capacity from UP rank
+      const lab = await ctx.db
+        .query("labs")
+        .filter((q) => q.eq(q.field("_id"), args.labId))
+        .first();
+      if (!lab) return { canAfford: false, reason: "Lab not found" };
+      
+      const playerState = await ctx.db
+        .query("playerState")
+        .withIndex("by_user", (q) => q.eq("userId", lab.userId))
+        .first();
+      const staffRank = playerState?.staffRank ?? 0;
+      const staffCapacity = getUpgradeValue("staff", staffRank);
+      
+      if (labState.juniorResearchers >= staffCapacity) {
         return { canAfford: false, reason: "Staff capacity full" };
       }
     }
@@ -552,19 +541,13 @@ export const getQueueStatus = query({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
 
-    const level = playerState?.level || 1;
-    const queueSlots = getQueueSlotsForLevel(level);
-    const nextUnlockLevel = Object.keys(LEVEL_REWARDS.queueUnlocks)
-      .map(Number)
-      .find((l) => l > level);
+    const queueRank = playerState?.queueRank ?? 0;
+    const queueSlots = getUpgradeValue("queue", queueRank);
 
     return {
-      unlocked: queueSlots > 0,
+      unlocked: true, // Queue is always available in UP system (base = 1 slot)
       slots: queueSlots,
-      nextUnlockLevel,
-      nextUnlockSlots: nextUnlockLevel
-        ? LEVEL_REWARDS.queueUnlocks[nextUnlockLevel]
-        : null,
+      rank: queueRank,
     };
   },
 });

@@ -135,12 +135,11 @@ The homepage (`app/page.tsx`) is the landing page. The game uses top-level route
 
 ### Research View Structure (Cyberpunk-inspired)
 
-Research is the central hub for all player progression:
+Research is for RP-based unlocks (global stats moved to Lab > Upgrades):
 
-1. **Attributes** (Hexagonal grid): Global stats - queue, staff, CU, research speed, income boost
-2. **Blueprints**: Model training capabilities (branching tree)
-3. **Capabilities**: Job types, features, world actions (branching tree)
-4. **Perks**: Passive bonuses (branching tree)
+1. **Blueprints**: Model training capabilities (branching tree)
+2. **Capabilities**: Job types, features, world actions (branching tree)
+3. **Perks**: Passive bonuses like research speed and income boost (branching tree)
 
 Each node has:
 
@@ -149,24 +148,41 @@ Each node has:
 - Prerequisite nodes (must purchase in order)
 - Immediate effect on purchase
 
+### Lab View Structure
+
+Lab is your organization/ownership hub (nested routes under `/lab`):
+
+1. **Upgrades**: Spend UP on queue/staff/compute ranks (`/lab/upgrades`)
+2. **Team**: Founder and hired staff roster (`/lab/team`)
+3. **Models**: Trained model collection with visibility toggle (`/lab/models`)
+4. **Levels**: Level progression table with XP thresholds and UP rewards (`/lab/levels`)
+
 ### Progression System
 
 **XP / Level (max 20)**:
 
 - Earned by completing jobs
-- **Gates access** to research nodes (min level requirements)
+- **Gates access** to research nodes and upgrade ranks
 - XP is never spent
-- Level no longer grants automatic rewards - players choose where to invest RP
+- Level-up grants **Upgrade Points (UP)**, not RP
+
+**Upgrade Points (UP)**:
+
+- Earned only from level-ups (+1 UP per level)
+- Spent only in Lab > Upgrades for core lab stats:
+  - **Queue**: max concurrent jobs (base 1, max rank 8)
+  - **Staff**: max active hires (base 1, max rank 6)
+  - **Compute**: compute units for parallel training (base 1, max rank 10)
+- 1 UP = 1 rank increase (no cost scaling)
+- Higher ranks level-gated to prevent early dumping
 
 **Research Points (RP)**:
 
 - Earned by training jobs and research jobs
-- Spent in Research view for **all** permanent upgrades:
-  - **Attributes**: queue slots, staff capacity, compute units, research speed, money multiplier
+- Spent in Research view for perks only:
   - **Blueprints**: model training capabilities
   - **Capabilities**: new job types, features
-  - **Perks**: passive bonuses
-- Single currency for simplicity - accessible for non-hardcore gamers
+  - **Perks**: passive bonuses (research speed, money multiplier)
 
 **Money**:
 
@@ -231,7 +247,13 @@ endg4me/
 │   │   ├── page.tsx         # Redirects to /operate
 │   │   ├── operate/page.tsx # TasksView (day-to-day operations)
 │   │   ├── research/page.tsx # ResearchView (RP spending)
-│   │   ├── lab/page.tsx     # CollectionView (models, organization)
+│   │   ├── lab/
+│   │   │   ├── layout.tsx   # Lab header + sub-nav
+│   │   │   ├── page.tsx     # Redirects to /lab/upgrades
+│   │   │   ├── upgrades/page.tsx # UpgradesView (UP spending)
+│   │   │   ├── team/page.tsx     # TeamView (roster)
+│   │   │   ├── models/page.tsx   # CollectionView (trained models)
+│   │   │   └── levels/page.tsx   # LevelsView (XP/UP progression)
 │   │   ├── inbox/page.tsx   # MsgsView (notifications)
 │   │   └── world/page.tsx   # WorldView (leaderboards)
 │   ├── api/                 # API routes (auth callbacks)
@@ -261,6 +283,8 @@ endg4me/
 ├── lib/                     # Utilities
 │   ├── game-types.ts        # TypeScript types for game
 │   └── utils.ts             # Helper functions
+├── scripts/                 # CLI utilities
+│   └── generate-image.mjs   # AI image generation for game assets
 ├── design/                  # Reference designs (not deployed)
 └── docs/                    # Documentation
 ```
@@ -336,7 +360,34 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 
 ---
 
-_Last updated: 2026-01-04 (route-based navigation)_
+## Asset Generation (CLI utility)
+
+Use `scripts/generate-image.mjs` to generate game assets (action card backgrounds, UI elements, etc.) via RunPod AI.
+
+```bash
+# Show help
+node scripts/generate-image.mjs --help
+
+# Generate an image
+node scripts/generate-image.mjs --prompt "cyberpunk AI datacenter with neon lights"
+
+# With options
+node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-background.jpg
+```
+
+**Options:**
+- `--prompt, -p` — Image description (required)
+- `--output, -o` — Output filename (default: auto-generated timestamp)
+- `--aspect, -a` — Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4 (default: 16:9)
+- `--seed, -s` — Seed for reproducibility
+
+**Output:** Images are saved to `public/` folder.
+
+**Environment:** Requires `RUNPOD_API_KEY` in `.env.local` (or `.env` as fallback).
+
+---
+
+_Last updated: 2026-01-04 (asset generation utility)_
 
 ---
 
@@ -345,26 +396,23 @@ _Last updated: 2026-01-04 (route-based navigation)_
 - **Reputation removed**: No REP in schema, rewards, or gating
 - **5-tab navigation**: operate / research / lab / inbox / world
 - **Max level 20**: Extended XP curve, level gates access to nodes
-- **RP is the only upgrade currency**: Simplicity over complexity
-- **No automatic level rewards**: Players choose where to spend RP
 - **Model visibility**: trainedModels have public/private toggle
 - **Leaderboards**: Only count public models
 - **Unlock Registry**: Single source of truth in Convex for all gating
 - **Deep links**: Inbox notifications link to relevant views
 
-## Architecture Decisions (004 Skill Tree Rework)
+## Architecture Decisions (004 Upgrade Points System)
 
-- **Level badge click**: Goes to `/level` page (shows progression and RP rewards)
-- **Level page**: Displays XP requirements and RP rewards per level
-- **RP rewards on level up**: Each level grants RP (100 at L2 up to 200,000 at L20)
-- **Research sub-nav**: Attributes | Blueprints | Capabilities | Perks (no icons)
-- **Attributes panel**: Cyberpunk diamond-style grid for 5 global stats
-- **Perk trees**: Branching dependency trees for blueprints/capabilities/perks
-- **Base stats**: Start with 1 queue, 1 staff, 1 CU, 0% speed bonus, 1.0x money
-- **All upgrades purchased**: Nothing is automatic, full player agency
-- **Config-driven**: Node definitions live in `skillTree.ts`, read directly by queries
-- **No migrations needed**: Edit `skillTree.ts` and changes take effect immediately
-- **Database only stores purchases**: `playerResearch` table tracks what player bought
+- **Two upgrade currencies**: UP (from leveling) for core lab stats, RP (from jobs) for perks
+- **UP on level up**: Each level grants +1 UP (not RP). Total 19 UP available by level 20
+- **Lab upgrades via UP**: Queue, Staff, Compute purchased in Lab > Upgrades (1 UP = 1 rank)
+- **RP perks only**: Research speed and money multiplier remain as RP purchases in Research > Perks
+- **Level-gated ranks**: Higher upgrade ranks unlock at higher levels (prevents early-game dumping)
+- **Hard caps**: Queue max 8, Staff max 6, Compute max 10 - players must specialize
+- **Central config**: All game constants live in `convex/lib/gameConfig.ts`
+- **Lab sub-nav**: upgrades | team | models | levels (nested routes)
+- **Levels view**: Shows XP thresholds and UP rewards per level
+- **Research simplified**: Attributes tab removed, only Blueprints | Capabilities | Perks
 
 ## Architecture Decisions (003 Route-based Navigation)
 
@@ -376,4 +424,14 @@ _Last updated: 2026-01-04 (route-based navigation)_
 - **Browser history**: Back/forward navigation works, URLs are bookmarkable/shareable
 - **Subscription persistence**: Convex subscriptions stay alive in layout, no re-fetch on navigation
 - **Unified Navigation**: PageHeader + SubNav system for consistent navigation across all views. SubNav is view-specific and optional. First SubNav element has no left padding to align with logo.
-- **Compute Units as blocking resource**: Training tasks consume Compute Units (CU). With 1 CU and 1 training running, cannot start another training even if queue allows. Action cards display CU cost after cash in the attribute grid.
+- **Compute as blocking resource**: Training tasks consume Compute. With 1 CU and 1 training running, cannot start another training even if queue allows.
+
+## Repository Structure (Key Files)
+
+- `convex/lib/gameConfig.ts` — Central source of truth for XP thresholds, UP system, upgrade definitions
+- `convex/lib/gameConstants.ts` — Task definitions (imports from gameConfig)
+- `convex/lib/skillTree.ts` — RP perk nodes (research_speed, money_multiplier only)
+- `convex/upgrades.ts` — UP balance and upgrade rank queries/mutations
+- `convex/schema.ts` — Database schema (playerState has upgradePoints, queueRank, staffRank, computeRank)
+
+Note: Game config lives in `convex/lib/` because Convex functions need direct access. Frontend imports via `@/convex/lib/gameConfig`.

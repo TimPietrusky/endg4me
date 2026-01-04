@@ -4,7 +4,8 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id, Doc } from "@/convex/_generated/dataModel"
-import { TASKS, XP_CURVE } from "@/convex/lib/gameConstants"
+import { TASKS } from "@/convex/lib/gameConstants"
+import { XP_THRESHOLDS, getUpgradeValue } from "@/convex/lib/gameConfig"
 import { formatTimeRemaining } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import type { Action, Notification } from "@/lib/game-types"
@@ -17,12 +18,15 @@ interface GameData {
   playerState: Doc<"playerState"> | null
   userId: string | null
   
-  // Derived data
+  // Derived data (from UP ranks)
   xpRequired: number
   maxParallelTasks: number
   activeTaskCount: number
   isQueueFull: boolean
   availableGpus: number
+  queueCapacity: number
+  staffCapacity: number
+  computeCapacity: number
   
   // Lists
   actions: Action[]
@@ -135,22 +139,27 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
   const playerState = labData?.playerState ?? null
 
   // Derived calculations
-  const xpRequired = playerState ? (XP_CURVE[playerState.level] || 100) : 100
+  // XP_THRESHOLDS is cumulative - next level threshold is the target
+  const xpRequired = playerState ? (XP_THRESHOLDS[playerState.level + 1] || Infinity) : 100
   const inProgressTasks = activeTasks?.filter((t) => t.status === "in_progress") || []
   const queuedTasks = activeTasks?.filter((t) => t.status === "queued") || []
   
-  const maxParallelTasks = labState 
-    ? labState.parallelTasks + labState.juniorResearchers 
-    : 1
+  // Compute values from UP-based ranks (playerState)
+  const queueCapacity = playerState ? getUpgradeValue("queue", playerState.queueRank ?? 0) : 1
+  const staffCapacity = playerState ? getUpgradeValue("staff", playerState.staffRank ?? 0) : 0
+  const computeCapacity = playerState ? getUpgradeValue("compute", playerState.computeRank ?? 0) : 1
+  
+  // Queue slots = base queue capacity + junior researchers (each adds 1 slot)
+  const maxParallelTasks = queueCapacity + (labState?.juniorResearchers || 0)
   const activeTaskCount = inProgressTasks.length
   const isQueueFull = activeTaskCount >= maxParallelTasks
-  const isStaffFull = labState ? labState.juniorResearchers >= labState.staffCapacity : false
+  const isStaffFull = labState ? labState.juniorResearchers >= staffCapacity : false
   const isFreelanceOnCooldown = freelanceCooldown && freelanceCooldown > Date.now()
   
   const usedGpus = inProgressTasks.filter(
     (t) => t.type === "train_small_model" || t.type === "train_medium_model"
   ).length
-  const availableGpus = labState ? labState.computeUnits - usedGpus : 0
+  const availableGpus = computeCapacity - usedGpus
 
   // Helper functions for disabled info
   const getTrainingDisabledInfo = (cost: number, gpuCost: number) => {
@@ -188,17 +197,6 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
   }
 
-  const getRentGpuDisabledInfo = () => {
-    if (!labState) return { reason: "loading", fundsShortfall: 0, gpuShortfall: 0 }
-    if (labState.cash < TASKS.rent_gpu_cluster.cost) {
-      return { reason: "not enough funds", fundsShortfall: TASKS.rent_gpu_cluster.cost - labState.cash, gpuShortfall: 0 }
-    }
-    if (isQueueFull) {
-      return { reason: "queue full", fundsShortfall: 0, gpuShortfall: 0 }
-    }
-    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
-  }
-
   function getTaskRemainingTime(taskType: string): number | undefined {
     const task = inProgressTasks.find((t) => t.type === taskType)
     if (task?.completesAt) {
@@ -212,7 +210,6 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
   const mediumModelInfo = getTrainingDisabledInfo(TASKS.train_medium_model.cost, TASKS.train_medium_model.computeRequired)
   const freelanceInfo = getFreelanceDisabledInfo()
   const hireInfo = getHireDisabledInfo()
-  const rentGpuInfo = getRentGpuDisabledInfo()
 
   const actions: Action[] = labState ? [
     {
@@ -277,7 +274,7 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
       id: "hire",
       category: "HIRING",
       name: "Hire Junior Researcher",
-      description: `Expand your team (${labState.juniorResearchers}/${labState.staffCapacity} staff)`,
+      description: `Expand your team (${labState.juniorResearchers}/${staffCapacity} staff)`,
       cost: TASKS.hire_junior_researcher.cost,
       duration: Math.floor(TASKS.hire_junior_researcher.duration / 1000),
       speedBonus: 10,
@@ -289,23 +286,6 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
       isActive: inProgressTasks.some((t) => t.type === "hire_junior_researcher"),
       remainingTime: getTaskRemainingTime("hire_junior_researcher"),
       isQueued: queuedTasks.some((t) => t.type === "hire_junior_researcher"),
-    },
-    {
-      id: "rent-gpu",
-      category: "INFRASTRUCTURE",
-      name: "Rent GPU Cluster",
-      description: `Add compute power (${labState.computeUnits} GPUs)`,
-      cost: TASKS.rent_gpu_cluster.cost,
-      duration: Math.floor(TASKS.rent_gpu_cluster.duration / 1000),
-      gpuBonus: 1,
-      xpReward: TASKS.rent_gpu_cluster.baseRewards.experience,
-      disabled: !!rentGpuInfo.reason,
-      disabledReason: rentGpuInfo.reason,
-      fundsShortfall: rentGpuInfo.fundsShortfall,
-      image: "/massive-ai-datacenter-training.jpg",
-      isActive: inProgressTasks.some((t) => t.type === "rent_gpu_cluster"),
-      remainingTime: getTaskRemainingTime("rent_gpu_cluster"),
-      isQueued: queuedTasks.some((t) => t.type === "rent_gpu_cluster"),
     },
   ] : []
 
@@ -328,12 +308,11 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
   const handleStartAction = async (action: Action) => {
     if (!lab) return
     
-    const taskTypeMap: Record<string, "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher" | "rent_gpu_cluster"> = {
+    const taskTypeMap: Record<string, "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher"> = {
       "train-small": "train_small_model",
       "train-medium": "train_medium_model",
       "freelance": "freelance_contract",
       "hire": "hire_junior_researcher",
-      "rent-gpu": "rent_gpu_cluster",
     }
 
     const taskType = taskTypeMap[action.id]
@@ -373,6 +352,9 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     activeTaskCount,
     isQueueFull,
     availableGpus,
+    queueCapacity,
+    staffCapacity,
+    computeCapacity,
     actions,
     notifications,
     trainedModels,
