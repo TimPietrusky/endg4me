@@ -20,10 +20,11 @@ import {
 import { LEVEL_REWARDS, CLAN_BONUS } from "./lib/gameConstants";
 import { internal } from "./_generated/api";
 
-// Default unlocks for new players
+// Default unlocks for new players (starter set)
+// Includes: TTS blueprint so they can train immediately, basic contracts capability
 const DEFAULT_UNLOCKS = {
-  unlockedBlueprintIds: [] as string[],
-  unlockedJobIds: ["job_research_literature"], // Always available
+  unlockedBlueprintIds: ["bp_tts_3b"], // Starter blueprint
+  unlockedJobIds: ["job_research_literature", "job_train_tts_3b", "job_contract_blog_basic"], // Research + TTS training + basic contracts
   enabledSystemFlags: [] as string[],
 };
 

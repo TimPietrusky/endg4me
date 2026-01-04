@@ -122,6 +122,14 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     labData?.lab ? { labId: labData.lab._id } : "skip"
   )
 
+  // Get available jobs with unlock status
+  const availableJobs = useQuery(
+    api.tasks.getAvailableJobs,
+    labData?.lab && userId
+      ? { userId: userId as Id<"users">, labId: labData.lab._id }
+      : "skip"
+  )
+
   // Mutations
   const startTask = useMutation(api.tasks.startTask)
   const markNotificationRead = useMutation(api.notifications.markAsRead)
@@ -206,13 +214,30 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     return undefined
   }
 
+  // Helper to check if a job is unlocked
+  const isJobUnlocked = (jobId: string): boolean => {
+    if (!availableJobs) return false
+    const job = availableJobs.find((j) => j.jobId === jobId)
+    return job?.isUnlocked ?? false
+  }
+
+  const getJobLockReason = (jobId: string): string | undefined => {
+    if (!availableJobs) return undefined
+    const job = availableJobs.find((j) => j.jobId === jobId)
+    return job?.lockReason
+  }
+
   // Build actions
   const smallModelInfo = getTrainingDisabledInfo(TASKS.train_small_model.cost, TASKS.train_small_model.computeRequired)
   const mediumModelInfo = getTrainingDisabledInfo(TASKS.train_medium_model.cost, TASKS.train_medium_model.computeRequired)
   const freelanceInfo = getFreelanceDisabledInfo()
   const hireInfo = getHireDisabledInfo()
 
-  const actions: Action[] = labState ? [
+  // Map old task IDs to new job IDs for unlock checking
+  const ttsUnlocked = isJobUnlocked("job_train_tts_3b")
+  const vlmUnlocked = isJobUnlocked("job_train_vlm_7b")
+
+  const allActions: Action[] = labState ? [
     {
       id: "train-small",
       category: "TRAINING",
@@ -232,6 +257,8 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
       isActive: inProgressTasks.some((t) => t.type === "train_small_model"),
       remainingTime: getTaskRemainingTime("train_small_model"),
       isQueued: queuedTasks.some((t) => t.type === "train_small_model"),
+      locked: !ttsUnlocked,
+      lockReason: getJobLockReason("job_train_tts_3b"),
     },
     {
       id: "train-medium",
@@ -252,6 +279,8 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
       isActive: inProgressTasks.some((t) => t.type === "train_medium_model"),
       remainingTime: getTaskRemainingTime("train_medium_model"),
       isQueued: queuedTasks.some((t) => t.type === "train_medium_model"),
+      locked: !vlmUnlocked,
+      lockReason: getJobLockReason("job_train_vlm_7b"),
     },
     {
       id: "freelance",
@@ -289,6 +318,9 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
       isQueued: queuedTasks.some((t) => t.type === "hire_junior_researcher"),
     },
   ] : []
+
+  // Filter out locked actions (don't show them at all)
+  const actions = allActions.filter((a) => !a.locked)
 
   // Notifications
   const notifications: Notification[] = (recentActivity || []).map((n) => ({

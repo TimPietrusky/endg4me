@@ -124,14 +124,9 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
   return (
     <div className="mt-4">
       {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <div className={cn("p-2 rounded-lg", config.nodeGradient, config.nodeBorder, "border")}>
-          <Icon className={cn("w-5 h-5", config.accentColor)} weight="bold" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold tracking-tight">{config.name.toLowerCase()}</h2>
-          <p className="text-xs text-muted-foreground">{config.description}</p>
-        </div>
+      <div className="mb-8 flex items-center gap-4">
+        <Icon className={cn("w-8 h-8", config.accentColor)} weight="bold" />
+        <p className="text-lg text-white">{config.description}</p>
       </div>
 
       {/* Skill Tree visualization */}
