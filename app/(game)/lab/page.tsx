@@ -2,50 +2,77 @@
 
 import { useState } from "react"
 import { useGameData } from "@/components/providers/game-data-provider"
-import { CollectionView, type VisibilityFilter } from "@/components/game/dashboard/collection-view"
+import { LabOverviewHeader } from "@/components/game/dashboard/lab-overview-header"
+import { TeamView } from "@/components/game/dashboard/team-view"
+import { CollectionView } from "@/components/game/dashboard/collection-view"
 import { SubNavContainer, SubNavButton } from "@/components/game/dashboard/sub-nav"
 
-export default function LabPage() {
-  const { lab, trainedModels, modelStats, publicModelCount, privateModelCount } = useGameData()
-  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
+type LabSubView = "team" | "models"
 
-  if (!lab) {
+export default function LabPage() {
+  const { 
+    user,
+    lab, 
+    labState,
+    trainedModels, 
+    modelStats, 
+    publicModelCount, 
+  } = useGameData()
+  
+  const [subView, setSubView] = useState<LabSubView>("team")
+
+  if (!lab || !labState || !user) {
     return null
   }
 
+  const totalModels = trainedModels?.length || 0
+
   return (
     <>
-      {/* SubNav */}
+      {/* Lab Overview Header - org card style */}
+      <LabOverviewHeader
+        labName={lab.name}
+        founderType={lab.founderType}
+        totalModels={totalModels}
+        publicModelsCount={publicModelCount}
+        staffCount={labState.juniorResearchers}
+        staffCapacity={labState.staffCapacity}
+      />
+
+      {/* SubNav: Team | Models - stable, no jumping */}
       <SubNavContainer>
         <SubNavButton
           isFirst
-          isActive={visibilityFilter === "public"}
-          onClick={() => setVisibilityFilter(
-            visibilityFilter === "public" ? "all" : "public"
-          )}
-          badge={publicModelCount}
+          isActive={subView === "team"}
+          onClick={() => setSubView("team")}
         >
-          PUBLIC
+          TEAM
         </SubNavButton>
         <SubNavButton
-          isActive={visibilityFilter === "private"}
-          onClick={() => setVisibilityFilter(
-            visibilityFilter === "private" ? "all" : "private"
-          )}
-          badge={privateModelCount}
+          isActive={subView === "models"}
+          onClick={() => setSubView("models")}
+          badge={totalModels}
         >
-          PRIVATE
+          MODELS
         </SubNavButton>
       </SubNavContainer>
 
-      {/* Main content */}
-      <CollectionView
-        labName={lab.name}
-        models={trainedModels}
-        bestScore={modelStats?.bestModel?.score}
-        visibilityFilter={visibilityFilter}
-      />
+      {/* Content */}
+      {subView === "team" && (
+        <TeamView
+          founderName={user.name || user.email}
+          founderType={lab.founderType}
+          juniorResearchers={labState.juniorResearchers}
+        />
+      )}
+
+      {subView === "models" && (
+        <CollectionView
+          labName={lab.name}
+          models={trainedModels}
+          bestScore={modelStats?.bestModel?.score}
+        />
+      )}
     </>
   )
 }
-

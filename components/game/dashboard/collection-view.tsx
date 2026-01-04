@@ -1,6 +1,19 @@
 "use client"
 
-import { Cube, Brain, Trophy, Star, Eye, EyeSlash, GlobeHemisphereWest, Lock } from "@phosphor-icons/react"
+import { useState } from "react"
+import { 
+  Cube, 
+  Brain, 
+  Trophy, 
+  Star, 
+  Eye, 
+  EyeSlash, 
+  GlobeHemisphereWest, 
+  Lock,
+  SortAscending,
+  CheckCircle,
+  XCircle
+} from "@phosphor-icons/react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useMutation } from "convex/react"
@@ -9,27 +22,53 @@ import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { formatCompact } from "@/lib/utils"
 
 export type VisibilityFilter = "all" | "public" | "private"
+export type ModelTypeFilter = "all" | "small_3b" | "medium_7b"
+export type SortOption = "newest" | "oldest" | "highest_score" | "lowest_score"
 
 interface CollectionViewProps {
   labName: string
   models?: Doc<"trainedModels">[]
   bestScore?: number
-  visibilityFilter: VisibilityFilter
 }
 
-export function CollectionView({ labName, models, bestScore, visibilityFilter }: CollectionViewProps) {
+export function CollectionView({ labName, models, bestScore }: CollectionViewProps) {
   const toggleVisibility = useMutation(api.tasks.toggleModelVisibility)
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
+  const [typeFilter, setTypeFilter] = useState<ModelTypeFilter>("all")
+  const [sortOption, setSortOption] = useState<SortOption>("newest")
 
-  // Filter models by visibility
-  const filteredModels = models?.filter((model) => {
-    if (visibilityFilter === "all") return true
-    if (visibilityFilter === "public") return model.visibility === "public"
-    if (visibilityFilter === "private") return model.visibility !== "public"
+  // Filter models by visibility and type
+  let filteredModels = models?.filter((model) => {
+    // Visibility filter
+    if (visibilityFilter === "public" && model.visibility !== "public") return false
+    if (visibilityFilter === "private" && model.visibility === "public") return false
+    // Type filter
+    if (typeFilter !== "all" && model.modelType !== typeFilter) return false
     return true
   })
 
+  // Sort models
+  if (filteredModels) {
+    filteredModels = [...filteredModels].sort((a, b) => {
+      switch (sortOption) {
+        case "newest":
+          return b.trainedAt - a.trainedAt
+        case "oldest":
+          return a.trainedAt - b.trainedAt
+        case "highest_score":
+          return (b.score || 0) - (a.score || 0)
+        case "lowest_score":
+          return (a.score || 0) - (b.score || 0)
+        default:
+          return 0
+      }
+    })
+  }
+
   const publicCount = models?.filter((m) => m.visibility === "public").length || 0
   const privateCount = models?.filter((m) => m.visibility !== "public").length || 0
+  const smallCount = models?.filter((m) => m.modelType === "small_3b").length || 0
+  const mediumCount = models?.filter((m) => m.modelType === "medium_7b").length || 0
 
   if (!models || models.length === 0) {
     return (
@@ -51,9 +90,9 @@ export function CollectionView({ labName, models, bestScore, visibilityFilter }:
   }
 
   return (
-    <div className="space-y-6 mt-4">
+    <div className="space-y-4 mt-4">
       {/* Stats Header */}
-      <div className="flex items-center gap-6 p-4 bg-card/50 rounded-lg border border-border">
+      <div className="flex flex-wrap items-center gap-6 p-4 bg-card/50 rounded-lg border border-border">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Brain className="w-6 h-6 text-white" weight="bold" />
@@ -94,10 +133,100 @@ export function CollectionView({ labName, models, bestScore, visibilityFilter }:
         </div>
       </div>
 
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Visibility Filter */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setVisibilityFilter("all")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              visibilityFilter === "all" 
+                ? "bg-white text-black font-bold" 
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            All ({models?.length || 0})
+          </button>
+          <button
+            onClick={() => setVisibilityFilter("public")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              visibilityFilter === "public" 
+                ? "bg-green-500 text-black font-bold" 
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            Public ({publicCount})
+          </button>
+          <button
+            onClick={() => setVisibilityFilter("private")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              visibilityFilter === "private" 
+                ? "bg-white/60 text-black font-bold" 
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            Private ({privateCount})
+          </button>
+        </div>
+
+        <span className="text-white/20">|</span>
+
+        {/* Type Filter Chips */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTypeFilter("all")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              typeFilter === "all" 
+                ? "bg-white text-black font-bold" 
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            All Types
+          </button>
+          <button
+            onClick={() => setTypeFilter("small_3b")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              typeFilter === "small_3b" 
+                ? "bg-cyan-500 text-black font-bold" 
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            3B ({smallCount})
+          </button>
+          <button
+            onClick={() => setTypeFilter("medium_7b")}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              typeFilter === "medium_7b" 
+                ? "bg-purple-500 text-black font-bold" 
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            7B ({mediumCount})
+          </button>
+        </div>
+
+        {/* Sort Dropdown - pushed to right */}
+        <div className="flex items-center gap-2 ml-auto">
+          <SortAscending className="w-4 h-4 text-muted-foreground" />
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as SortOption)}
+            className="text-xs bg-white/10 border border-white/20 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/40"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="highest_score">Highest Score</option>
+            <option value="lowest_score">Lowest Score</option>
+          </select>
+        </div>
+      </div>
+
       {/* Info Banner */}
-      <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm">
-        <GlobeHemisphereWest className="inline w-4 h-4 mr-2 text-primary" />
-        Public models appear on leaderboards and your public lab profile in World.
+      <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-sm flex items-center gap-2">
+        <GlobeHemisphereWest className="w-4 h-4 text-green-400 flex-shrink-0" />
+        <span className="text-white/70">
+          Public models are eligible for leaderboards and visible on your public lab profile.
+        </span>
       </div>
 
       {/* Model Grid */}
@@ -113,7 +242,7 @@ export function CollectionView({ labName, models, bestScore, visibilityFilter }:
         </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No {visibilityFilter} models found</p>
+          <p className="text-sm">No models match the current filters</p>
         </div>
       )}
     </div>
@@ -130,6 +259,12 @@ function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
     if (type === "small_3b") return "3B"
     if (type === "medium_7b") return "7B"
     return "?"
+  }
+
+  const getModelTypeName = (type: string) => {
+    if (type === "small_3b") return "TTS"
+    if (type === "medium_7b") return "VLM"
+    return "Unknown"
   }
 
   const getModelColor = (type: string) => {
@@ -151,10 +286,14 @@ function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
   return (
     <Card className={`overflow-hidden bg-gradient-to-br ${getModelColor(model.modelType)}`}>
       <CardContent className="p-4">
+        {/* Header with type and score */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-primary" weight="bold" />
-            <span className="font-bold">{getModelSize(model.modelType)}</span>
+            <div>
+              <span className="font-bold">{getModelTypeName(model.modelType)}</span>
+              <span className="text-xs text-muted-foreground ml-1">({getModelSize(model.modelType)})</span>
+            </div>
           </div>
           {model.score && (
             <div className="flex items-center gap-1 text-amber-400">
@@ -163,27 +302,48 @@ function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mb-1 font-medium">{model.name}</p>
+
+        {/* Model name and timestamp */}
+        <p className="text-sm font-medium mb-1">{model.name}</p>
         <p className="text-xs text-muted-foreground mb-3">
           Trained {formatDate(model.trainedAt)}
         </p>
+
+        {/* Leaderboard Eligibility */}
+        <div className={`mb-3 p-2 rounded text-xs flex items-center gap-2 ${
+          isPublic 
+            ? "bg-green-500/10 border border-green-500/20" 
+            : "bg-white/5 border border-white/10"
+        }`}>
+          {isPublic ? (
+            <>
+              <CheckCircle className="w-4 h-4 text-green-400" weight="fill" />
+              <span className="text-green-400">Leaderboard Eligible</span>
+            </>
+          ) : (
+            <>
+              <XCircle className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Not Eligible (private)</span>
+            </>
+          )}
+        </div>
         
         {/* Visibility Toggle */}
         <Button
           variant={isPublic ? "default" : "outline"}
           size="sm"
-          className="w-full text-xs h-7"
+          className="w-full text-xs h-8"
           onClick={onToggleVisibility}
         >
           {isPublic ? (
             <>
               <Eye className="w-3 h-3 mr-1" />
-              Public
+              Public - Click to make Private
             </>
           ) : (
             <>
               <EyeSlash className="w-3 h-3 mr-1" />
-              Private
+              Private - Click to Publish
             </>
           )}
         </Button>
