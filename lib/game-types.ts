@@ -58,5 +58,5 @@ export interface Notification {
 }
 
 // New 5-tab navigation: operate / research / lab / inbox / world
-export type ViewType = "operate" | "research" | "lab" | "inbox" | "world"
+export type ViewType = "operate" | "research" | "lab" | "inbox" | "world" | "level"
 

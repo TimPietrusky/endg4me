@@ -129,7 +129,8 @@ export default defineSchema({
           v.literal("research"),
           v.literal("lab"),
           v.literal("inbox"),
-          v.literal("world")
+          v.literal("world"),
+          v.literal("level")
         ),
         target: v.optional(v.string()),
       })

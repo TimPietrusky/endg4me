@@ -38,12 +38,14 @@ export function GameTopNav({
   const pathname = usePathname()
   
   // Derive current view from pathname
-  const getCurrentView = (): ViewType => {
+  const getCurrentView = (): ViewType | null => {
+    if (pathname === "/operate") return "operate"
     if (pathname === "/research") return "research"
     if (pathname === "/lab") return "lab"
     if (pathname === "/inbox") return "inbox"
     if (pathname === "/world") return "world"
-    return "operate" // default
+    if (pathname === "/level") return "level"
+    return null // No nav item active for unknown routes
   }
   
   const currentView = getCurrentView()
@@ -93,11 +95,11 @@ export function GameTopNav({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4">
               <Link
-                href="/research"
+                href="/level"
                 className={`flex items-center gap-1.5 text-sm hover:bg-white/10 px-2 py-1 rounded transition-colors ${
-                  currentView === "research" ? "bg-white/10" : ""
+                  currentView === "level" ? "bg-white/10" : ""
                 }`}
-                title="View skill tree and upgrades"
+                title="View level progression and RP rewards"
               >
                 <span className="text-xs font-bold text-muted-foreground lowercase">lvl</span>
                 <span className="text-base font-bold text-white border border-white px-1.5 rounded">{level}</span>

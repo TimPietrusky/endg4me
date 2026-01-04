@@ -11,6 +11,7 @@ import {
   type TaskType,
   type TaskConfig,
 } from "./lib/gameConstants";
+import { RP_REWARDS } from "./lib/skillTree";
 import { internal } from "./_generated/api";
 
 // Helper to calculate random factor
@@ -323,23 +324,42 @@ export const completeTask = internalMutation({
 
       if (newXP >= xpRequired && playerState.level < MAX_LEVEL) {
         // Level up!
+        const newLevel = playerState.level + 1;
         await ctx.db.patch(playerState._id, {
           experience: newXP - xpRequired,
-          level: playerState.level + 1,
+          level: newLevel,
         });
 
-        // Create level up notification
+        // Grant RP reward for leveling up
+        const rpReward = RP_REWARDS[newLevel] || 0;
+        if (rpReward > 0) {
+          // Get fresh lab state for accurate RP
+          const freshLabState = await ctx.db
+            .query("labState")
+            .withIndex("by_lab", (q) => q.eq("labId", task.labId))
+            .first();
+          if (freshLabState) {
+            await ctx.db.patch(freshLabState._id, {
+              researchPoints: freshLabState.researchPoints + rpReward,
+            });
+          }
+        }
+
+        // Create level up notification with RP reward
         await ctx.db.insert("notifications", {
           userId: lab.userId,
           type: "level_up",
           title: "Level Up!",
-          message: `You've reached level ${playerState.level + 1}!`,
+          message: rpReward > 0 
+            ? `You've reached level ${newLevel}! +${rpReward} RP`
+            : `You've reached level ${newLevel}!`,
           read: false,
           createdAt: Date.now(),
+          deepLink: { view: "level" as const },
         });
 
         // Check for clan unlock
-        if (playerState.level + 1 === LEVEL_REWARDS.clanUnlockLevel) {
+        if (newLevel === LEVEL_REWARDS.clanUnlockLevel) {
           await ctx.db.insert("notifications", {
             userId: lab.userId,
             type: "unlock",

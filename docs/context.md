@@ -354,14 +354,17 @@ _Last updated: 2026-01-04 (route-based navigation)_
 
 ## Architecture Decisions (004 Skill Tree Rework)
 
-- **Level badge click**: Goes to Research (not Lab)
-- **Research sub-nav**: Attributes | Blueprints | Capabilities | Perks
-- **Attributes panel**: Cyberpunk hex-style grid for 5 global stats
+- **Level badge click**: Goes to `/level` page (shows progression and RP rewards)
+- **Level page**: Displays XP requirements and RP rewards per level
+- **RP rewards on level up**: Each level grants RP (100 at L2 up to 200,000 at L20)
+- **Research sub-nav**: Attributes | Blueprints | Capabilities | Perks (no icons)
+- **Attributes panel**: Cyberpunk diamond-style grid for 5 global stats
 - **Perk trees**: Branching dependency trees for blueprints/capabilities/perks
 - **Base stats**: Start with 1 queue, 1 staff, 1 CU, 0% speed bonus, 1.0x money
 - **All upgrades purchased**: Nothing is automatic, full player agency
-- **researchNodes table**: Extended with attributeType and attributeValue fields
-- **Seed migration**: `convex/migrations/seedAttributeNodes.ts` populates attribute nodes
+- **Config-driven**: Node definitions live in `skillTree.ts`, read directly by queries
+- **No migrations needed**: Edit `skillTree.ts` and changes take effect immediately
+- **Database only stores purchases**: `playerResearch` table tracks what player bought
 
 ## Architecture Decisions (003 Route-based Navigation)
 

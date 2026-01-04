@@ -1,97 +1,84 @@
 "use client"
 
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { 
-  Queue, 
-  UsersThree, 
-  Cpu, 
   Lightning, 
-  CurrencyDollar,
-  Lock,
-  CheckCircle 
+  Lock, 
+  CaretDown,
+  Queue,
+  UsersThree,
+  Cpu,
+  Timer,
+  CurrencyDollar
 } from "@phosphor-icons/react"
-import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import type { Id } from "@/convex/_generated/dataModel"
-import { formatCompact } from "@/lib/utils"
-import { cn } from "@/lib/utils"
+import { formatCompact, cn } from "@/lib/utils"
+import { FOUNDER_MODIFIERS } from "@/convex/lib/gameConstants"
 
 interface AttributesPanelProps {
   userId: Id<"users">
   currentRp: number
-  // Current stats for display
   queueSlots: number
   staffCapacity: number
   computeUnits: number
   researchSpeedBonus: number
   moneyMultiplier: number
+  founderType: "technical" | "business"
+  juniorResearchers: number
+  playerLevel: number
 }
 
-// Attribute type definitions
 type AttributeType = "queue_slots" | "staff_capacity" | "compute_units" | "research_speed" | "money_multiplier"
+
+interface BonusSource {
+  name: string
+  value: number
+  isMultiplier?: boolean
+}
 
 interface AttributeConfig {
   type: AttributeType
   name: string
-  shortName: string
   icon: React.ElementType
-  color: string
-  bgGlow: string
-  description: string
   formatValue: (val: number) => string
+  formatBonus?: (val: number) => string
 }
 
 const ATTRIBUTES: AttributeConfig[] = [
   {
     type: "queue_slots",
-    name: "Queue Capacity",
-    shortName: "QUEUE",
+    name: "queue",
     icon: Queue,
-    color: "text-cyan-400",
-    bgGlow: "from-cyan-500/30 to-cyan-500/5",
-    description: "Parallel task slots",
     formatValue: (v) => `${v}`,
   },
   {
     type: "staff_capacity", 
-    name: "Staff Capacity",
-    shortName: "STAFF",
+    name: "staff",
     icon: UsersThree,
-    color: "text-pink-400",
-    bgGlow: "from-pink-500/30 to-pink-500/5",
-    description: "Max researchers",
     formatValue: (v) => `${v}`,
   },
   {
     type: "compute_units",
-    name: "Compute Units",
-    shortName: "CU",
+    name: "compute",
     icon: Cpu,
-    color: "text-orange-400", 
-    bgGlow: "from-orange-500/30 to-orange-500/5",
-    description: "GPU capacity",
     formatValue: (v) => `${v}`,
   },
   {
     type: "research_speed",
-    name: "Research Speed",
-    shortName: "SPEED",
-    icon: Lightning,
-    color: "text-purple-400",
-    bgGlow: "from-purple-500/30 to-purple-500/5",
-    description: "Task completion bonus",
-    formatValue: (v) => `+${v}%`,
+    name: "research speed",
+    icon: Timer,
+    formatValue: (v) => v === 0 ? "0%" : `+${v}%`,
+    formatBonus: (v) => `+${Math.round((v - 1) * 100)}%`,
   },
   {
     type: "money_multiplier",
-    name: "Income Boost",
-    shortName: "INCOME",
+    name: "income",
     icon: CurrencyDollar,
-    color: "text-green-400",
-    bgGlow: "from-green-500/30 to-green-500/5",
-    description: "Cash reward multiplier",
     formatValue: (v) => `${v.toFixed(1)}x`,
+    formatBonus: (v) => `${v > 1 ? "+" : ""}${Math.round((v - 1) * 100)}%`,
   },
 ]
 
@@ -103,15 +90,16 @@ export function AttributesPanel({
   computeUnits,
   researchSpeedBonus,
   moneyMultiplier,
+  founderType,
+  juniorResearchers,
+  playerLevel,
 }: AttributesPanelProps) {
   const { toast } = useToast()
   const researchState = useQuery(api.research.getResearchTreeState, { userId })
   const purchaseNode = useMutation(api.research.purchaseResearchNode)
 
-  // Filter to only attribute nodes
   const attributeNodes = researchState?.filter((node) => node.category === "attributes") || []
 
-  // Group nodes by attribute type
   const nodesByAttribute = attributeNodes.reduce((acc, node) => {
     if (node.attributeType) {
       if (!acc[node.attributeType]) {
@@ -122,7 +110,6 @@ export function AttributesPanel({
     return acc
   }, {} as Record<string, typeof attributeNodes>)
 
-  // Get current value for each attribute
   const getCurrentValue = (type: AttributeType): number => {
     switch (type) {
       case "queue_slots": return queueSlots
@@ -134,17 +121,67 @@ export function AttributesPanel({
     }
   }
 
-  // Get next available upgrade for an attribute
+  // Get bonus sources for each attribute type
+  const getBonusSources = (type: AttributeType): BonusSource[] => {
+    const sources: BonusSource[] = []
+    const founderMods = FOUNDER_MODIFIERS[founderType]
+
+    if (type === "research_speed") {
+      // Founder bonus for research speed
+      if (founderMods.researchSpeed !== 1.0) {
+        sources.push({
+          name: `${founderType} founder`,
+          value: founderMods.researchSpeed,
+          isMultiplier: true,
+        })
+      }
+      // Staff bonus - +10% per junior researcher
+      if (juniorResearchers > 0) {
+        sources.push({
+          name: `${juniorResearchers} staff`,
+          value: 1 + juniorResearchers * 0.1,
+          isMultiplier: true,
+        })
+      }
+      // Level bonus - 1% per level
+      if (playerLevel > 1) {
+        const levelBonus = 1 + (playerLevel - 1) * 0.01
+        sources.push({
+          name: `level ${playerLevel}`,
+          value: levelBonus,
+          isMultiplier: true,
+        })
+      }
+    }
+
+    if (type === "money_multiplier") {
+      // Founder bonus for money
+      if (founderMods.moneyRewards !== 1.0) {
+        sources.push({
+          name: `${founderType} founder`,
+          value: founderMods.moneyRewards,
+          isMultiplier: true,
+        })
+      }
+    }
+
+    return sources
+  }
+
+  // Calculate total bonus multiplier from external sources
+  const getTotalBonus = (type: AttributeType): number => {
+    const sources = getBonusSources(type)
+    if (sources.length === 0) return 1
+    return sources.reduce((acc, s) => acc * s.value, 1)
+  }
+
   const getNextUpgrade = (type: AttributeType) => {
     const nodes = nodesByAttribute[type] || []
-    // Find the first unpurchased, available node
     const available = nodes.find((n) => n.isAvailable)
-    // Or the first unpurchased, locked node (to show what's next)
     const nextLocked = nodes.find((n) => !n.isPurchased && n.isLocked)
     return available || nextLocked
   }
 
-  // Count purchased upgrades for an attribute
   const getPurchasedCount = (type: AttributeType): number => {
     const nodes = nodesByAttribute[type] || []
     return nodes.filter((n) => n.isPurchased).length
@@ -158,13 +195,13 @@ export function AttributesPanel({
     try {
       await purchaseNode({ userId, nodeId })
       toast({
-        title: "Attribute Upgraded",
-        description: `${nodeName}`,
+        title: "Upgraded",
+        description: nodeName,
       })
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Could not upgrade attribute"
+      const errorMessage = error instanceof Error ? error.message : "Could not upgrade"
       toast({
-        title: "Upgrade Failed",
+        title: "Failed",
         description: errorMessage,
         variant: "destructive",
       })
@@ -172,129 +209,228 @@ export function AttributesPanel({
   }
 
   return (
-    <div className="mt-4">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-lg font-bold tracking-tight">global attributes</h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          Spend RP to permanently increase your lab&apos;s core capabilities
-        </p>
-      </div>
-
-      {/* Hexagonal grid layout - Cyberpunk style */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {ATTRIBUTES.map((attr) => {
-          const Icon = attr.icon
-          const currentVal = getCurrentValue(attr.type)
-          const nextUpgrade = getNextUpgrade(attr.type)
-          const purchased = getPurchasedCount(attr.type)
-          const total = getTotalCount(attr.type)
-          const isMaxed = purchased >= total && total > 0
-
-          return (
-            <div
-              key={attr.type}
-              className={cn(
-                "relative group",
-                "bg-gradient-to-b border rounded-lg overflow-hidden",
-                attr.bgGlow,
-                "border-white/10 hover:border-white/30 transition-all"
-              )}
-            >
-              {/* Hex pattern background overlay */}
-              <div 
-                className="absolute inset-0 opacity-10"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='28' height='49' viewBox='0 0 28 49' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                }}
-              />
-              
-              <div className="relative p-4">
-                {/* Icon and name */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={cn("p-2 rounded-lg bg-black/30", attr.color)}>
-                    <Icon className="w-5 h-5" weight="bold" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold tracking-wider text-muted-foreground">
-                      {attr.shortName}
-                    </div>
-                    <div className={cn("text-2xl font-black tabular-nums", attr.color)}>
-                      {attr.formatValue(currentVal)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress indicator */}
-                <div className="flex items-center gap-1 mb-3">
-                  {Array.from({ length: Math.max(total, 1) }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "h-1 flex-1 rounded-full transition-all",
-                        i < purchased ? attr.color.replace("text-", "bg-") : "bg-white/10"
-                      )}
-                    />
-                  ))}
-                </div>
-
-                {/* Upgrade button or status */}
-                {isMaxed ? (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <CheckCircle className="w-4 h-4" weight="fill" />
-                    <span>MAXED</span>
-                  </div>
-                ) : nextUpgrade ? (
-                  <div className="space-y-2">
-                    <div className="text-[10px] text-muted-foreground">
-                      {nextUpgrade.description}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={nextUpgrade.isLocked || currentRp < nextUpgrade.rpCost}
-                      onClick={() => handlePurchase(nextUpgrade.nodeId, nextUpgrade.name)}
-                      className={cn(
-                        "w-full text-xs h-8 border-white/20",
-                        "hover:bg-white hover:text-black transition-all"
-                      )}
-                    >
-                      {nextUpgrade.isLocked ? (
-                        <>
-                          <Lock className="w-3 h-3 mr-1" />
-                          {nextUpgrade.lockReason}
-                        </>
-                      ) : (
-                        <>
-                          <Lightning className="w-3 h-3 mr-1" />
-                          {formatCompact(nextUpgrade.rpCost)} RP
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">
-                    No upgrades available
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Legend */}
-      <div className="mt-6 flex items-center gap-6 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-1 rounded-full bg-white" />
-          <span>purchased</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-1 rounded-full bg-white/10" />
-          <span>available</span>
-        </div>
+    <div className="mt-6">
+      {/* Single row of cards - fill horizontal, massive height */}
+      <div className="flex gap-4">
+        {ATTRIBUTES.map((attr) => (
+          <AttributeCard
+            key={attr.type}
+            attr={attr}
+            currentValue={getCurrentValue(attr.type)}
+            bonusSources={getBonusSources(attr.type)}
+            totalBonus={getTotalBonus(attr.type)}
+            nextUpgrade={getNextUpgrade(attr.type)}
+            purchasedCount={getPurchasedCount(attr.type)}
+            totalCount={getTotalCount(attr.type)}
+            currentRp={currentRp}
+            onPurchase={handlePurchase}
+          />
+        ))}
       </div>
     </div>
   )
 }
 
+interface AttributeCardProps {
+  attr: AttributeConfig
+  currentValue: number
+  bonusSources: BonusSource[]
+  totalBonus: number
+  nextUpgrade: ReturnType<typeof Array.prototype.find>
+  purchasedCount: number
+  totalCount: number
+  currentRp: number
+  onPurchase: (nodeId: string, name: string) => void
+}
+
+function AttributeCard({
+  attr,
+  currentValue,
+  bonusSources,
+  totalBonus,
+  nextUpgrade,
+  purchasedCount,
+  totalCount,
+  currentRp,
+  onPurchase,
+}: AttributeCardProps) {
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [showTooltip, setShowTooltip] = useState(false)
+  const canAfford = nextUpgrade && currentRp >= nextUpgrade.rpCost
+  const isAvailable = nextUpgrade && nextUpgrade.isAvailable
+  const isMaxed = purchasedCount >= totalCount && totalCount > 0
+  const Icon = attr.icon
+
+  const handleConfirm = () => {
+    if (nextUpgrade) {
+      onPurchase(nextUpgrade.nodeId, nextUpgrade.name)
+      setShowConfirm(false)
+    }
+  }
+
+  // Format bonus as percentage
+  const formatBonusPercent = (value: number): string => {
+    const percent = Math.round((value - 1) * 100)
+    return percent >= 0 ? `+${percent}%` : `${percent}%`
+  }
+
+  const hasBonuses = bonusSources.length > 0 && totalBonus !== 1
+
+  return (
+    <div className="flex-1 min-h-[50vh] border border-white/20 bg-black/40 overflow-hidden flex flex-col">
+      {/* Header - massive centered content */}
+      <div className="flex-1 flex flex-col items-center justify-center p-8">
+        {/* Title - white, large, lowercase */}
+        <div className="text-2xl font-bold text-white lowercase mb-8">
+          {attr.name}
+        </div>
+        
+        {/* Icon + value stacked, massive */}
+        <Icon className="w-20 h-20 text-white mb-4" weight="regular" />
+        <span className="text-7xl font-black text-white tabular-nums">
+          {attr.formatValue(currentValue)}
+        </span>
+        
+        {/* Bonus display - green for positive, red for negative */}
+        {hasBonuses && (
+          <div 
+            className="relative mt-4"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <span className={cn(
+              "text-2xl font-bold cursor-help",
+              totalBonus >= 1 ? "text-emerald-400" : "text-red-400"
+            )}>
+              {formatBonusPercent(totalBonus)} bonus
+            </span>
+            
+            {/* Tooltip with breakdown */}
+            {showTooltip && (
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50">
+                <div className="bg-black/95 border border-white/20 rounded-lg px-4 py-3 min-w-[200px] shadow-xl">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                    bonus sources
+                  </div>
+                  <div className="space-y-1">
+                    {bonusSources.map((source, i) => (
+                      <div key={i} className="flex justify-between items-center gap-4">
+                        <span className="text-sm text-white/80 lowercase">{source.name}</span>
+                        <span className={cn(
+                          "text-sm font-bold",
+                          source.value >= 1 ? "text-emerald-400" : "text-red-400"
+                        )}>
+                          {formatBonusPercent(source.value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-white/10 mt-2 pt-2 flex justify-between items-center">
+                    <span className="text-sm text-white/80">total</span>
+                    <span className={cn(
+                      "text-sm font-black",
+                      totalBonus >= 1 ? "text-emerald-400" : "text-red-400"
+                    )}>
+                      {formatBonusPercent(totalBonus)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Progress squares - grey, larger */}
+        {totalCount > 0 && (
+          <div className="flex gap-2 mt-8">
+            {Array.from({ length: Math.min(totalCount, 8) }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-4 h-4 rounded-sm",
+                  i < purchasedCount ? "bg-white/40" : "bg-white/10"
+                )}
+              />
+            ))}
+            {totalCount > 8 && (
+              <span className="text-sm text-muted-foreground ml-2">
+                +{totalCount - 8}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Action area - fixed at bottom */}
+      <div className="bg-black/20 border-t border-white/10">
+        {isMaxed ? (
+          <div className="h-24 flex items-center justify-center">
+            <span className="text-2xl font-bold text-muted-foreground lowercase">maxed</span>
+          </div>
+        ) : !nextUpgrade ? (
+          <div className="h-24 flex items-center justify-center">
+            <span className="text-lg text-muted-foreground">-</span>
+          </div>
+        ) : showConfirm ? (
+          // Confirmation state
+          <div className="h-24 flex items-center justify-center gap-6">
+            <span className="text-xl font-bold text-muted-foreground">sure?</span>
+            <button
+              onClick={handleConfirm}
+              className="px-6 py-2 text-lg font-black text-black bg-emerald-500 hover:bg-emerald-400 transition-colors cursor-pointer"
+            >
+              yes
+            </button>
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="px-6 py-2 text-lg font-bold text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              no
+            </button>
+          </div>
+        ) : !isAvailable ? (
+          // Locked state
+          <div className="h-24 flex flex-col items-center justify-center gap-2">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Lock className="w-6 h-6" />
+              <span className="text-lg font-bold lowercase">lvl {nextUpgrade.minLevel}</span>
+            </div>
+            {/* Cost row */}
+            <div className="flex items-center gap-2 text-muted-foreground/60">
+              <Lightning weight="regular" className="w-5 h-5" />
+              <CaretDown weight="fill" className="w-4 h-4 text-red-500" />
+              <span className="text-base">{formatCompact(nextUpgrade.rpCost)}</span>
+            </div>
+          </div>
+        ) : !canAfford ? (
+          // Can't afford state
+          <div className="h-24 flex flex-col items-center justify-center gap-2">
+            <span className="text-lg font-bold text-muted-foreground lowercase">need more</span>
+            {/* Cost row */}
+            <div className="flex items-center gap-2">
+              <Lightning weight="regular" className="w-5 h-5 text-white" />
+              <CaretDown weight="fill" className="w-4 h-4 text-red-500" />
+              <span className="text-base text-white">{formatCompact(nextUpgrade.rpCost)}</span>
+            </div>
+          </div>
+        ) : (
+          // Available - big upgrade button
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="w-full h-24 flex flex-col items-center justify-center hover:bg-white/5 transition-colors cursor-pointer group"
+          >
+            <span className="text-3xl font-black text-white lowercase group-hover:scale-105 transition-transform">
+              upgrade
+            </span>
+            {/* Cost row */}
+            <div className="flex items-center gap-2 mt-1">
+              <Lightning weight="regular" className="w-5 h-5 text-white" />
+              <CaretDown weight="fill" className="w-4 h-4 text-red-500" />
+              <span className="text-base text-white font-bold">{formatCompact(nextUpgrade.rpCost)}</span>
+            </div>
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

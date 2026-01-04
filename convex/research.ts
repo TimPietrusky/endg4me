@@ -1,11 +1,16 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { ATTRIBUTE_NODES } from "./lib/skillTree";
 
-// Get all research nodes
+// All research nodes come directly from config - NO DATABASE SEEDING NEEDED
+// Just edit skillTree.ts and changes take effect immediately
+const ALL_NODES = ATTRIBUTE_NODES;
+
+// Get all research nodes (from config, not database)
 export const getResearchNodes = query({
   args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("researchNodes").collect();
+  handler: async () => {
+    return ALL_NODES;
   },
 });
 
@@ -34,6 +39,11 @@ export const hasResearchNode = query({
   },
 });
 
+// Helper to get node from config
+function getNodeFromConfig(nodeId: string) {
+  return ALL_NODES.find((n) => n.nodeId === nodeId);
+}
+
 // Purchase a research node
 export const purchaseResearchNode = mutation({
   args: {
@@ -41,11 +51,8 @@ export const purchaseResearchNode = mutation({
     nodeId: v.string(),
   },
   handler: async (ctx, args) => {
-    // Get the research node
-    const node = await ctx.db
-      .query("researchNodes")
-      .withIndex("by_node_id", (q) => q.eq("nodeId", args.nodeId))
-      .first();
+    // Get the research node FROM CONFIG (not database)
+    const node = getNodeFromConfig(args.nodeId);
 
     if (!node) {
       throw new Error("Research node not found");
@@ -145,7 +152,7 @@ export const purchaseResearchNode = mutation({
       }
     }
 
-    // Record purchase
+    // Record purchase (only the nodeId, not the full node data)
     await ctx.db.insert("playerResearch", {
       userId: args.userId,
       nodeId: args.nodeId,
@@ -161,8 +168,7 @@ export const purchaseResearchNode = mutation({
       read: false,
       createdAt: Date.now(),
       deepLink: {
-        view: node.unlockType === "job" ? "operate" : 
-              node.unlockType === "world_action" ? "world" : "lab",
+        view: "research",
         target: node.unlockTarget,
       },
     });
@@ -175,7 +181,8 @@ export const purchaseResearchNode = mutation({
 export const getResearchTreeState = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const nodes = await ctx.db.query("researchNodes").collect();
+    // Nodes come from CONFIG, purchases from DATABASE
+    const nodes = ALL_NODES;
     const purchased = await ctx.db
       .query("playerResearch")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -216,4 +223,3 @@ export const getResearchTreeState = query({
     });
   },
 });
-
