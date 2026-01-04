@@ -267,7 +267,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   {
     nodeId: "rn_bp_unlock_tts_3b",
     category: "model",
-    name: "3B TTS Blueprint",
+    name: "3B TTS",
     description: "Unlock training for 3B TTS.",
     costRP: 0,
     minLevel: 1,
@@ -295,7 +295,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   {
     nodeId: "rn_bp_unlock_vlm_7b",
     category: "model",
-    name: "7B VLM Blueprint",
+    name: "7B VLM",
     description: "Unlock training for 7B VLM.",
     costRP: 250,
     minLevel: 2,
@@ -332,7 +332,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   {
     nodeId: "rn_bp_unlock_llm_3b",
     category: "model",
-    name: "3B LLM Blueprint",
+    name: "3B LLM",
     description: "Unlock training for 3B LLM.",
     costRP: 350,
     minLevel: 3,
@@ -360,7 +360,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   {
     nodeId: "rn_bp_unlock_llm_17b",
     category: "model",
-    name: "17B LLM Blueprint",
+    name: "17B LLM",
     description: "Unlock training for 17B LLM.",
     costRP: 900,
     minLevel: 7,
