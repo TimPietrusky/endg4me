@@ -9,7 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 // Research view tabs - RP-only (queue/staff/compute moved to Lab > Upgrades)
 // Attributes tab removed per 004_upgrade_points user story
 const RESEARCH_TABS = [
-  { id: "blueprints", label: "BLUEPRINTS" },
+  { id: "models", label: "MODELS" },
   { id: "capabilities", label: "CAPABILITIES" },
   { id: "perks", label: "PERKS" },
 ] as const
@@ -18,7 +18,7 @@ type ResearchTab = typeof RESEARCH_TABS[number]["id"]
 
 export default function ResearchPage() {
   const { userId, labState } = useGameData()
-  const [activeTab, setActiveTab] = useState<ResearchTab>("blueprints")
+  const [activeTab, setActiveTab] = useState<ResearchTab>("models")
 
   if (!userId || !labState) {
     return null
@@ -42,11 +42,11 @@ export default function ResearchPage() {
 
       {/* Main content */}
       <div>
-        {activeTab === "blueprints" && (
+        {activeTab === "models" && (
           <PerkTree
             userId={userId as Id<"users">}
             currentRp={labState.researchPoints}
-            category="blueprints"
+            category="models"
           />
         )}
 

@@ -106,14 +106,14 @@ The game dashboard is **fully implemented** with:
 - Settings panel (slide-out sheet) with Profile, Organization/Team, and Sign out
 - Level-based milestone system (max level 20)
 - Blueprint-driven model training system
-- Research tree with Blueprints, Capabilities, and Perks
+- Research tree with Models, Capabilities, and Perks
 
 The homepage (`app/page.tsx`) is the landing page. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/world`.
 
 ### Navigation (5 top-level views)
 
 1. **Operate**: Run the lab day-to-day (queue management, job catalog, run jobs)
-2. **Research**: Spend RP on all unlocks (Blueprints, Capabilities, Perks)
+2. **Research**: Spend RP on all unlocks (Models, Capabilities, Perks)
 3. **Lab**: Your organization/ownership (model inventory, publishing controls, upgrades, team)
 4. **Inbox**: Events/offers/notifications with deep links
 5. **World**: Global layer (leaderboards by model type, public labs)
@@ -122,7 +122,7 @@ The homepage (`app/page.tsx`) is the landing page. The game uses top-level route
 
 Research is for RP-based unlocks:
 
-1. **Blueprints**: Model training capabilities (unlock training jobs)
+1. **Models**: Unlock training for new model types and sizes
 2. **Capabilities**: Job types, features, world actions (unlock contract jobs, publishing, API income)
 3. **Perks**: Passive bonuses like research speed and income boost
 
@@ -166,7 +166,7 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 
 - Earned by training jobs and research jobs
 - Spent in Research view for all unlocks:
-  - **Blueprints**: model training capabilities
+  - **Models**: unlock training for new model types and sizes
   - **Capabilities**: new job types, features, system flags
   - **Perks**: passive bonuses (research speed, money multiplier)
 

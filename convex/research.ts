@@ -415,7 +415,7 @@ export const getResearchTreeState = query({
 
     // Map singular categories to plural for UI consistency
     const categoryMap: Record<string, string> = {
-      blueprint: "blueprints",
+      model: "models",
       capability: "capabilities",
       perk: "perks",
     };

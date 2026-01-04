@@ -22,12 +22,12 @@ type StatusFilter = "available" | "locked" | "researched"
 interface PerkTreeProps {
   userId: Id<"users">
   currentRp: number
-  category: "blueprints" | "capabilities" | "perks"
+  category: "models" | "capabilities" | "perks"
 }
 
 const CATEGORY_CONFIG = {
-  blueprints: {
-    name: "Model Blueprints",
+  models: {
+    name: "Models",
     description: "Unlock the ability to train new model types and sizes",
     icon: Brain,
     color: "purple",

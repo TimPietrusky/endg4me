@@ -228,7 +228,7 @@ export const JOB_DEFS: JobDefinition[] = [
 // RESEARCH NODES
 // -----------------------------------------------------------------------------
 
-export type ResearchCategory = "blueprint" | "capability" | "perk"
+export type ResearchCategory = "model" | "capability" | "perk"
 export type PerkType = "research_speed" | "money_multiplier"
 
 export interface ResearchNodeUnlocks {
@@ -266,7 +266,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_bp_unlock_tts_3b",
-    category: "blueprint",
+    category: "model",
     name: "3B TTS Blueprint",
     description: "Unlock training for 3B TTS.",
     costRP: 0,
@@ -294,7 +294,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   // === EARLY PROGRESSION ===
   {
     nodeId: "rn_bp_unlock_vlm_7b",
-    category: "blueprint",
+    category: "model",
     name: "7B VLM Blueprint",
     description: "Unlock training for 7B VLM.",
     costRP: 250,
@@ -331,7 +331,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_bp_unlock_llm_3b",
-    category: "blueprint",
+    category: "model",
     name: "3B LLM Blueprint",
     description: "Unlock training for 3B LLM.",
     costRP: 350,
@@ -359,7 +359,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   // === MID-GAME HOOKS ===
   {
     nodeId: "rn_bp_unlock_llm_17b",
-    category: "blueprint",
+    category: "model",
     name: "17B LLM Blueprint",
     description: "Unlock training for 17B LLM.",
     costRP: 900,
@@ -420,7 +420,7 @@ export const INBOX_EVENTS: InboxEventDef[] = [
     eventId: "evt_first_research",
     trigger: "first_research",
     title: "Research Unlocked!",
-    message: "Use Research Points to unlock new blueprints, capabilities, and perks. Check out the Blueprints and Capabilities tabs.",
+    message: "Use Research Points to unlock new models, capabilities, and perks. Check out the Models and Capabilities tabs.",
     deepLink: { view: "research" },
   },
   {

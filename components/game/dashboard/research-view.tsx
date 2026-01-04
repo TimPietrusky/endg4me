@@ -39,7 +39,7 @@ export function ResearchView({ userId, currentRp, selectedCategory }: ResearchVi
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "blueprints":
+      case "models":
         return <Brain className="w-5 h-5" />
       case "capabilities":
         return <Wrench className="w-5 h-5" />
@@ -52,7 +52,7 @@ export function ResearchView({ userId, currentRp, selectedCategory }: ResearchVi
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "blueprints":
+      case "models":
         return "from-purple-500/20 to-purple-500/5 border-purple-500/30"
       case "capabilities":
         return "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30"
@@ -165,5 +165,5 @@ export function ResearchView({ userId, currentRp, selectedCategory }: ResearchVi
 }
 
 // Export categories for use in SubNav
-export const RESEARCH_CATEGORIES = ["blueprints", "capabilities", "perks"] as const
+export const RESEARCH_CATEGORIES = ["models", "capabilities", "perks"] as const
 export type ResearchCategory = typeof RESEARCH_CATEGORIES[number]
