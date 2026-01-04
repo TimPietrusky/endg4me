@@ -23,6 +23,7 @@ export function GameShell({ children }: GameShellProps) {
     xpRequired,
     unreadCount,
     computeCapacity,
+    upgradePoints,
   } = useGameData()
 
   if (isLoading) {
@@ -55,6 +56,7 @@ export function GameShell({ children }: GameShellProps) {
         rp={labState.researchPoints}
         gpus={computeCapacity}
         notificationCount={unreadCount}
+        upgradePoints={upgradePoints}
       />
       
       <div className="px-6 pb-6">

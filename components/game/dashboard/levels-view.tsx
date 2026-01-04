@@ -1,6 +1,6 @@
 "use client"
 
-import { XP_THRESHOLDS, MAX_LEVEL, UP_PER_LEVEL } from "@/convex/lib/gameConfig"
+import { XP_PER_LEVEL, MAX_LEVEL, UP_PER_LEVEL, getXpForNextLevel } from "@/convex/lib/gameConfig"
 import { Check, ArrowRight, Star, CaretDoubleUp } from "@phosphor-icons/react"
 
 interface LevelsViewProps {
@@ -10,6 +10,7 @@ interface LevelsViewProps {
 
 export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
   const levels = Array.from({ length: MAX_LEVEL }, (_, i) => i + 1)
+  const xpToNextLevel = getXpForNextLevel(currentLevel)
 
   return (
     <div className="py-4 space-y-4">
@@ -20,7 +21,9 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
           <div className="text-lg font-bold text-white">
             Level {currentLevel}
             <span className="text-white/40 mx-2">/</span>
-            <span className="font-mono text-white/80">{currentXp.toLocaleString()} XP</span>
+            <span className="font-mono text-white/80">
+              {currentXp.toLocaleString()} / {xpToNextLevel === Infinity ? "MAX" : xpToNextLevel.toLocaleString()} XP
+            </span>
           </div>
         </div>
         <div className="text-right">
@@ -37,7 +40,7 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
         {/* Header Row */}
         <div className="grid grid-cols-4 gap-2 p-2 border-b border-white/20 bg-white/5 text-xs text-white/60 uppercase tracking-wider">
           <div>Level</div>
-          <div>XP Required</div>
+          <div>XP to Next</div>
           <div>UP Reward</div>
           <div className="text-right">Status</div>
         </div>
@@ -45,7 +48,7 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
         {/* Level Rows */}
         <div className="divide-y divide-white/10">
           {levels.map((level) => {
-            const xpThreshold = XP_THRESHOLDS[level]
+            const xpNeeded = XP_PER_LEVEL[level]
             const isReached = currentLevel >= level
             const isCurrent = currentLevel === level
             const isNext = currentLevel === level - 1
@@ -74,12 +77,16 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
                   )}
                 </div>
 
-                {/* XP Required */}
+                {/* XP to Next Level */}
                 <div className="font-mono text-white/80">
-                  {level === 1 ? "-" : xpThreshold.toLocaleString()}
+                  {level === MAX_LEVEL ? (
+                    <span className="text-yellow-400">MAX</span>
+                  ) : (
+                    xpNeeded.toLocaleString()
+                  )}
                 </div>
 
-                {/* UP Reward */}
+                {/* UP Reward (earned when reaching this level) */}
                 <div className="font-mono">
                   {level === 1 ? (
                     <span className="text-white/40">-</span>
@@ -113,7 +120,7 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
       {/* Summary */}
       <div className="p-3 border border-white/10 bg-white/5 text-xs text-white/60 space-y-1">
         <p className="flex items-center gap-1 flex-wrap">
-          XP is earned by completing jobs. Each level-up grants
+          XP is earned by completing jobs. XP resets to 0 on level-up. Each level grants
           <span className="text-green-400 font-mono inline-flex items-center gap-0.5">
             +{UP_PER_LEVEL}
             <CaretDoubleUp className="w-3 h-3" weight="bold" />

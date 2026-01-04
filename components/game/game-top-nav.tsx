@@ -2,8 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
-import { CurrencyDollar, Lightning, Cpu } from "@phosphor-icons/react"
+import { CurrencyDollar, Lightning, Cpu, CaretDoubleUp } from "@phosphor-icons/react"
 import { SettingsPanel } from "./settings-panel"
 import { LevelProgress } from "./dashboard/level-progress"
 import { Logo } from "@/components/logo"
@@ -21,6 +20,7 @@ interface GameTopNavProps {
   rp: number
   gpus: number
   notificationCount: number
+  upgradePoints: number
 }
 
 export function GameTopNav({
@@ -34,6 +34,7 @@ export function GameTopNav({
   rp,
   gpus,
   notificationCount,
+  upgradePoints,
 }: GameTopNavProps) {
   const pathname = usePathname()
   
@@ -41,7 +42,7 @@ export function GameTopNav({
   const getCurrentView = (): ViewType | null => {
     if (pathname === "/operate") return "operate"
     if (pathname === "/research") return "research"
-    if (pathname === "/lab") return "lab"
+    if (pathname?.startsWith("/lab")) return "lab"
     if (pathname === "/inbox") return "inbox"
     if (pathname === "/world") return "world"
     return null // No nav item active for unknown routes
@@ -50,11 +51,12 @@ export function GameTopNav({
   const currentView = getCurrentView()
 
   // Navigation items
-  const navItems: { id: ViewType; label: string; href: string; badge?: number | string }[] = [
+  // Lab shows UP count when > 0 (points to spend)
+  const navItems: { id: ViewType; label: string; href: string; badge?: number | string; badgeVariant?: "secondary" | "up" }[] = [
     { id: "operate", label: "operate", href: "/operate" },
     { id: "research", label: "research", href: "/research" },
-    { id: "lab", label: "lab", href: "/lab" },
-    { id: "inbox", label: "inbox", href: "/inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined },
+    { id: "lab", label: "lab", href: "/lab", badge: upgradePoints > 0 ? `${upgradePoints}` : undefined, badgeVariant: "up" },
+    { id: "inbox", label: "inbox", href: "/inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined, badgeVariant: "secondary" },
     { id: "world", label: "world", href: "/world" },
   ]
 
@@ -81,9 +83,16 @@ export function GameTopNav({
                 >
                   {item.label}
                   {item.badge && (
-                    <Badge variant="secondary" className="ml-1 h-4 px-1">
+                    <span 
+                      className={`ml-1 h-4 px-1.5 inline-flex items-center justify-center gap-0.5 text-[10px] font-bold rounded ${
+                        item.badgeVariant === "up" 
+                          ? "bg-yellow-500 text-black" 
+                          : "bg-white/20 text-white"
+                      }`}
+                    >
+                      {item.badgeVariant === "up" && <CaretDoubleUp className="w-3 h-3" weight="bold" />}
                       {item.badge}
-                    </Badge>
+                    </span>
                   )}
                 </Link>
               ))}

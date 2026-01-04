@@ -13,28 +13,30 @@ export const MAX_LEVEL = 20
 
 export const UP_PER_LEVEL = 1
 
-// XP required to REACH each level (cumulative)
-export const XP_THRESHOLDS: Record<number, number> = {
-  1: 0,
-  2: 100,
-  3: 220,
-  4: 360,
-  5: 520,
-  6: 700,
-  7: 900,
-  8: 1120,
-  9: 1360,
-  10: 1620,
-  11: 1900,
-  12: 2200,
-  13: 2520,
-  14: 2860,
-  15: 3220,
-  16: 3600,
-  17: 4000,
-  18: 4420,
-  19: 4860,
-  20: 5320,
+// XP required to advance FROM each level TO the next
+// e.g., XP_PER_LEVEL[1] = 100 means you need 100 XP to go from level 1 to level 2
+// XP resets to 0 when leveling up (excess carries over)
+export const XP_PER_LEVEL: Record<number, number> = {
+  1: 100,
+  2: 120,
+  3: 140,
+  4: 160,
+  5: 180,
+  6: 200,
+  7: 220,
+  8: 240,
+  9: 260,
+  10: 280,
+  11: 300,
+  12: 320,
+  13: 340,
+  14: 360,
+  15: 380,
+  16: 400,
+  17: 420,
+  18: 440,
+  19: 460,
+  20: Infinity, // Max level, can't level up further
 }
 
 // -----------------------------------------------------------------------------
@@ -168,26 +170,12 @@ export function getMaxAvailableRank(playerLevel: number): number {
 }
 
 /**
- * Get XP required to reach the next level
+ * Get XP required to level up from the current level
+ * XP resets to 0 when leveling up
  */
 export function getXpForNextLevel(currentLevel: number): number {
   if (currentLevel >= MAX_LEVEL) return Infinity
-  return XP_THRESHOLDS[currentLevel + 1]
-}
-
-/**
- * Calculate level from total XP
- */
-export function getLevelFromXp(totalXp: number): number {
-  let level = 1
-  for (let l = 2; l <= MAX_LEVEL; l++) {
-    if (totalXp >= XP_THRESHOLDS[l]) {
-      level = l
-    } else {
-      break
-    }
-  }
-  return level
+  return XP_PER_LEVEL[currentLevel] ?? Infinity
 }
 
 /**

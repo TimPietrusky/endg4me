@@ -50,7 +50,7 @@ export const PERK_NODES: PerkNode[] = [
 ]
 
 // Re-export from central config
-export { XP_THRESHOLDS as XP_REQUIREMENTS, MAX_LEVEL } from "./gameConfig"
+export { XP_PER_LEVEL as XP_REQUIREMENTS, MAX_LEVEL } from "./gameConfig"
 
 // =============================================================================
 // HELPERS

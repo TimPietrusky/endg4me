@@ -10,9 +10,9 @@ import {
 import {
   FOUNDER_MODIFIERS,
   MAX_LEVEL,
-  XP_THRESHOLDS,
   UP_PER_LEVEL,
   getUpgradeValue,
+  getXpForNextLevel,
 } from "./lib/gameConfig";
 import { internal } from "./_generated/api";
 
@@ -302,20 +302,31 @@ export const completeTask = internalMutation({
     }
 
     // Update player XP and check level up (max level 20)
+    // XP resets to 0 on level up, overflow carries to next level
     if (rewards.experience) {
-      const newXP = playerState.experience + rewards.experience;
-      // XP_THRESHOLDS is cumulative - check if we've reached next level's threshold
-      const nextLevelThreshold = XP_THRESHOLDS[playerState.level + 1] ?? Infinity;
+      let currentXP = playerState.experience + rewards.experience;
+      let currentLevel = playerState.level;
+      let levelsGained = 0;
 
-      if (newXP >= nextLevelThreshold && playerState.level < MAX_LEVEL) {
-        // Level up!
-        const newLevel = playerState.level + 1;
+      // Check for level ups (can level up multiple times if XP reward is large)
+      while (currentLevel < MAX_LEVEL) {
+        const xpNeeded = getXpForNextLevel(currentLevel);
+        if (currentXP >= xpNeeded) {
+          currentXP -= xpNeeded; // Reset XP with overflow
+          currentLevel++;
+          levelsGained++;
+        } else {
+          break;
+        }
+      }
+
+      if (levelsGained > 0) {
         const currentUP = playerState.upgradePoints ?? 0;
         
         await ctx.db.patch(playerState._id, {
-          experience: newXP, // Keep total XP (cumulative system)
-          level: newLevel,
-          upgradePoints: currentUP + UP_PER_LEVEL,
+          experience: currentXP, // XP relative to new level (with overflow)
+          level: currentLevel,
+          upgradePoints: currentUP + (UP_PER_LEVEL * levelsGained),
         });
 
         // Create level up notification with UP reward
@@ -323,14 +334,14 @@ export const completeTask = internalMutation({
           userId: lab.userId,
           type: "level_up",
           title: "Level Up!",
-          message: `You've reached level ${newLevel}! +${UP_PER_LEVEL} UP`,
+          message: `You've reached level ${currentLevel}! +${UP_PER_LEVEL * levelsGained} UP`,
           read: false,
           createdAt: Date.now(),
           deepLink: { view: "lab" as const, target: "upgrades" },
         });
 
         // Check for clan unlock
-        if (newLevel === LEVEL_REWARDS.clanUnlockLevel) {
+        if (currentLevel >= LEVEL_REWARDS.clanUnlockLevel && playerState.level < LEVEL_REWARDS.clanUnlockLevel) {
           await ctx.db.insert("notifications", {
             userId: lab.userId,
             type: "unlock",
@@ -342,7 +353,7 @@ export const completeTask = internalMutation({
         }
       } else {
         await ctx.db.patch(playerState._id, {
-          experience: newXP,
+          experience: currentXP,
         });
       }
     }

@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id, Doc } from "@/convex/_generated/dataModel"
 import { TASKS } from "@/convex/lib/gameConstants"
-import { XP_THRESHOLDS, getUpgradeValue } from "@/convex/lib/gameConfig"
+import { getUpgradeValue, getXpForNextLevel } from "@/convex/lib/gameConfig"
 import { formatTimeRemaining } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import type { Action, Notification } from "@/lib/game-types"
@@ -27,6 +27,7 @@ interface GameData {
   queueCapacity: number
   staffCapacity: number
   computeCapacity: number
+  upgradePoints: number
   
   // Lists
   actions: Action[]
@@ -139,8 +140,8 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
   const playerState = labData?.playerState ?? null
 
   // Derived calculations
-  // XP_THRESHOLDS is cumulative - next level threshold is the target
-  const xpRequired = playerState ? (XP_THRESHOLDS[playerState.level + 1] || Infinity) : 100
+  // XP resets to 0 on level up - xpRequired is XP needed from current level to next
+  const xpRequired = playerState ? getXpForNextLevel(playerState.level) : 100
   const inProgressTasks = activeTasks?.filter((t) => t.status === "in_progress") || []
   const queuedTasks = activeTasks?.filter((t) => t.status === "queued") || []
   
@@ -355,6 +356,7 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     queueCapacity,
     staffCapacity,
     computeCapacity,
+    upgradePoints: playerState?.upgradePoints ?? 0,
     actions,
     notifications,
     trainedModels,

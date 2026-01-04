@@ -162,6 +162,7 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 **XP / Level (max 20)**:
 
 - Earned by completing jobs
+- **XP resets to 0 on level-up** (overflow carries to next level)
 - **Gates access** to research nodes and upgrade ranks
 - XP is never spent
 - Level-up grants **Upgrade Points (UP)**, not RP
@@ -387,7 +388,7 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-04 (asset generation utility)_
+_Last updated: 2026-01-04 (XP resets on level-up, UP badge on Lab nav)_
 
 ---
 
@@ -428,7 +429,7 @@ _Last updated: 2026-01-04 (asset generation utility)_
 
 ## Repository Structure (Key Files)
 
-- `convex/lib/gameConfig.ts` — Central source of truth for XP thresholds, UP system, upgrade definitions
+- `convex/lib/gameConfig.ts` — Central source of truth for XP per-level requirements, UP system, upgrade definitions
 - `convex/lib/gameConstants.ts` — Task definitions (imports from gameConfig)
 - `convex/lib/skillTree.ts` — RP perk nodes (research_speed, money_multiplier only)
 - `convex/upgrades.ts` — UP balance and upgrade rank queries/mutations
