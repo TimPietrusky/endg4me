@@ -25,6 +25,8 @@ interface GameTopNavProps {
   teamCapacity: number
   notificationCount: number
   upgradePoints: number
+  activeTaskCount: number
+  maxParallelTasks: number
   userId?: Id<"users">
 }
 
@@ -43,6 +45,8 @@ export function GameTopNav({
   teamCapacity,
   notificationCount,
   upgradePoints,
+  activeTaskCount,
+  maxParallelTasks,
   userId,
 }: GameTopNavProps) {
   const pathname = usePathname()
@@ -60,9 +64,9 @@ export function GameTopNav({
   const currentView = getCurrentView()
 
   // Navigation items
-  // Lab shows UP count when > 0 (points to spend)
+  // Operate shows active/max queue, Lab shows UP count when > 0
   const navItems: { id: ViewType; label: string; href: string; badge?: number | string; badgeVariant?: "secondary" | "up" }[] = [
-    { id: "operate", label: "operate", href: "/operate" },
+    { id: "operate", label: "operate", href: "/operate", badge: `${activeTaskCount}/${maxParallelTasks}`, badgeVariant: "secondary" },
     { id: "research", label: "research", href: "/research" },
     { id: "lab", label: "lab", href: "/lab", badge: upgradePoints > 0 ? `${upgradePoints}` : undefined, badgeVariant: "up" },
     { id: "inbox", label: "inbox", href: "/inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined, badgeVariant: "secondary" },
@@ -80,31 +84,36 @@ export function GameTopNav({
             </Link>
 
             <nav className="flex items-center gap-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className={`inline-flex items-center justify-center text-xs h-8 px-3 rounded-md lowercase transition-all ${
-                    currentView === item.id
-                      ? "bg-white text-black font-bold hover:bg-white/80"
-                      : "hover:bg-white/20 hover:text-white text-white/70"
-                  }`}
-                >
-                  {item.label}
-                  {item.badge && (
-                    <span 
-                      className={`ml-1 h-4 px-1.5 inline-flex items-center justify-center gap-0.5 text-[10px] font-bold rounded ${
-                        item.badgeVariant === "up" 
-                          ? "bg-yellow-500 text-black" 
-                          : "bg-white/20 text-white"
-                      }`}
-                    >
-                      {item.badgeVariant === "up" && <CaretDoubleUp className="w-3 h-3" weight="bold" />}
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const isActive = currentView === item.id
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={`inline-flex items-center justify-center text-xs h-8 px-3 rounded-md lowercase transition-all ${
+                      isActive
+                        ? "bg-white text-black font-bold hover:bg-white/80"
+                        : "hover:bg-white/20 hover:text-white text-white/70"
+                    }`}
+                  >
+                    {item.label}
+                    {item.badge && (
+                      <span 
+                        className={`ml-1 h-4 px-1.5 inline-flex items-center justify-center gap-0.5 text-[10px] font-bold rounded ${
+                          item.badgeVariant === "up" 
+                            ? "bg-yellow-500 text-black" 
+                            : isActive
+                              ? "bg-black/20 text-black"
+                              : "bg-white/20 text-white"
+                        }`}
+                      >
+                        {item.badgeVariant === "up" && <CaretDoubleUp className="w-3 h-3" weight="bold" />}
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
               <SettingsPanel
                 labName={labName}
                 founderName={founderName}

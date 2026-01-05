@@ -28,6 +28,8 @@ export function GameShell({ children }: GameShellProps) {
     computeCapacity,
     staffCapacity,
     upgradePoints,
+    activeTaskCount,
+    maxParallelTasks,
   } = useGameData()
 
   // Redirect to /new if user needs to create a lab
@@ -71,6 +73,8 @@ export function GameShell({ children }: GameShellProps) {
         teamCapacity={staffCapacity}
         notificationCount={unreadCount}
         upgradePoints={upgradePoints}
+        activeTaskCount={activeTaskCount}
+        maxParallelTasks={maxParallelTasks}
         userId={userId}
       />
       

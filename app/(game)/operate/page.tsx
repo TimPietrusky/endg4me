@@ -40,7 +40,7 @@ export default function OperatePage() {
           isFirst
           isActive={showActiveOnly}
           onClick={() => setShowActiveOnly(!showActiveOnly)}
-          badge={`${activeTaskCount}/${maxParallelTasks}`}
+          badge={activeTaskCount}
         >
           ACTIVE
         </SubNavButton>
