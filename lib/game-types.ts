@@ -29,6 +29,7 @@ export interface Action {
   xpReward?: number
   cashReward?: number
   speedBonus?: number
+  speedFactor?: number // How much faster the job runs (1.25 = 25% faster)
   gpuBonus?: number
   gpuCost?: number
   costReduction?: number

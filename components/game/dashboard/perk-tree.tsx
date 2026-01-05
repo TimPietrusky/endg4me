@@ -9,7 +9,9 @@ import {
   CheckCircle, 
   Brain,
   Wrench,
-  Sparkle
+  Sparkle,
+  CurrencyDollar,
+  Users
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { SubSubNav, SubSubNavFilter } from "./sub-nav"
@@ -22,11 +24,11 @@ type StatusFilter = "available" | "locked" | "researched"
 interface PerkTreeProps {
   userId: Id<"users">
   currentRp: number
-  category: "models" | "capabilities" | "perks"
+  category: "model" | "monetization" | "perk" | "income" | "hiring"
 }
 
 const CATEGORY_CONFIG = {
-  models: {
+  model: {
     name: "Models",
     description: "Unlock the ability to train new model types and sizes",
     icon: Brain,
@@ -37,9 +39,9 @@ const CATEGORY_CONFIG = {
     accentColor: "text-purple-400",
     bgAccent: "bg-purple-500",
   },
-  capabilities: {
-    name: "Capabilities",
-    description: "Unlock new job types, features, and world actions",
+  monetization: {
+    name: "Monetization",
+    description: "Ways to make money with your trained models",
     icon: Wrench,
     color: "cyan",
     nodeGradient: "from-cyan-500/20 to-cyan-500/5",
@@ -48,7 +50,7 @@ const CATEGORY_CONFIG = {
     accentColor: "text-cyan-400",
     bgAccent: "bg-cyan-500",
   },
-  perks: {
+  perk: {
     name: "Perks",
     description: "Passive bonuses that improve your lab's efficiency",
     icon: Sparkle,
@@ -58,6 +60,28 @@ const CATEGORY_CONFIG = {
     nodeActive: "border-amber-400 shadow-amber-500/20",
     accentColor: "text-amber-400",
     bgAccent: "bg-amber-500",
+  },
+  income: {
+    name: "Income",
+    description: "Freelance work to earn money without models",
+    icon: CurrencyDollar,
+    color: "green",
+    nodeGradient: "from-green-500/20 to-green-500/5",
+    nodeBorder: "border-green-500/30",
+    nodeActive: "border-green-400 shadow-green-500/20",
+    accentColor: "text-green-400",
+    bgAccent: "bg-green-500",
+  },
+  hiring: {
+    name: "Hiring",
+    description: "Unlock temporary hires for boosts",
+    icon: Users,
+    color: "blue",
+    nodeGradient: "from-blue-500/20 to-blue-500/5",
+    nodeBorder: "border-blue-500/30",
+    nodeActive: "border-blue-400 shadow-blue-500/20",
+    accentColor: "text-blue-400",
+    bgAccent: "bg-blue-500",
   },
 }
 

@@ -20,8 +20,8 @@ interface GameTopNavProps {
   rp: number
   usedCU: number
   totalCU: number
-  staffCount: number
-  staffCapacity: number
+  teamSize: number
+  teamCapacity: number
   notificationCount: number
   upgradePoints: number
 }
@@ -37,8 +37,8 @@ export function GameTopNav({
   rp,
   usedCU,
   totalCU,
-  staffCount,
-  staffCapacity,
+  teamSize,
+  teamCapacity,
   notificationCount,
   upgradePoints,
 }: GameTopNavProps) {
@@ -132,7 +132,7 @@ export function GameTopNav({
             </div>
             <div className="flex items-center gap-1.5 text-sm">
               <Users className="w-5 h-5 text-white" />
-              <span className="font-bold">{staffCount}/{staffCapacity}</span>
+              <span className="font-bold">{teamSize}/{teamCapacity}</span>
             </div>
           </div>
         </div>

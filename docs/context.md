@@ -106,14 +106,14 @@ The game dashboard is **fully implemented** with:
 - Settings panel (slide-out sheet) with Profile, Organization/Team, and Sign out
 - Level-based milestone system (max level 20)
 - Blueprint-driven model training system
-- Research tree with Models, Capabilities, and Perks
+- Research tree with Models, Monetization, Income, Hiring, and Perks
 
 The homepage (`app/page.tsx`) is the landing page. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/world`.
 
 ### Navigation (5 top-level views)
 
-1. **Operate**: Run the lab day-to-day (queue management, job catalog, run jobs)
-2. **Research**: Spend RP on all unlocks (Models, Capabilities, Perks)
+1. **Operate**: Run the lab day-to-day (queue management, job catalog, run jobs, hire temporary staff)
+2. **Research**: Spend RP on all unlocks (Models, Monetization, Income, Hiring, Perks)
 3. **Lab**: Your organization/ownership (model inventory, publishing controls, upgrades, team)
 4. **Inbox**: Events/offers/notifications with deep links
 5. **World**: Global layer (leaderboards by model type, public labs)
@@ -123,8 +123,10 @@ The homepage (`app/page.tsx`) is the landing page. The game uses top-level route
 Research is for RP-based unlocks:
 
 1. **Models**: Unlock training for new model types and sizes
-2. **Capabilities**: Job types, features, world actions (unlock contract jobs, publishing, API income)
-3. **Perks**: Passive bonuses like research speed and income boost
+2. **Monetization**: Ways to make money with trained models (contracts, API income, licensing)
+3. **Income**: Freelance work to earn money without models (website gigs, API integration)
+4. **Hiring**: Unlock temporary hire types for boosts (junior researcher, efficiency expert, etc.)
+5. **Perks**: Passive bonuses like research speed and income boost
 
 Each node has:
 
@@ -157,7 +159,7 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 - Earned only from level-ups (+1 UP per level)
 - Spent only in Lab > Upgrades for core lab stats:
   - **Queue**: max concurrent jobs (base 1, max rank 8)
-  - **Staff**: max active hires (base 1, max rank 6)
+  - **Team Size**: max active team members (base 1, max rank 6)
   - **Compute**: compute units for parallel training (base 1, max rank 10)
 - 1 UP = 1 rank increase (no cost scaling)
 - Higher ranks level-gated to prevent early dumping
@@ -167,13 +169,16 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 - Earned by training jobs and research jobs
 - Spent in Research view for all unlocks:
   - **Models**: unlock training for new model types and sizes
-  - **Capabilities**: new job types, features, system flags
+  - **Monetization**: contract types, API income, licensing
+  - **Income**: freelance jobs (no model required)
+  - **Hiring**: temporary staff boosts
   - **Perks**: passive bonuses (research speed, money multiplier)
 
 **Money**:
 
 - Operational budget for running jobs
-- Spent in Operate (training costs, contracts)
+- Starting cash: $1,000
+- Spent in Operate (training costs, contracts, hiring)
 
 ### Model System (Blueprint-driven)
 
@@ -200,12 +205,22 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 All jobs are defined in `convex/lib/contentCatalog.ts`:
 
 **Training Jobs**: Create new model versions
-- `job_train_tts_3b`, `job_train_vlm_7b`, `job_train_llm_3b`, `job_train_llm_17b`
+- `job_train_tts_3b` (2 min, 50 XP, 125 RP), `job_train_vlm_7b`, `job_train_llm_3b`, `job_train_llm_17b`
 
 **Contract Jobs**: Earn money using trained models
 - `job_contract_blog_basic` (uses LLM)
 - `job_contract_voice_pack` (uses TTS)
 - `job_contract_image_qa` (uses VLM)
+
+**Income Jobs**: Freelance work, no models needed
+- `job_income_basic_website` (level 1, $200 + 30 XP)
+- `job_income_api_integration` (level 3, $400 + 50 XP)
+
+**Hire Jobs**: Temporary boosts, cost money
+- `job_hire_junior_researcher` (level 2, +1 queue, 8 min)
+- `job_hire_efficiency_expert` (level 4, +25% XP, 12 min)
+- `job_hire_business_partner` (level 6, +30% money, 15 min)
+- `job_hire_senior_engineer` (level 10, +1 compute, 20 min)
 
 **Research Job**: Always available RP trickle
 - `job_research_literature`
@@ -218,8 +233,9 @@ Player unlocks are tracked in `playerUnlocks` table:
 - `enabledSystemFlags`: System features like `model_api_income`
 
 Free starter unlocks (0 RP, level 1):
-- `rn_cap_contracts_basic` - Basic blog contracts
-- `rn_bp_unlock_tts_3b` - 3B TTS blueprint
+- `rn_cap_contracts_basic` - Basic blog contracts (monetization)
+- `rn_bp_unlock_tts_3b` - 3B TTS blueprint (model)
+- `rn_income_basic_website` - Basic website gigs (income)
 
 ### Settings Panel
 
@@ -411,9 +427,20 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-05 (Leaderboard day-one: Lab Score, neighbors slice, publishing available from start)_
+_Last updated: 2026-01-05 (Research categories expanded, hiring system, income jobs)_
 
 ---
+
+## Architecture Decisions (007 Research Categories & Hiring)
+
+- **Research categories expanded**: Models, Monetization, Income, Hiring, Perks (was: Models, Capabilities, Perks)
+- **Income category**: Freelance jobs that earn money without models (Basic Website, API Integration)
+- **Hiring system**: Research unlocks hire types, Operate lets you hire for temporary boosts
+- **Hire types**: Junior Researcher (+1 queue), Efficiency Expert (+25% XP), Business Partner (+30% money), Senior Engineer (+1 compute)
+- **Hire mechanic**: Jobs with duration, cost money, no cooldown - can re-hire immediately after expiry
+- **Starting cash reduced**: $1,000 (was $5,000) for tighter early-game economy
+- **3B TTS rebalanced**: 2 min duration (was 5), 50 XP (was 80), 125 RP (was 120)
+- **Clan feature dormant**: Notification removed, backend exists but UI not connected
 
 ## Architecture Decisions (006 Leaderboard Day One)
 

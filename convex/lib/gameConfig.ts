@@ -67,12 +67,12 @@ export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
   },
   staff: {
     id: "staff",
-    name: "Staff Capacity", 
-    description: "Max active hires/boosts",
+    name: "Team Size", 
+    description: "Max active team members",
     base: 1,
     perRank: 1,
     maxRank: 6,
-    unit: "hires",
+    unit: "seats",
   },
   compute: {
     id: "compute",
@@ -99,7 +99,7 @@ export const RANK_LEVEL_GATES: { minRank: number; maxRank: number; requiredLevel
 // -----------------------------------------------------------------------------
 
 export const BASE_STATS = {
-  cash: 5000,
+  cash: 1000,
   researchPoints: 0,
 }
 

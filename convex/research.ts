@@ -388,12 +388,7 @@ export const getResearchTreeState = query({
     const playerLevel = playerState?.level || 1;
     const currentRP = labState?.researchPoints || 0;
 
-    // Map singular categories to plural for UI consistency
-    const categoryMap: Record<string, string> = {
-      model: "models",
-      capability: "capabilities",
-      perk: "perks",
-    };
+    // Categories are already correct in contentCatalog (no mapping needed)
 
     // Helper to check if a node's unlocks are already owned (starter items)
     const isAlreadyUnlocked = (node: typeof RESEARCH_NODES[0]): boolean => {
@@ -445,8 +440,8 @@ export const getResearchTreeState = query({
 
       return {
         ...node,
-        // Map category to plural for UI
-        category: categoryMap[node.category] || node.category,
+        // Category from contentCatalog (model, monetization, perk, income, hiring)
+        category: node.category,
         // Flatten unlocks for easier UI access
         rpCost: node.costRP,
         unlockType: node.category,

@@ -1,11 +1,33 @@
 "use client"
 
 import { XP_PER_LEVEL, MAX_LEVEL, UP_PER_LEVEL, getXpForNextLevel } from "@/convex/lib/gameConfig"
+import { RESEARCH_NODES, JOB_DEFS } from "@/convex/lib/contentCatalog"
 import { Check, ArrowRight, Star, CaretDoubleUp } from "@phosphor-icons/react"
 
 interface LevelsViewProps {
   currentLevel: number
   currentXp: number
+}
+
+// Pre-compute unlocks per level
+function getUnlocksForLevel(level: number): string[] {
+  const unlocks: string[] = []
+  
+  // Research nodes that unlock at this level
+  RESEARCH_NODES.forEach((node) => {
+    if (node.minLevel === level && node.costRP > 0) {
+      unlocks.push(node.name)
+    }
+  })
+  
+  // Jobs that become available at this level (not via research)
+  JOB_DEFS.forEach((job) => {
+    if (job.requirements.minLevel === level && !job.requirements.requiredResearchNodeIds?.length) {
+      unlocks.push(job.name)
+    }
+  })
+  
+  return unlocks
 }
 
 export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
@@ -38,10 +60,11 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
       {/* Level Table */}
       <div className="border border-white/20 bg-black/20">
         {/* Header Row */}
-        <div className="grid grid-cols-4 gap-2 p-2 border-b border-white/20 bg-white/5 text-xs text-white/60 uppercase tracking-wider">
+        <div className="grid grid-cols-5 gap-2 p-2 border-b border-white/20 bg-white/5 text-xs text-white/60 uppercase tracking-wider">
           <div>Level</div>
           <div>XP to Next</div>
           <div>UP Reward</div>
+          <div>Unlocks</div>
           <div className="text-right">Status</div>
         </div>
 
@@ -52,11 +75,12 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
             const isReached = currentLevel >= level
             const isCurrent = currentLevel === level
             const isNext = currentLevel === level - 1
+            const unlocks = getUnlocksForLevel(level)
 
             return (
               <div
                 key={level}
-                className={`grid grid-cols-4 gap-2 p-2 text-sm transition-colors ${
+                className={`grid grid-cols-5 gap-2 p-2 text-sm transition-colors ${
                   isCurrent
                     ? "bg-white/10 border-l-2 border-l-white"
                     : isNext
@@ -95,6 +119,15 @@ export function LevelsView({ currentLevel, currentXp }: LevelsViewProps) {
                       +{UP_PER_LEVEL}
                       <CaretDoubleUp className="w-3 h-3" weight="bold" />
                     </span>
+                  )}
+                </div>
+
+                {/* Unlocks at this level */}
+                <div className="text-xs text-white/70">
+                  {unlocks.length > 0 ? (
+                    <span className="text-cyan-400">{unlocks.join(", ")}</span>
+                  ) : (
+                    <span className="text-white/30">-</span>
                   )}
                 </div>
 

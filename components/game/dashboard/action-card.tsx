@@ -14,19 +14,31 @@ interface ActionCardProps {
 }
 
 export function ActionCard({ action, onStartAction }: ActionCardProps) {
-  const [displayTime, setDisplayTime] = useState(action.remainingTime || action.duration)
+  const speedFactor = action.speedFactor || 1
+  // Display time starts at original duration (remainingTime * speedFactor)
+  const [displayTime, setDisplayTime] = useState(
+    action.isActive 
+      ? (action.remainingTime || action.duration) * speedFactor 
+      : action.duration
+  )
   const [showConfirm, setShowConfirm] = useState(false)
   const startTimeRef = useRef<number | null>(null)
-  const initialTimeRef = useRef(action.remainingTime || action.duration)
+  const initialTimeRef = useRef(
+    action.isActive 
+      ? (action.remainingTime || action.duration) * speedFactor 
+      : action.duration
+  )
 
   useEffect(() => {
     if (!action.isActive) {
-      setDisplayTime(action.remainingTime || action.duration)
+      setDisplayTime(action.duration)
       return
     }
 
+    const factor = action.speedFactor || 1
     startTimeRef.current = performance.now()
-    initialTimeRef.current = action.remainingTime || action.duration
+    // Scale remaining time to display time (original duration scale)
+    initialTimeRef.current = (action.remainingTime || action.duration) * factor
 
     let rafId: number
 
@@ -34,7 +46,8 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
       if (!startTimeRef.current) return
 
       const elapsed = (now - startTimeRef.current) / 1000
-      const newTime = Math.max(0, initialTimeRef.current - elapsed)
+      // Tick at speedFactor rate
+      const newTime = Math.max(0, initialTimeRef.current - elapsed * factor)
       setDisplayTime(newTime)
 
       if (newTime > 0) {
@@ -44,7 +57,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [action.isActive, action.remainingTime])
+  }, [action.isActive, action.remainingTime, action.speedFactor, action.duration])
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)

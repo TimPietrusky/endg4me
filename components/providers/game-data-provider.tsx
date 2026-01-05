@@ -179,6 +179,20 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
     return undefined
   }
 
+  // Helper to get speed factor for active jobs (original duration / actual duration)
+  function getJobSpeedFactor(jobId: string): number {
+    const task = inProgressTasks.find((t) => t.type === jobId)
+    const jobDef = getJobById(jobId)
+    if (task?.startedAt && task?.completesAt && jobDef) {
+      const originalDuration = jobDef.durationMs / 1000
+      const actualDuration = (task.completesAt - task.startedAt) / 1000
+      if (actualDuration > 0) {
+        return originalDuration / actualDuration
+      }
+    }
+    return 1
+  }
+
   // Helper to check job disabled status
   function getJobDisabledInfo(jobId: string) {
     const jobDef = getJobById(jobId)
@@ -229,9 +243,10 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
       const isActive = inProgressTasks.some((t) => t.type === job.jobId)
       const isQueued = queuedTasks.some((t) => t.type === job.jobId)
 
-      // Determine category - only TRAINING and INCOME for Operate
-      let category: "TRAINING" | "INCOME" = "TRAINING"
-      if (jobDef.category === "contract") category = "INCOME"
+      // Determine display category for Operate
+      let category: "TRAINING" | "INCOME" | "HIRING" = "TRAINING"
+      if (jobDef.category === "contract" || jobDef.category === "income") category = "INCOME"
+      if (jobDef.category === "hire") category = "HIRING"
 
       // Get model size from name if training job
       let size: string | undefined
@@ -268,6 +283,7 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
         image: JOB_IMAGES[job.jobId] || "/server-optimization-tech-infrastructure.jpg",
         isActive,
         remainingTime: getJobRemainingTime(job.jobId),
+        speedFactor: isActive ? getJobSpeedFactor(job.jobId) : 1,
         isQueued,
         locked: false,
       } as Action

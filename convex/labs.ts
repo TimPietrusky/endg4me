@@ -73,6 +73,7 @@ export const getLabState = query({
 });
 
 // Get full lab data (lab + state + user)
+// Returns user even if lab doesn't exist (for founder selection flow)
 export const getFullLabData = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -84,7 +85,15 @@ export const getFullLabData = query({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
 
-    if (!lab) return null;
+    // Return user data even without lab (needed for founder selection redirect)
+    if (!lab) {
+      return {
+        user,
+        lab: null,
+        labState: null,
+        playerState: null,
+      };
+    }
 
     const labState = await ctx.db
       .query("labState")

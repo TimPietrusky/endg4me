@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import {
   JOB_DEFS,
+  RESEARCH_NODES,
   getJobById,
   getBlueprintById,
   calculateModelScore,
@@ -16,17 +17,36 @@ import {
   getXpForNextLevel,
   type FounderType,
 } from "./lib/gameConfig";
-import { LEVEL_REWARDS, CLAN_BONUS } from "./lib/gameConstants";
+import { LEVEL_REWARDS } from "./lib/gameConstants";
 import { internal } from "./_generated/api";
 import { syncLeaderboardForLab } from "./leaderboard";
 
-// Default unlocks for new players (starter set)
-// Includes: TTS blueprint so they can train immediately, basic contracts capability
-const DEFAULT_UNLOCKS = {
-  unlockedBlueprintIds: ["bp_tts_3b"], // Starter blueprint
-  unlockedJobIds: ["job_research_literature", "job_train_tts_3b", "job_contract_blog_basic"], // Research + TTS training + basic contracts
-  enabledSystemFlags: [] as string[],
-};
+// Dynamic starter unlocks - auto-unlock free research nodes (costRP=0, minLevel=1, no prereqs)
+function getStarterUnlocks() {
+  const starterBlueprintIds: string[] = [];
+  const starterJobIds: string[] = ["job_research_literature"]; // Always available
+  const starterFlags: string[] = [];
+
+  for (const node of RESEARCH_NODES) {
+    if (node.costRP === 0 && node.minLevel === 1 && node.prerequisiteNodes.length === 0) {
+      if (node.unlocks.unlocksBlueprintIds) {
+        starterBlueprintIds.push(...node.unlocks.unlocksBlueprintIds);
+      }
+      if (node.unlocks.unlocksJobIds) {
+        starterJobIds.push(...node.unlocks.unlocksJobIds);
+      }
+      if (node.unlocks.enablesSystemFlags) {
+        starterFlags.push(...node.unlocks.enablesSystemFlags);
+      }
+    }
+  }
+
+  return {
+    unlockedBlueprintIds: starterBlueprintIds,
+    unlockedJobIds: starterJobIds,
+    enabledSystemFlags: starterFlags,
+  };
+}
 
 // Get player unlocks (read-only, returns defaults if not found)
 async function getPlayerUnlocksOrDefaults(ctx: any, userId: any) {
@@ -36,7 +56,7 @@ async function getPlayerUnlocksOrDefaults(ctx: any, userId: any) {
     .first();
 
   if (!unlocks) {
-    return { _id: null, userId, ...DEFAULT_UNLOCKS };
+    return { _id: null, userId, ...getStarterUnlocks() };
   }
 
   return unlocks;
@@ -365,11 +385,7 @@ export const completeTask = internalMutation({
       }
 
       if (jobDef.rewards.xp > 0) {
-        let xpMultiplier = 1;
-        if (playerState.clanId) {
-          xpMultiplier = CLAN_BONUS.xpGain;
-        }
-        rewards.experience = Math.floor(jobDef.rewards.xp * xpMultiplier);
+        rewards.experience = jobDef.rewards.xp;
       }
 
       // Handle training job output - create trained model
@@ -544,20 +560,6 @@ export const completeTask = internalMutation({
           deepLink: { view: "lab" as const, target: "upgrades" },
         });
 
-        // Check for clan unlock
-        if (
-          currentLevel >= LEVEL_REWARDS.clanUnlockLevel &&
-          playerState.level < LEVEL_REWARDS.clanUnlockLevel
-        ) {
-          await ctx.db.insert("notifications", {
-            userId: lab.userId,
-            type: "unlock",
-            title: "Clans Unlocked!",
-            message: "You can now create or join a clan.",
-            read: false,
-            createdAt: Date.now(),
-          });
-        }
       } else {
         await ctx.db.patch(playerState._id, {
           experience: currentXP,

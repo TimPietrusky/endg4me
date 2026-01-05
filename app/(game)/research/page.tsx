@@ -6,19 +6,20 @@ import { SubNavContainer, SubNavButton } from "@/components/game/dashboard/sub-n
 import { PerkTree } from "@/components/game/dashboard/perk-tree"
 import type { Id } from "@/convex/_generated/dataModel"
 
-// Research view tabs - RP-only (queue/staff/compute moved to Lab > Upgrades)
-// Attributes tab removed per 004_upgrade_points user story
+// Research view tabs
 const RESEARCH_TABS = [
-  { id: "models", label: "MODELS" },
-  { id: "capabilities", label: "CAPABILITIES" },
-  { id: "perks", label: "PERKS" },
+  { id: "model", label: "MODELS" },
+  { id: "monetization", label: "MONETIZATION" },
+  { id: "income", label: "INCOME" },
+  { id: "hiring", label: "HIRING" },
+  { id: "perk", label: "PERKS" },
 ] as const
 
 type ResearchTab = typeof RESEARCH_TABS[number]["id"]
 
 export default function ResearchPage() {
   const { userId, labState } = useGameData()
-  const [activeTab, setActiveTab] = useState<ResearchTab>("models")
+  const [activeTab, setActiveTab] = useState<ResearchTab>("model")
 
   if (!userId || !labState) {
     return null
@@ -42,29 +43,11 @@ export default function ResearchPage() {
 
       {/* Main content */}
       <div>
-        {activeTab === "models" && (
-          <PerkTree
-            userId={userId as Id<"users">}
-            currentRp={labState.researchPoints}
-            category="models"
-          />
-        )}
-
-        {activeTab === "capabilities" && (
-          <PerkTree
-            userId={userId as Id<"users">}
-            currentRp={labState.researchPoints}
-            category="capabilities"
-          />
-        )}
-
-        {activeTab === "perks" && (
-          <PerkTree
-            userId={userId as Id<"users">}
-            currentRp={labState.researchPoints}
-            category="perks"
-          />
-        )}
+        <PerkTree
+          userId={userId as Id<"users">}
+          currentRp={labState.researchPoints}
+          category={activeTab}
+        />
       </div>
     </>
   )

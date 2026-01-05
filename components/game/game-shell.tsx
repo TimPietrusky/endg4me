@@ -67,8 +67,8 @@ export function GameShell({ children }: GameShellProps) {
         rp={labState.researchPoints}
         usedCU={usedCompute}
         totalCU={computeCapacity}
-        staffCount={labState.juniorResearchers}
-        staffCapacity={staffCapacity}
+        teamSize={1 + labState.juniorResearchers}
+        teamCapacity={staffCapacity}
         notificationCount={unreadCount}
         upgradePoints={upgradePoints}
       />

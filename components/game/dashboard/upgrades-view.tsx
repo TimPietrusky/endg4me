@@ -65,7 +65,7 @@ export function UpgradesView() {
       case "queue":
         return "slots"
       case "staff":
-        return "researchers"
+        return "seats"
       case "compute":
         return "compute units"
       default:

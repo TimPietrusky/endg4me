@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { Lightning, Lock, CheckCircle, ArrowRight, Brain, Wrench, Sparkle } from "@phosphor-icons/react"
+import { Lightning, Lock, CheckCircle, ArrowRight, Brain, Wrench, Sparkle, CurrencyDollar, Users } from "@phosphor-icons/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -39,12 +39,16 @@ export function ResearchView({ userId, currentRp, selectedCategory }: ResearchVi
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "models":
+      case "model":
         return <Brain className="w-5 h-5" />
-      case "capabilities":
+      case "monetization":
         return <Wrench className="w-5 h-5" />
-      case "perks":
+      case "perk":
         return <Sparkle className="w-5 h-5" />
+      case "income":
+        return <CurrencyDollar className="w-5 h-5" />
+      case "hiring":
+        return <Users className="w-5 h-5" />
       default:
         return <Lightning className="w-5 h-5" />
     }
@@ -52,12 +56,16 @@ export function ResearchView({ userId, currentRp, selectedCategory }: ResearchVi
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "models":
+      case "model":
         return "from-purple-500/20 to-purple-500/5 border-purple-500/30"
-      case "capabilities":
+      case "monetization":
         return "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30"
-      case "perks":
+      case "perk":
         return "from-amber-500/20 to-amber-500/5 border-amber-500/30"
+      case "income":
+        return "from-green-500/20 to-green-500/5 border-green-500/30"
+      case "hiring":
+        return "from-blue-500/20 to-blue-500/5 border-blue-500/30"
       default:
         return "from-gray-500/20 to-gray-500/5 border-gray-500/30"
     }
@@ -165,5 +173,5 @@ export function ResearchView({ userId, currentRp, selectedCategory }: ResearchVi
 }
 
 // Export categories for use in SubNav
-export const RESEARCH_CATEGORIES = ["models", "capabilities", "perks"] as const
+export const RESEARCH_CATEGORIES = ["model", "monetization", "income", "hiring", "perk"] as const
 export type ResearchCategory = typeof RESEARCH_CATEGORIES[number]

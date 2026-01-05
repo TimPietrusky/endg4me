@@ -79,6 +79,7 @@ export interface JobRequirements {
 export interface JobOutput {
   trainsBlueprintId?: string
   usesBlueprintType?: ModelType
+  hiresRole?: string
 }
 
 export interface JobDefinition {
@@ -91,7 +92,7 @@ export interface JobDefinition {
   rewards: JobRewards
   requirements: JobRequirements
   output: JobOutput
-  category: "training" | "contract" | "research"
+  category: "training" | "contract" | "research" | "income" | "hire"
 }
 
 export const JOB_DEFS: JobDefinition[] = [
@@ -100,10 +101,10 @@ export const JOB_DEFS: JobDefinition[] = [
     jobId: "job_train_tts_3b",
     name: "Train 3B TTS",
     description: "Train a new version of your 3B TTS model.",
-    durationMs: 5 * 60 * 1000, // 5 minutes
+    durationMs: 2 * 60 * 1000, // 2 minutes
     moneyCost: 500,
     computeRequiredCU: 1,
-    rewards: { money: 0, xp: 80, rp: 120 },
+    rewards: { money: 0, xp: 50, rp: 125 },
     requirements: {
       minLevel: 1,
       requiredBlueprintIds: ["bp_tts_3b"],
@@ -222,13 +223,107 @@ export const JOB_DEFS: JobDefinition[] = [
     output: {},
     category: "research",
   },
+
+  // === INCOME JOBS (freelance, no GPU needed) ===
+  {
+    jobId: "job_income_basic_website",
+    name: "Basic Website",
+    description: "Build a simple website for a client. Pure freelance work.",
+    durationMs: 3 * 60 * 1000, // 3 minutes
+    moneyCost: 0,
+    computeRequiredCU: 0,
+    rewards: { money: 200, xp: 30, rp: 0 },
+    requirements: {
+      minLevel: 1,
+      requiredResearchNodeIds: ["rn_income_basic_website"],
+    },
+    output: {},
+    category: "income",
+  },
+  {
+    jobId: "job_income_api_integration",
+    name: "API Integration Gig",
+    description: "Integrate third-party APIs for a startup. More complex freelance.",
+    durationMs: 5 * 60 * 1000, // 5 minutes
+    moneyCost: 0,
+    computeRequiredCU: 0,
+    rewards: { money: 400, xp: 50, rp: 0 },
+    requirements: {
+      minLevel: 3,
+      requiredResearchNodeIds: ["rn_income_api_integration"],
+    },
+    output: {},
+    category: "income",
+  },
+
+  // === HIRE JOBS (temporary boosts, cost money) ===
+  {
+    jobId: "job_hire_junior_researcher",
+    name: "Hire Junior Researcher",
+    description: "Hire a junior to help. +1 queue slot for 8 minutes.",
+    durationMs: 8 * 60 * 1000, // 8 minutes
+    moneyCost: 300,
+    computeRequiredCU: 0,
+    rewards: { money: 0, xp: 0, rp: 0 },
+    requirements: {
+      minLevel: 2,
+      requiredResearchNodeIds: ["rn_hire_junior_researcher"],
+    },
+    output: { hiresRole: "junior_researcher" },
+    category: "hire",
+  },
+  {
+    jobId: "job_hire_efficiency_expert",
+    name: "Hire Efficiency Expert",
+    description: "Bring in an expert. +25% XP for 12 minutes.",
+    durationMs: 12 * 60 * 1000, // 12 minutes
+    moneyCost: 600,
+    computeRequiredCU: 0,
+    rewards: { money: 0, xp: 0, rp: 0 },
+    requirements: {
+      minLevel: 4,
+      requiredResearchNodeIds: ["rn_hire_efficiency_expert"],
+    },
+    output: { hiresRole: "efficiency_expert" },
+    category: "hire",
+  },
+  {
+    jobId: "job_hire_business_partner",
+    name: "Hire Business Partner",
+    description: "Partner up for deals. +30% money for 15 minutes.",
+    durationMs: 15 * 60 * 1000, // 15 minutes
+    moneyCost: 900,
+    computeRequiredCU: 0,
+    rewards: { money: 0, xp: 0, rp: 0 },
+    requirements: {
+      minLevel: 6,
+      requiredResearchNodeIds: ["rn_hire_business_partner"],
+    },
+    output: { hiresRole: "business_partner" },
+    category: "hire",
+  },
+  {
+    jobId: "job_hire_senior_engineer",
+    name: "Hire Senior Engineer",
+    description: "Top talent joins temporarily. +1 compute unit for 20 minutes.",
+    durationMs: 20 * 60 * 1000, // 20 minutes
+    moneyCost: 1500,
+    computeRequiredCU: 0,
+    rewards: { money: 0, xp: 0, rp: 0 },
+    requirements: {
+      minLevel: 10,
+      requiredResearchNodeIds: ["rn_hire_senior_engineer"],
+    },
+    output: { hiresRole: "senior_engineer" },
+    category: "hire",
+  },
 ]
 
 // -----------------------------------------------------------------------------
 // RESEARCH NODES
 // -----------------------------------------------------------------------------
 
-export type ResearchCategory = "model" | "capability" | "perk"
+export type ResearchCategory = "model" | "monetization" | "perk" | "income" | "hiring"
 export type PerkType = "research_speed" | "money_multiplier"
 
 export interface ResearchNodeUnlocks {
@@ -251,10 +346,36 @@ export interface ResearchNode {
 }
 
 export const RESEARCH_NODES: ResearchNode[] = [
-  // === STARTER (so Research is never dead) ===
+  // === INCOME (freelance work, no models needed) ===
+  {
+    nodeId: "rn_income_basic_website",
+    category: "income",
+    name: "Basic Website Gigs",
+    description: "Unlock freelance website work to earn money.",
+    costRP: 0,
+    minLevel: 1,
+    prerequisiteNodes: [],
+    unlocks: {
+      unlocksJobIds: ["job_income_basic_website"],
+    },
+  },
+  {
+    nodeId: "rn_income_api_integration",
+    category: "income",
+    name: "API Integration Gigs",
+    description: "Unlock more complex freelance integration work.",
+    costRP: 180,
+    minLevel: 3,
+    prerequisiteNodes: ["rn_income_basic_website"],
+    unlocks: {
+      unlocksJobIds: ["job_income_api_integration"],
+    },
+  },
+
+  // === MONETIZATION (ways to make money with models) ===
   {
     nodeId: "rn_cap_contracts_basic",
-    category: "capability",
+    category: "monetization",
     name: "Basic Contracts",
     description: "Unlock simple paid contracts in Operate.",
     costRP: 0,
@@ -307,7 +428,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_cap_contracts_voice",
-    category: "capability",
+    category: "monetization",
     name: "Voice Gigs",
     description: "Unlock audio contracts that use your TTS models.",
     costRP: 200,
@@ -319,7 +440,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_cap_contracts_vision",
-    category: "capability",
+    category: "monetization",
     name: "Vision Contracts",
     description: "Unlock image QA contracts that use your VLM models.",
     costRP: 220,
@@ -372,7 +493,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_cap_model_api_income",
-    category: "capability",
+    category: "monetization",
     name: "Model API Income",
     description: "Earn passive money from hosted model APIs.",
     costRP: 350,
@@ -380,6 +501,68 @@ export const RESEARCH_NODES: ResearchNode[] = [
     prerequisiteNodes: [],
     unlocks: {
       enablesSystemFlags: ["model_api_income"],
+    },
+  },
+  {
+    nodeId: "rn_cap_model_licensing",
+    category: "monetization",
+    name: "Model Licensing",
+    description: "License your models to enterprises for big payouts.",
+    costRP: 500,
+    minLevel: 8,
+    prerequisiteNodes: ["rn_cap_model_api_income"],
+    unlocks: {
+      enablesSystemFlags: ["model_licensing"],
+    },
+  },
+
+  // === HIRING (unlock hire types) ===
+  {
+    nodeId: "rn_hire_junior_researcher",
+    category: "hiring",
+    name: "Junior Researcher",
+    description: "Unlock hiring junior researchers for +1 queue slot.",
+    costRP: 150,
+    minLevel: 2,
+    prerequisiteNodes: [],
+    unlocks: {
+      unlocksJobIds: ["job_hire_junior_researcher"],
+    },
+  },
+  {
+    nodeId: "rn_hire_efficiency_expert",
+    category: "hiring",
+    name: "Efficiency Expert",
+    description: "Unlock hiring efficiency experts for +25% XP.",
+    costRP: 300,
+    minLevel: 4,
+    prerequisiteNodes: ["rn_hire_junior_researcher"],
+    unlocks: {
+      unlocksJobIds: ["job_hire_efficiency_expert"],
+    },
+  },
+  {
+    nodeId: "rn_hire_business_partner",
+    category: "hiring",
+    name: "Business Partner",
+    description: "Unlock hiring business partners for +30% money.",
+    costRP: 450,
+    minLevel: 6,
+    prerequisiteNodes: ["rn_hire_efficiency_expert"],
+    unlocks: {
+      unlocksJobIds: ["job_hire_business_partner"],
+    },
+  },
+  {
+    nodeId: "rn_hire_senior_engineer",
+    category: "hiring",
+    name: "Senior Engineer",
+    description: "Unlock hiring senior engineers for +1 compute.",
+    costRP: 700,
+    minLevel: 10,
+    prerequisiteNodes: ["rn_hire_business_partner"],
+    unlocks: {
+      unlocksJobIds: ["job_hire_senior_engineer"],
     },
   },
 ]
