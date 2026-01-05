@@ -127,6 +127,35 @@ export const isBlueprintUnlocked = query({
   },
 });
 
+// Helper to check if a node's unlocks are already owned (starter items)
+function isNodeAlreadyUnlocked(
+  node: typeof RESEARCH_NODES[0],
+  playerUnlocks: { unlockedBlueprintIds?: string[]; unlockedJobIds?: string[]; enabledSystemFlags?: string[] }
+): boolean {
+  // Check if all blueprint unlocks are already owned
+  if (node.unlocks.unlocksBlueprintIds?.length) {
+    const allBlueprintsOwned = node.unlocks.unlocksBlueprintIds.every(
+      (bpId) => playerUnlocks.unlockedBlueprintIds?.includes(bpId)
+    );
+    if (allBlueprintsOwned) return true;
+  }
+  // Check if all job unlocks are already owned
+  if (node.unlocks.unlocksJobIds?.length) {
+    const allJobsOwned = node.unlocks.unlocksJobIds.every(
+      (jobId) => playerUnlocks.unlockedJobIds?.includes(jobId)
+    );
+    if (allJobsOwned) return true;
+  }
+  // Check if all system flags are already owned
+  if (node.unlocks.enablesSystemFlags?.length) {
+    const allFlagsOwned = node.unlocks.enablesSystemFlags.every(
+      (flag) => playerUnlocks.enabledSystemFlags?.includes(flag)
+    );
+    if (allFlagsOwned) return true;
+  }
+  return false;
+}
+
 // Check if a system flag is enabled
 export const isSystemFlagEnabled = query({
   args: { userId: v.id("users"), flag: v.string() },
@@ -177,6 +206,9 @@ export const purchaseResearchNode = mutation({
     }
 
     // Check prerequisites
+    // Get player unlocks to check for starter items (auto-unlocked nodes)
+    const playerUnlocks = await getPlayerUnlocksOrDefaults(ctx, args.userId);
+    
     for (const prereqId of node.prerequisiteNodes) {
       const hasPrereq = await ctx.db
         .query("playerResearch")
@@ -186,8 +218,13 @@ export const purchaseResearchNode = mutation({
         .first();
 
       if (!hasPrereq) {
+        // Check if prerequisite is a starter node that was auto-unlocked
         const prereqNode = getResearchNodeById(prereqId);
-        throw new Error(`Requires prerequisite research: ${prereqNode?.name || prereqId}`);
+        const isStarterUnlocked = prereqNode && isNodeAlreadyUnlocked(prereqNode, playerUnlocks);
+        
+        if (!isStarterUnlocked) {
+          throw new Error(`Requires prerequisite research: ${prereqNode?.name || prereqId}`);
+        }
       }
     }
 
@@ -390,38 +427,12 @@ export const getResearchTreeState = query({
 
     // Categories come from contentCatalog: model, revenue, perk, hiring
 
-    // Helper to check if a node's unlocks are already owned (starter items)
-    const isAlreadyUnlocked = (node: typeof RESEARCH_NODES[0]): boolean => {
-      // Check if all blueprint unlocks are already owned
-      if (node.unlocks.unlocksBlueprintIds?.length) {
-        const allBlueprintsOwned = node.unlocks.unlocksBlueprintIds.every(
-          (bpId) => playerUnlocks.unlockedBlueprintIds?.includes(bpId)
-        );
-        if (allBlueprintsOwned) return true;
-      }
-      // Check if all job unlocks are already owned
-      if (node.unlocks.unlocksJobIds?.length) {
-        const allJobsOwned = node.unlocks.unlocksJobIds.every(
-          (jobId) => playerUnlocks.unlockedJobIds?.includes(jobId)
-        );
-        if (allJobsOwned) return true;
-      }
-      // Check if all system flags are already owned
-      if (node.unlocks.enablesSystemFlags?.length) {
-        const allFlagsOwned = node.unlocks.enablesSystemFlags.every(
-          (flag) => playerUnlocks.enabledSystemFlags?.includes(flag)
-        );
-        if (allFlagsOwned) return true;
-      }
-      return false;
-    };
-
     return nodes.map((node) => {
       // Node is purchased if: explicit purchase record OR unlocks already owned (starter items)
-      const isPurchased = purchasedIds.has(node.nodeId) || isAlreadyUnlocked(node);
+      const isPurchased = purchasedIds.has(node.nodeId) || isNodeAlreadyUnlocked(node, playerUnlocks);
       const meetsLevel = playerLevel >= node.minLevel;
       const meetsPrereqs = node.prerequisiteNodes.every((prereq) =>
-        purchasedIds.has(prereq) || isAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!)
+        purchasedIds.has(prereq) || isNodeAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!, playerUnlocks)
       );
       const canAfford = currentRP >= node.costRP;
 
@@ -430,7 +441,7 @@ export const getResearchTreeState = query({
         lockReason = `Requires level ${node.minLevel}`;
       } else if (!meetsPrereqs) {
         const missingPrereq = node.prerequisiteNodes.find(
-          (prereq) => !purchasedIds.has(prereq) && !isAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!)
+          (prereq) => !purchasedIds.has(prereq) && !isNodeAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!, playerUnlocks)
         );
         const prereqNode = getResearchNodeById(missingPrereq || "");
         lockReason = `Requires: ${prereqNode?.name || missingPrereq}`;
