@@ -253,9 +253,7 @@ export function SpendButton({
             {maxedLabel}
           </span>
         </div>
-        <div className="opacity-40">
-          <AttributeGrid solid />
-        </div>
+        <AttributeGrid solid />
       </div>
     )
   }

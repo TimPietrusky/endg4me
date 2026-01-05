@@ -115,22 +115,7 @@ export function UpgradesView() {
   }
 
   return (
-    <div className="py-4 space-y-6">
-      {/* UP Balance Header */}
-      <div className="flex items-center justify-between p-4 border border-white/20 bg-white/5">
-        <div>
-          <div className="text-xs text-white/60 uppercase tracking-wider">Upgrade Points</div>
-          <div className="text-3xl font-bold text-white font-mono flex items-center gap-2">
-            <CaretDoubleUp className="w-7 h-7 text-primary" weight="bold" />
-            {upgradeDetails.upgradePoints}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-white/60">Level {upgradeDetails.level}</div>
-          <div className="text-xs text-white/40">+1 UP per level</div>
-        </div>
-      </div>
-
+    <div className="py-4 flex flex-col h-[calc(100vh-180px)]">
       {/* Upgrade Cards - 5 columns on large screens */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {upgradeDetails.upgrades.map((upgrade) => {
@@ -234,6 +219,35 @@ export function UpgradesView() {
             </Card>
           )
         })}
+      </div>
+
+      {/* UP Balance - industrial bank note style */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="inline-block">
+          {/* Main content - two column layout */}
+          <div className="flex items-center">
+            {/* Left: Label - aligned right */}
+            <div className="p-10 text-right">
+              <div className="text-8xl font-black text-violet-400/30 uppercase leading-none tracking-tight">
+                upgrade
+              </div>
+              <div className="text-8xl font-black text-violet-400/30 uppercase leading-none tracking-tight">
+                points
+              </div>
+            </div>
+            
+            {/* Right: Icon + Value - aligned left */}
+            <div className="p-10 flex items-center justify-start gap-8">
+              <CaretDoubleUp className="w-32 h-32 text-violet-400" weight="bold" />
+              <span className="text-[12rem] font-black text-violet-400 font-mono leading-none">
+                {upgradeDetails.upgradePoints}
+              </span>
+            </div>
+          </div>
+          
+          {/* Bottom decorative line */}
+          <div className="h-1.5 bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+        </div>
       </div>
     </div>
   )

@@ -101,7 +101,7 @@ export function GameTopNav({
                       <span 
                         className={`ml-1 h-4 px-1.5 inline-flex items-center justify-center gap-0.5 text-[10px] font-bold rounded ${
                           item.badgeVariant === "up" 
-                            ? "bg-yellow-500 text-black" 
+                            ? "bg-violet-500 text-white" 
                             : isActive
                               ? "bg-black/20 text-black"
                               : "bg-white/20 text-white"
