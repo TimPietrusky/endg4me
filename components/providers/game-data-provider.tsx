@@ -206,27 +206,36 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
       return { disabled: true, reason: "loading" }
     }
 
+    // Check all conditions and collect all shortfalls
+    let fundsShortfall = 0
+    let gpuShortfall = 0
+    const reasons: string[] = []
+
     // Check funds
     if (labState.cash < jobDef.moneyCost) {
-      return { 
-        disabled: true, 
-        reason: "not enough funds",
-        fundsShortfall: jobDef.moneyCost - labState.cash
-      }
+      fundsShortfall = jobDef.moneyCost - labState.cash
+      reasons.push("not enough funds")
     }
 
     // Check compute
     if (jobDef.computeRequiredCU > 0 && availableGpus < jobDef.computeRequiredCU) {
-      return { 
-        disabled: true, 
-        reason: "not enough CU",
-        gpuShortfall: jobDef.computeRequiredCU - availableGpus
-      }
+      gpuShortfall = jobDef.computeRequiredCU - availableGpus
+      reasons.push("not enough CU")
     }
 
     // Check queue
     if (isQueueFull) {
-      return { disabled: true, reason: "queue full" }
+      reasons.push("queue full")
+    }
+
+    // Return combined result
+    if (reasons.length > 0) {
+      return { 
+        disabled: true, 
+        reason: reasons.join(", "),
+        fundsShortfall,
+        gpuShortfall
+      }
     }
 
     return { disabled: false }

@@ -1,12 +1,8 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { CurrencyDollar, Lightning, Star, Clock, CaretUp, CaretDown, Cpu, type Icon as PhosphorIcon } from "@phosphor-icons/react"
-import { XpIcon } from "./xp-icon"
+import { SpendButton, type SpendAttribute } from "./spend-button"
 import type { Action } from "@/lib/game-types"
-import { formatCompact, formatTimeCompact } from "@/lib/utils"
 
 interface ActionCardProps {
   action: Action
@@ -14,57 +10,6 @@ interface ActionCardProps {
 }
 
 export function ActionCard({ action, onStartAction }: ActionCardProps) {
-  const speedFactor = action.speedFactor || 1
-  // Display time starts at original duration (remainingTime * speedFactor)
-  const [displayTime, setDisplayTime] = useState(
-    action.isActive 
-      ? (action.remainingTime || action.duration) * speedFactor 
-      : action.duration
-  )
-  const [showConfirm, setShowConfirm] = useState(false)
-  const startTimeRef = useRef<number | null>(null)
-  const initialTimeRef = useRef(
-    action.isActive 
-      ? (action.remainingTime || action.duration) * speedFactor 
-      : action.duration
-  )
-
-  useEffect(() => {
-    if (!action.isActive) {
-      setDisplayTime(action.duration)
-      return
-    }
-
-    const factor = action.speedFactor || 1
-    startTimeRef.current = performance.now()
-    // Scale remaining time to display time (original duration scale)
-    initialTimeRef.current = (action.remainingTime || action.duration) * factor
-
-    let rafId: number
-
-    const tick = (now: number) => {
-      if (!startTimeRef.current) return
-
-      const elapsed = (now - startTimeRef.current) / 1000
-      // Tick at speedFactor rate
-      const newTime = Math.max(0, initialTimeRef.current - elapsed * factor)
-      setDisplayTime(newTime)
-
-      if (newTime > 0) {
-        rafId = requestAnimationFrame(tick)
-      }
-    }
-
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [action.isActive, action.remainingTime, action.speedFactor, action.duration])
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60)
-    const s = Math.floor(seconds % 60)
-    return `${m}:${s.toString().padStart(2, "0")}`
-  }
-
   const getParameterColor = (size: string | undefined) => {
     if (!size) return "cyan"
     const value = Number.parseInt(size)
@@ -79,8 +24,6 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     purple: "from-purple-500/20 to-purple-500/5 border-purple-500/30 text-purple-400",
     red: "from-red-500/20 to-red-500/5 border-red-500/30 text-red-400",
   }
-
-  const progressPercent = action.isActive ? ((action.duration - displayTime) / action.duration) * 100 : 0
 
   const getButtonLabel = (action: Action): string => {
     switch (action.category) {
@@ -97,111 +40,58 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     }
   }
 
-  const AttributeCell = ({
-    icon: Icon,
-    value,
-    color,
-    isTime = false,
-    isXP = false,
-    isGain = true,
-  }: { icon?: PhosphorIcon; value?: number | string; color?: string; isTime?: boolean; isXP?: boolean; isGain?: boolean }) => {
-    if (!Icon && !isXP) {
-      return <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0" />
-    }
-
-    const hasValue = value !== undefined && value !== null && value !== 0 && value !== ""
-    
-    // Format numeric values compactly (1200 → 1.2k)
-    const displayValue = isTime ? value : formatCompact(value)
-
-    if (isXP) {
-      return (
-        <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
-          <span className="w-3 flex items-center justify-center flex-shrink-0">
-            <XpIcon className={hasValue ? color : "text-gray-500 opacity-50"} />
-          </span>
-          {hasValue && (
-            isGain 
-              ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
-              : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
-          )}
-          {hasValue && <span className="text-white text-xs">{displayValue}</span>}
-        </div>
-      )
-    }
-
-    if (!Icon) {
-      return <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0" />
-    }
-
-    return (
-      <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
-        <span className="w-3 flex items-center justify-center flex-shrink-0">
-          <Icon weight="regular" className={`w-3 h-3 ${hasValue ? color : "text-gray-500 opacity-50"}`} />
-        </span>
-        {hasValue && !isTime && (
-          isGain 
-            ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
-            : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
-        )}
-        {hasValue && <span className="text-white text-xs">{displayValue}</span>}
-      </div>
-    )
-  }
-
-  const getAttributeGrid = () => {
-    // Determine if cash is a cost (loss) or reward (gain)
+  // Build attributes for SpendButton
+  const buildAttributes = (): SpendAttribute[] => {
     const hasCashCost = action.cost > 0
     const hasCashReward = action.cashReward && action.cashReward > 0
     const cashValue = hasCashCost ? action.cost : (hasCashReward ? action.cashReward : undefined)
     const isCashGain = !hasCashCost && !!hasCashReward
-    
-    // GPU is always a cost (blocking resource)
     const hasGpuCost = action.gpuCost && action.gpuCost > 0
 
     return [
       {
-        icon: Clock,
-        value: action.duration > 0 ? formatTimeCompact(action.duration) : undefined,
-        color: "text-white",
-        isTime: true,
+        type: "time",
+        value: action.duration > 0 ? action.duration : undefined,
         isGain: true,
       },
       {
-        icon: CurrencyDollar,
+        type: "cash",
         value: cashValue,
-        color: "text-white",
         isGain: isCashGain,
       },
       {
-        icon: Cpu,
+        type: "gpu",
         value: hasGpuCost ? action.gpuCost : undefined,
-        color: "text-white",
         isGain: false,
       },
       {
-        icon: Lightning,
+        type: "rp",
         value: action.rpReward && action.rpReward > 0 ? action.rpReward : undefined,
-        color: "text-white",
         isGain: true,
       },
       {
-        icon: undefined,
+        type: "xp",
         value: action.xpReward && action.xpReward > 0 ? action.xpReward : undefined,
-        color: "text-white",
-        isXP: true,
         isGain: true,
       },
     ]
   }
 
-  const attributeGrid = getAttributeGrid()
+  // Build shortfalls for disabled state
+  const buildShortfalls = () => {
+    const shortfalls: Array<{ type: "cash" | "gpu" | "rp" | "up"; amount: number }> = []
+    if (action.fundsShortfall != null && action.fundsShortfall > 0) {
+      shortfalls.push({ type: "cash", amount: action.fundsShortfall })
+    }
+    if (action.gpuShortfall != null && action.gpuShortfall > 0) {
+      shortfalls.push({ type: "gpu", amount: action.gpuShortfall })
+    }
+    return shortfalls
+  }
 
   return (
-    <Card
-      className="overflow-hidden flex flex-col h-full pt-0 gap-0"
-    >
-      <div className={`relative h-24 overflow-hidden bg-gradient-to-br ${colorClasses[paramColor]}`}>
+    <Card className="overflow-hidden pt-0 pb-0 gap-0">
+      <div className={`relative h-24 overflow-hidden bg-gradient-to-br border-b border-border ${colorClasses[paramColor]}`}>
         <img
           src={action.image || "/placeholder.svg"}
           alt={action.name}
@@ -220,132 +110,23 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
         )}
       </div>
 
-      <CardContent className="p-0 flex-1 flex flex-col">
-        {action.isActive ? (
-          <div className="w-full bg-muted/30 border-b border-border relative overflow-hidden">
-            <div
-              className="absolute inset-0 bg-primary/20 transition-all duration-100"
-              style={{ width: `${progressPercent}%` }}
-            />
-            <div className="flex items-center justify-center h-[72px] border-b border-white/10 relative z-10">
-              <span className="text-3xl font-black text-white font-mono tabular-nums">{formatTime(displayTime)}</span>
-            </div>
+      <CardContent className="p-0">
+        <SpendButton
+          label={getButtonLabel(action)}
+          disabled={action.disabled}
+          disabledReason={action.disabledReason}
+          onAction={() => onStartAction(action)}
+          isActive={action.isActive}
+          duration={action.duration}
+          remainingTime={action.remainingTime}
+          speedFactor={action.speedFactor || 1}
+          shortfalls={buildShortfalls()}
+          attributes={buildAttributes()}
+        />
 
-            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] relative z-10 py-2 bg-black/20">
-              {attributeGrid.map((attr, i) => (
-                <AttributeCell
-                  key={i}
-                  icon={attr.icon}
-                  value={attr.value}
-                  color={attr.color}
-                  isTime={attr.isTime}
-                  isXP={attr.isXP}
-                  isGain={attr.isGain}
-                />
-              ))}
-            </div>
-          </div>
-        ) : showConfirm ? (
-          <div className="w-full bg-muted/30 border-b border-border">
-            <div className="flex items-center justify-center gap-4 h-[72px] border-b border-white/10">
-              <span className="text-lg font-bold text-muted-foreground lowercase">
-                are you sure?
-              </span>
-              <button
-                onClick={() => {
-                  onStartAction(action)
-                  setShowConfirm(false)
-                }}
-                className="px-4 py-1 text-lg font-black text-black bg-emerald-500 hover:bg-emerald-400 transition-colors cursor-pointer"
-              >
-                yes
-              </button>
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-4 py-1 text-lg font-bold text-white/60 hover:text-white transition-colors cursor-pointer"
-              >
-                no
-              </button>
-            </div>
-
-            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] py-2 bg-black/20">
-              {attributeGrid.map((attr, i) => (
-                <AttributeCell
-                  key={i}
-                  icon={attr.icon}
-                  value={attr.value}
-                  color={attr.color}
-                  isTime={attr.isTime}
-                  isXP={attr.isXP}
-                  isGain={attr.isGain}
-                />
-              ))}
-            </div>
-          </div>
-        ) : action.disabled ? (
-          <div className="w-full bg-muted/30 border-b border-border">
-            <div className="flex flex-col items-center justify-center h-[72px] border-b border-white/10 gap-1">
-              <span className="text-lg font-bold text-muted-foreground lowercase">
-                {action.disabledReason || "unavailable"}
-              </span>
-              {action.fundsShortfall != null && action.fundsShortfall > 0 && (
-                <div className="flex items-center gap-1 text-red-400">
-                  <span className="text-sm font-bold">need</span>
-                  <CurrencyDollar weight="bold" className="w-4 h-4" />
-                  <span className="text-sm font-bold">{formatCompact(action.fundsShortfall)} more</span>
-                </div>
-              )}
-              {action.gpuShortfall != null && action.gpuShortfall > 0 && (
-                <div className="flex items-center gap-1 text-red-400">
-                  <span className="text-sm font-bold">need</span>
-                  <Cpu weight="bold" className="w-4 h-4" />
-                  <span className="text-sm font-bold">{action.gpuShortfall} more</span>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] py-2 bg-black/20">
-              {attributeGrid.map((attr, i) => (
-                <AttributeCell
-                  key={i}
-                  icon={attr.icon}
-                  value={attr.value}
-                  color={attr.color}
-                  isTime={attr.isTime}
-                  isXP={attr.isXP}
-                  isGain={attr.isGain}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowConfirm(true)}
-            className="w-full bg-muted/30 hover:bg-muted border-b border-border transition-all group cursor-pointer"
-          >
-            <div className="flex items-center justify-center h-[72px] border-b border-white/10">
-              <span className="text-3xl font-black text-white lowercase">
-                {getButtonLabel(action)}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-[2fr_3fr_3fr_3fr_3fr] py-2 bg-black/20">
-              {attributeGrid.map((attr, i) => (
-                <AttributeCell
-                  key={i}
-                  icon={attr.icon}
-                  value={attr.value}
-                  color={attr.color}
-                  isTime={attr.isTime}
-                  isXP={attr.isXP}
-                  isGain={attr.isGain}
-                />
-              ))}
-            </div>
-          </button>
-        )}
-
+{/* Description hidden for cleaner look
         <p className="text-sm text-white line-clamp-5 leading-relaxed p-3 text-left flex-1">{action.description}</p>
+*/}
       </CardContent>
     </Card>
   )

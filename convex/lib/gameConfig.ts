@@ -43,7 +43,7 @@ export const XP_PER_LEVEL: Record<number, number> = {
 // UPGRADE POINTS (UP) SYSTEM
 // -----------------------------------------------------------------------------
 
-export type UpgradeType = "queue" | "staff" | "compute"
+export type UpgradeType = "queue" | "moneyMultiplier" | "researchSpeed" | "compute" | "staff"
 
 export interface UpgradeDefinition {
   id: UpgradeType
@@ -53,8 +53,12 @@ export interface UpgradeDefinition {
   perRank: number
   maxRank: number
   unit: string
+  isPercent?: boolean  // For display formatting
+  isMultiplier?: boolean  // For multiplier display (1.5x)
 }
 
+// Total maxRanks = 19 (matches 19 UP from levels 2-20)
+// queue 3 + moneyMultiplier 5 + researchSpeed 5 + compute 3 + staff 3 = 19
 export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
   queue: {
     id: "queue",
@@ -62,17 +66,28 @@ export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
     description: "Max concurrent jobs",
     base: 1,
     perRank: 1,
-    maxRank: 8,
+    maxRank: 3,  // max 4 slots
     unit: "slots",
   },
-  staff: {
-    id: "staff",
-    name: "Team Size", 
-    description: "Max active team members",
-    base: 1,
-    perRank: 1,
-    maxRank: 6,
-    unit: "seats",
+  moneyMultiplier: {
+    id: "moneyMultiplier",
+    name: "Money Multiplier",
+    description: "Bonus to all money earned",
+    base: 100,  // Base 1.0x (stored as 100%)
+    perRank: 10,  // +10% (0.1x) per rank
+    maxRank: 5,  // max 1.5x from upgrades
+    unit: "x",
+    isMultiplier: true,
+  },
+  researchSpeed: {
+    id: "researchSpeed",
+    name: "Research Speed",
+    description: "Faster research completion",
+    base: 0,  // Base 0%, founder bonus added separately
+    perRank: 5,  // +5% per rank
+    maxRank: 5,  // max +25% from upgrades
+    unit: "%",
+    isPercent: true,
   },
   compute: {
     id: "compute",
@@ -80,8 +95,29 @@ export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
     description: "Compute units for parallel training",
     base: 1,
     perRank: 1,
-    maxRank: 10,
+    maxRank: 3,  // max 4 CU
     unit: "CU",
+  },
+  staff: {
+    id: "staff",
+    name: "Team Size", 
+    description: "Max active team members",
+    base: 1,
+    perRank: 1,
+    maxRank: 3,  // max 4 seats
+    unit: "seats",
+  },
+}
+
+// Founder bonuses applied to base values
+export const FOUNDER_UPGRADE_BONUSES = {
+  technical: {
+    researchSpeed: 25,  // +25% base research speed
+    moneyMultiplier: 0,  // No bonus
+  },
+  business: {
+    researchSpeed: 0,  // No bonus
+    moneyMultiplier: 50,  // +50% base (1.5x)
   },
 }
 

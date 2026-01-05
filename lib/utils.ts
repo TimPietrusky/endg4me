@@ -47,8 +47,14 @@ export function calculateXPProgress(
 }
 
 // Format large numbers into compact form (1200 → 1.2k, 1500000 → 1.5M)
+// Preserves strings with special suffixes like "%" or "x"
 export function formatCompact(value: number | string | undefined): string {
   if (value === undefined || value === null || value === "") return "";
+  
+  // Preserve strings that contain % or x suffix
+  if (typeof value === "string" && (/[%x]$/i.test(value))) {
+    return value;
+  }
   
   const num = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(num)) return String(value);

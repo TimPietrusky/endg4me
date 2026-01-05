@@ -4,6 +4,7 @@ import {
   JOB_DEFS,
   RESEARCH_NODES,
   getJobById,
+  getResearchNodeById,
   getBlueprintById,
   calculateModelScore,
   INBOX_EVENTS,
@@ -357,6 +358,26 @@ export const completeTask = internalMutation({
       await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
         taskId: args.taskId,
       });
+      return;
+    }
+
+    // Handle research node completion (task type starts with "rn_")
+    const researchNode = getResearchNodeById(task.type);
+    if (researchNode) {
+      // Complete research via internal mutation
+      await ctx.runMutation(internal.research.completeResearchNode, {
+        userId: lab.userId,
+        nodeId: task.type,
+      });
+
+      // Mark task complete
+      await ctx.db.patch(args.taskId, {
+        status: "completed",
+        rewards: {},
+      });
+
+      // Sync leaderboard (research may affect unlocks)
+      await syncLeaderboardForLab(ctx, task.labId);
       return;
     }
 

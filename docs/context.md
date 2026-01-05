@@ -281,7 +281,7 @@ endg4me/
 │   │   ├── layout.tsx       # Auth + Convex + GameDataProvider + GameShell
 │   │   ├── page.tsx         # Redirects to /operate
 │   │   ├── operate/page.tsx # TasksView (day-to-day operations)
-│   │   ├── research/page.tsx # ResearchView (RP spending)
+│   │   ├── research/page.tsx # PerkTree (RP spending)
 │   │   ├── lab/
 │   │   │   ├── layout.tsx   # Lab header + sub-nav
 │   │   │   ├── page.tsx     # Redirects to /lab/upgrades
@@ -297,7 +297,7 @@ endg4me/
 │   └── page.tsx             # Landing page
 ├── components/
 │   ├── game/
-│   │   ├── dashboard/       # View components (TasksView, ResearchView, etc.)
+│   │   ├── dashboard/       # View components (TasksView, PerkTree, etc.)
 │   │   ├── game-shell.tsx   # Layout wrapper with TopNav + loading states
 │   │   ├── game-top-nav.tsx # Navigation with Link-based routing
 │   │   ├── founder-selection.tsx
@@ -425,9 +425,21 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-05 (Time Warp dev tool for accelerated testing)_
+_Last updated: 2026-01-05 (SpendButton unified action component)_
 
 ---
+
+## Architecture Decisions (009 SpendButton Component)
+
+- **Unified action button**: `SpendButton` component in `components/game/dashboard/spend-button.tsx`
+- **Four states**: ready (clickable), confirm (yes/no), active (progress bar), disabled (with reason)
+- **Configurable attributes**: Array of `SpendAttribute` with type, value, and isGain flag
+- **Attribute types**: time, cash, gpu, rp, xp, up - each with its icon
+- **Shortfall display**: Shows "need X more" for insufficient resources
+- **Used by**: ActionCard (Operate), PerkTree (Research), UpgradesView (Lab)
+- **Timed vs instant**: duration/remainingTime props for progress bar, omit for instant actions
+- **Confirmation toggle**: `showConfirmation` prop (default true, false for Upgrades)
+- **Time Warp aware**: `speedFactor` prop for accelerated progress display
 
 ## Architecture Decisions (008 Dev Time Warp)
 
@@ -495,6 +507,8 @@ _Last updated: 2026-01-05 (Time Warp dev tool for accelerated testing)_
 
 ## Repository Structure (Key Files)
 
+- `components/game/dashboard/spend-button.tsx` — Unified action button component (states: ready/confirm/active/disabled)
+- `components/game/dashboard/action-card.tsx` — Job card wrapper using SpendButton
 - `convex/lib/contentCatalog.ts` — Central source of truth for blueprints, jobs, research nodes, inbox events
 - `convex/lib/gameConfig.ts` — XP per-level requirements, UP system, upgrade definitions
 - `convex/lib/gameConstants.ts` — Legacy task definitions (kept for backwards compatibility)

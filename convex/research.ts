@@ -1,6 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { RESEARCH_NODES, getResearchNodeById, INBOX_EVENTS } from "./lib/contentCatalog";
+import { internal } from "./_generated/api";
+import { getEffectiveNow, getRealTimeForEffective } from "./dev";
 
 // All research nodes come directly from contentCatalog - NO DATABASE SEEDING NEEDED
 // Just edit contentCatalog.ts and changes take effect immediately
@@ -165,7 +167,7 @@ export const isSystemFlagEnabled = query({
   },
 });
 
-// Purchase a research node
+// Start researching a node (creates a timed task - same system as jobs)
 export const purchaseResearchNode = mutation({
   args: {
     userId: v.id("users"),
@@ -188,7 +190,29 @@ export const purchaseResearchNode = mutation({
       .first();
 
     if (existing) {
-      throw new Error("Research node already purchased");
+      throw new Error("Research already completed");
+    }
+
+    // Check if already researching (task in progress)
+    const lab = await ctx.db
+      .query("labs")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!lab) {
+      throw new Error("Lab not found");
+    }
+
+    const existingTask = await ctx.db
+      .query("tasks")
+      .withIndex("by_lab_status", (q) =>
+        q.eq("labId", lab._id).eq("status", "in_progress")
+      )
+      .collect();
+
+    const alreadyResearching = existingTask.find((t) => t.type === args.nodeId);
+    if (alreadyResearching) {
+      throw new Error("Research already in progress");
     }
 
     // Get player state to check level
@@ -206,7 +230,6 @@ export const purchaseResearchNode = mutation({
     }
 
     // Check prerequisites
-    // Get player unlocks to check for starter items (auto-unlocked nodes)
     const playerUnlocks = await getPlayerUnlocksOrDefaults(ctx, args.userId);
     
     for (const prereqId of node.prerequisiteNodes) {
@@ -218,7 +241,6 @@ export const purchaseResearchNode = mutation({
         .first();
 
       if (!hasPrereq) {
-        // Check if prerequisite is a starter node that was auto-unlocked
         const prereqNode = getResearchNodeById(prereqId);
         const isStarterUnlocked = prereqNode && isNodeAlreadyUnlocked(prereqNode, playerUnlocks);
         
@@ -229,6 +251,223 @@ export const purchaseResearchNode = mutation({
     }
 
     // Get lab state to check RP
+    const labState = await ctx.db
+      .query("labState")
+      .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+      .first();
+
+    if (!labState) {
+      throw new Error("Lab state not found");
+    }
+
+    if (labState.researchPoints < node.costRP) {
+      throw new Error("Not enough Research Points");
+    }
+
+    // Deduct RP immediately (like jobs deduct money)
+    await ctx.db.patch(labState._id, {
+      researchPoints: labState.researchPoints - node.costRP,
+    });
+
+    // Calculate duration (apply research speed bonus)
+    let duration = node.durationMs;
+    const speedBonus = labState.researchSpeedBonus || 0;
+    if (speedBonus > 0) {
+      duration = duration / (1 + speedBonus / 100);
+    }
+
+    // Use effective time for Time Warp support
+    const effectiveNow = await getEffectiveNow(ctx, args.userId);
+    const effectiveCompletesAt = effectiveNow + duration;
+
+    // Create task (same system as jobs)
+    const taskId = await ctx.db.insert("tasks", {
+      labId: lab._id,
+      type: args.nodeId, // Research node ID as task type
+      status: "in_progress",
+      startedAt: effectiveNow,
+      completesAt: effectiveCompletesAt,
+      createdAt: Date.now(),
+    });
+
+    // Schedule completion at real time (accounting for Time Warp)
+    const realCompletesAt = await getRealTimeForEffective(ctx, args.userId, effectiveCompletesAt);
+    await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
+      taskId,
+    });
+
+    return { 
+      taskId, 
+      status: "in_progress", 
+      completesAt: effectiveCompletesAt,
+      nodeId: args.nodeId,
+    };
+  },
+});
+
+// Get research tree state for a player (nodes with availability status + active tasks)
+export const getResearchTreeState = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    // Nodes come from CONFIG, purchases from DATABASE
+    const nodes = ALL_NODES;
+    const purchased = await ctx.db
+      .query("playerResearch")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const playerState = await ctx.db
+      .query("playerState")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    const lab = await ctx.db
+      .query("labs")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    const labState = lab
+      ? await ctx.db
+          .query("labState")
+          .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+          .first()
+      : null;
+
+    // Get active research tasks
+    const activeTasks = lab
+      ? await ctx.db
+          .query("tasks")
+          .withIndex("by_lab_status", (q) =>
+            q.eq("labId", lab._id).eq("status", "in_progress")
+          )
+          .collect()
+      : [];
+
+    // Build map of node ID -> active task
+    const activeResearchMap = new Map<string, typeof activeTasks[0]>();
+    for (const task of activeTasks) {
+      if (task.type.startsWith("rn_")) {
+        activeResearchMap.set(task.type, task);
+      }
+    }
+
+    // Get effective time for progress calculation
+    const effectiveNow = await getEffectiveNow(ctx, args.userId);
+
+    // Get player unlocks to check for starter items
+    const playerUnlocks = await getPlayerUnlocksOrDefaults(ctx, args.userId);
+
+    const purchasedIds = new Set(purchased.map((p) => p.nodeId));
+    const playerLevel = playerState?.level || 1;
+    const currentRP = labState?.researchPoints || 0;
+
+    // Categories come from contentCatalog: model, revenue, perk, hiring
+
+    const nodesWithState = nodes.map((node) => {
+      // Check if this node is actively being researched
+      const activeTask = activeResearchMap.get(node.nodeId);
+      const isResearching = !!activeTask;
+
+      // Node is purchased if: explicit purchase record OR unlocks already owned (starter items)
+      const isPurchased = purchasedIds.has(node.nodeId) || isNodeAlreadyUnlocked(node, playerUnlocks);
+      const meetsLevel = playerLevel >= node.minLevel;
+      const meetsPrereqs = node.prerequisiteNodes.every((prereq) =>
+        purchasedIds.has(prereq) || isNodeAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!, playerUnlocks)
+      );
+      const canAfford = currentRP >= node.costRP;
+
+      let lockReason: string | undefined;
+      if (!meetsLevel) {
+        lockReason = `Requires level ${node.minLevel}`;
+      } else if (!meetsPrereqs) {
+        const missingPrereq = node.prerequisiteNodes.find(
+          (prereq) => !purchasedIds.has(prereq) && !isNodeAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!, playerUnlocks)
+        );
+        const prereqNode = getResearchNodeById(missingPrereq || "");
+        lockReason = `Requires: ${prereqNode?.name || missingPrereq}`;
+      } else if (!canAfford && !isPurchased && !isResearching) {
+        lockReason = `Need ${node.costRP} RP`;
+      }
+
+      return {
+        ...node,
+        // Category from contentCatalog (model, revenue, perk, hiring)
+        category: node.category,
+        // Flatten unlocks for easier UI access
+        rpCost: node.costRP,
+        unlockType: node.category,
+        unlockTarget: node.unlocks.unlocksBlueprintIds?.[0] ||
+                      node.unlocks.unlocksJobIds?.[0] ||
+                      node.unlocks.enablesSystemFlags?.[0] ||
+                      node.unlocks.perkType ||
+                      node.nodeId,
+        unlockDescription: getUnlockDescription(node),
+        perkType: node.unlocks.perkType,
+        perkValue: node.unlocks.perkValue,
+        // Status flags
+        isPurchased,
+        isResearching,
+        isAvailable: !isPurchased && !isResearching && meetsLevel && meetsPrereqs && canAfford,
+        isLocked: !isPurchased && !isResearching && (!meetsLevel || !meetsPrereqs),
+        lockReason,
+        // Active task info (for progress bar)
+        startedAt: activeTask?.startedAt,
+        completesAt: activeTask?.completesAt,
+      };
+    });
+
+    return {
+      nodes: nodesWithState,
+      effectiveNow,
+    };
+  },
+});
+
+// Helper to generate unlock description
+function getUnlockDescription(node: typeof RESEARCH_NODES[0]): string {
+  if (node.unlocks.unlocksBlueprintIds?.length) {
+    return `Unlock training: ${node.unlocks.unlocksBlueprintIds.join(", ")}`;
+  }
+  if (node.unlocks.unlocksJobIds?.length) {
+    return `Unlock job: ${node.unlocks.unlocksJobIds.join(", ")}`;
+  }
+  if (node.unlocks.enablesSystemFlags?.length) {
+    return `Enable: ${node.unlocks.enablesSystemFlags.join(", ")}`;
+  }
+  if (node.unlocks.perkType === "research_speed") {
+    return `+${node.unlocks.perkValue}% research speed`;
+  }
+  if (node.unlocks.perkType === "money_multiplier") {
+    return `+${(node.unlocks.perkValue || 0) * 100}% income`;
+  }
+  return node.description;
+}
+
+// Internal mutation called by tasks.ts when a research task completes
+export const completeResearchNode = internalMutation({
+  args: {
+    userId: v.id("users"),
+    nodeId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const node = getResearchNodeById(args.nodeId);
+    if (!node) {
+      throw new Error("Research node not found");
+    }
+
+    // Check if already purchased (race condition guard)
+    const existing = await ctx.db
+      .query("playerResearch")
+      .withIndex("by_user_node", (q) =>
+        q.eq("userId", args.userId).eq("nodeId", args.nodeId)
+      )
+      .first();
+
+    if (existing) {
+      return { success: true, alreadyCompleted: true };
+    }
+
+    // Get lab for perk updates
     const lab = await ctx.db
       .query("labs")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -246,15 +485,6 @@ export const purchaseResearchNode = mutation({
     if (!labState) {
       throw new Error("Lab state not found");
     }
-
-    if (labState.researchPoints < node.costRP) {
-      throw new Error("Not enough Research Points");
-    }
-
-    // Deduct RP
-    await ctx.db.patch(labState._id, {
-      researchPoints: labState.researchPoints - node.costRP,
-    });
 
     // Get or create player unlocks
     const unlocks = await getOrCreatePlayerUnlocks(ctx, args.userId);
@@ -307,7 +537,6 @@ export const purchaseResearchNode = mutation({
           labUpdates.researchSpeedBonus = (labState.researchSpeedBonus || 0) + node.unlocks.perkValue;
           break;
         case "money_multiplier":
-          // Additive: base 1.0 + bonuses (+0.1 per tier)
           labUpdates.moneyMultiplier = (labState.moneyMultiplier || 1.0) + node.unlocks.perkValue;
           break;
       }
@@ -319,42 +548,40 @@ export const purchaseResearchNode = mutation({
     // Update player unlocks if there are changes
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(unlocks._id, updates);
-
-      // Check for first research milestone
-      const purchasedCount = await ctx.db
-        .query("playerResearch")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId))
-        .collect();
-
-      if (purchasedCount.length === 0) {
-        // This is their first research purchase - send milestone event
-        const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "first_research");
-        if (milestoneEvent) {
-          const existingEvent = await ctx.db
-            .query("notifications")
-            .withIndex("by_user_event", (q) =>
-              q.eq("userId", args.userId).eq("eventId", milestoneEvent.eventId)
-            )
-            .first();
-
-          if (!existingEvent) {
-            await ctx.db.insert("notifications", {
-              userId: args.userId,
-              type: "milestone",
-              title: milestoneEvent.title,
-              message: milestoneEvent.message,
-              read: false,
-              createdAt: Date.now(),
-              eventId: milestoneEvent.eventId,
-              deepLink: milestoneEvent.deepLink,
-            });
-          }
-        }
-      }
-
     }
 
-    // Record purchase (only the nodeId, not the full node data)
+    // Check for first research milestone
+    const purchasedCount = await ctx.db
+      .query("playerResearch")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    if (purchasedCount.length === 0) {
+      const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "first_research");
+      if (milestoneEvent) {
+        const existingEvent = await ctx.db
+          .query("notifications")
+          .withIndex("by_user_event", (q) =>
+            q.eq("userId", args.userId).eq("eventId", milestoneEvent.eventId)
+          )
+          .first();
+
+        if (!existingEvent) {
+          await ctx.db.insert("notifications", {
+            userId: args.userId,
+            type: "milestone",
+            title: milestoneEvent.title,
+            message: milestoneEvent.message,
+            read: false,
+            createdAt: Date.now(),
+            eventId: milestoneEvent.eventId,
+            deepLink: milestoneEvent.deepLink,
+          });
+        }
+      }
+    }
+
+    // Record purchase
     await ctx.db.insert("playerResearch", {
       userId: args.userId,
       nodeId: args.nodeId,
@@ -362,22 +589,11 @@ export const purchaseResearchNode = mutation({
     });
 
     // Create completion notification
-    let unlockDescription = node.description;
-    if (node.unlocks.unlocksBlueprintIds?.length) {
-      unlockDescription = `Unlocked blueprint: ${node.unlocks.unlocksBlueprintIds.join(", ")}`;
-    } else if (node.unlocks.unlocksJobIds?.length) {
-      unlockDescription = `Unlocked job: ${node.unlocks.unlocksJobIds.join(", ")}`;
-    } else if (node.unlocks.enablesSystemFlags?.length) {
-      unlockDescription = `Enabled: ${node.unlocks.enablesSystemFlags.join(", ")}`;
-    } else if (node.unlocks.perkType) {
-      unlockDescription = `Perk bonus applied: ${node.unlocks.perkType}`;
-    }
-
     await ctx.db.insert("notifications", {
       userId: args.userId,
       type: "research_complete",
       title: `Research Complete: ${node.name}`,
-      message: unlockDescription,
+      message: getUnlockDescription(node),
       read: false,
       createdAt: Date.now(),
       deepLink: {
@@ -389,107 +605,3 @@ export const purchaseResearchNode = mutation({
     return { success: true, nodeId: args.nodeId };
   },
 });
-
-// Get research tree state for a player (nodes with availability status)
-export const getResearchTreeState = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    // Nodes come from CONFIG, purchases from DATABASE
-    const nodes = ALL_NODES;
-    const purchased = await ctx.db
-      .query("playerResearch")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .collect();
-
-    const playerState = await ctx.db
-      .query("playerState")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-
-    const lab = await ctx.db
-      .query("labs")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-
-    const labState = lab
-      ? await ctx.db
-          .query("labState")
-          .withIndex("by_lab", (q) => q.eq("labId", lab._id))
-          .first()
-      : null;
-
-    // Get player unlocks to check for starter items
-    const playerUnlocks = await getPlayerUnlocksOrDefaults(ctx, args.userId);
-
-    const purchasedIds = new Set(purchased.map((p) => p.nodeId));
-    const playerLevel = playerState?.level || 1;
-    const currentRP = labState?.researchPoints || 0;
-
-    // Categories come from contentCatalog: model, revenue, perk, hiring
-
-    return nodes.map((node) => {
-      // Node is purchased if: explicit purchase record OR unlocks already owned (starter items)
-      const isPurchased = purchasedIds.has(node.nodeId) || isNodeAlreadyUnlocked(node, playerUnlocks);
-      const meetsLevel = playerLevel >= node.minLevel;
-      const meetsPrereqs = node.prerequisiteNodes.every((prereq) =>
-        purchasedIds.has(prereq) || isNodeAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!, playerUnlocks)
-      );
-      const canAfford = currentRP >= node.costRP;
-
-      let lockReason: string | undefined;
-      if (!meetsLevel) {
-        lockReason = `Requires level ${node.minLevel}`;
-      } else if (!meetsPrereqs) {
-        const missingPrereq = node.prerequisiteNodes.find(
-          (prereq) => !purchasedIds.has(prereq) && !isNodeAlreadyUnlocked(nodes.find(n => n.nodeId === prereq)!, playerUnlocks)
-        );
-        const prereqNode = getResearchNodeById(missingPrereq || "");
-        lockReason = `Requires: ${prereqNode?.name || missingPrereq}`;
-      } else if (!canAfford && !isPurchased) {
-        lockReason = `Need ${node.costRP} RP`;
-      }
-
-      return {
-        ...node,
-        // Category from contentCatalog (model, revenue, perk, hiring)
-        category: node.category,
-        // Flatten unlocks for easier UI access
-        rpCost: node.costRP,
-        unlockType: node.category,
-        unlockTarget: node.unlocks.unlocksBlueprintIds?.[0] ||
-                      node.unlocks.unlocksJobIds?.[0] ||
-                      node.unlocks.enablesSystemFlags?.[0] ||
-                      node.unlocks.perkType ||
-                      node.nodeId,
-        unlockDescription: getUnlockDescription(node),
-        perkType: node.unlocks.perkType,
-        perkValue: node.unlocks.perkValue,
-        // Status flags
-        isPurchased,
-        isAvailable: !isPurchased && meetsLevel && meetsPrereqs && canAfford,
-        isLocked: !isPurchased && (!meetsLevel || !meetsPrereqs),
-        lockReason,
-      };
-    });
-  },
-});
-
-// Helper to generate unlock description
-function getUnlockDescription(node: typeof RESEARCH_NODES[0]): string {
-  if (node.unlocks.unlocksBlueprintIds?.length) {
-    return `Unlock training: ${node.unlocks.unlocksBlueprintIds.join(", ")}`;
-  }
-  if (node.unlocks.unlocksJobIds?.length) {
-    return `Unlock job: ${node.unlocks.unlocksJobIds.join(", ")}`;
-  }
-  if (node.unlocks.enablesSystemFlags?.length) {
-    return `Enable: ${node.unlocks.enablesSystemFlags.join(", ")}`;
-  }
-  if (node.unlocks.perkType === "research_speed") {
-    return `+${node.unlocks.perkValue}% research speed`;
-  }
-  if (node.unlocks.perkType === "money_multiplier") {
-    return `+${(node.unlocks.perkValue || 0) * 100}% income`;
-  }
-  return node.description;
-}

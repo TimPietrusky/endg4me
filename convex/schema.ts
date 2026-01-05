@@ -41,6 +41,8 @@ export default defineSchema({
     queueRank: v.optional(v.number()),     // Queue upgrade rank (0 = base)
     staffRank: v.optional(v.number()),     // Staff upgrade rank (0 = base)
     computeRank: v.optional(v.number()),   // Compute upgrade rank (0 = base)
+    researchSpeedRank: v.optional(v.number()),  // Research speed rank (0 = base)
+    moneyMultiplierRank: v.optional(v.number()), // Money multiplier rank (0 = base)
   }).index("by_user", ["userId"]),
 
   // Player Unlocks - tracks what blueprints, jobs, and system flags are unlocked

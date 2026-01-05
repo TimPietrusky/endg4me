@@ -342,6 +342,7 @@ export interface ResearchNode {
   name: string;
   description: string;
   costRP: number;
+  durationMs: number; // Time to complete research (same task system as jobs)
   minLevel: number;
   prerequisiteNodes: string[];
   unlocks: ResearchNodeUnlocks;
@@ -355,6 +356,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Basic Website Gigs",
     description: "Unlock freelance website work to earn money.",
     costRP: 0,
+    durationMs: 30 * 1000, // 30s (free starter)
     minLevel: 1,
     prerequisiteNodes: [],
     unlocks: {
@@ -367,6 +369,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "API Integration Gigs",
     description: "Unlock more complex freelance integration work.",
     costRP: 180,
+    durationMs: 2 * 60 * 1000, // 2m
     minLevel: 3,
     prerequisiteNodes: ["rn_income_basic_website"],
     unlocks: {
@@ -381,6 +384,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Basic Contracts",
     description: "Unlock simple paid contracts in Operate.",
     costRP: 0,
+    durationMs: 30 * 1000, // 30s (free starter)
     minLevel: 1,
     prerequisiteNodes: [],
     unlocks: {
@@ -393,6 +397,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "3B TTS",
     description: "Unlock training for 3B TTS.",
     costRP: 0,
+    durationMs: 30 * 1000, // 30s (free starter)
     minLevel: 1,
     prerequisiteNodes: [],
     unlocks: {
@@ -406,6 +411,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Research Speed I",
     description: "Earn research points a bit faster.",
     costRP: 120,
+    durationMs: 1 * 60 * 1000, // 1m
     minLevel: 1,
     prerequisiteNodes: [],
     unlocks: {
@@ -421,6 +427,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "7B VLM",
     description: "Unlock training for 7B VLM.",
     costRP: 250,
+    durationMs: 3 * 60 * 1000, // 3m
     minLevel: 2,
     prerequisiteNodes: [],
     unlocks: {
@@ -434,6 +441,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Voice Gigs",
     description: "Unlock audio contracts that use your TTS models.",
     costRP: 200,
+    durationMs: 2 * 60 * 1000, // 2m
     minLevel: 2,
     prerequisiteNodes: [],
     unlocks: {
@@ -446,6 +454,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Vision Contracts",
     description: "Unlock image QA contracts that use your VLM models.",
     costRP: 220,
+    durationMs: 2.5 * 60 * 1000, // 2.5m
     minLevel: 3,
     prerequisiteNodes: [],
     unlocks: {
@@ -458,6 +467,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "3B LLM",
     description: "Unlock training for 3B LLM.",
     costRP: 350,
+    durationMs: 4 * 60 * 1000, // 4m
     minLevel: 3,
     prerequisiteNodes: [],
     unlocks: {
@@ -471,6 +481,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Payout Booster I",
     description: "Earn a bit more money from contracts.",
     costRP: 180,
+    durationMs: 2 * 60 * 1000, // 2m
     minLevel: 3,
     prerequisiteNodes: [],
     unlocks: {
@@ -486,6 +497,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "17B LLM",
     description: "Unlock training for 17B LLM.",
     costRP: 900,
+    durationMs: 12 * 60 * 1000, // 12m
     minLevel: 7,
     prerequisiteNodes: ["rn_bp_unlock_llm_3b"],
     unlocks: {
@@ -499,6 +511,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Model API Income",
     description: "Earn passive money from hosted model APIs.",
     costRP: 350,
+    durationMs: 4 * 60 * 1000, // 4m
     minLevel: 5,
     prerequisiteNodes: [],
     unlocks: {
@@ -511,6 +524,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Model Licensing",
     description: "License your models to enterprises for big payouts.",
     costRP: 500,
+    durationMs: 6 * 60 * 1000, // 6m
     minLevel: 8,
     prerequisiteNodes: ["rn_cap_model_api_income"],
     unlocks: {
@@ -525,6 +539,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Junior Researcher",
     description: "Unlock hiring junior researchers for +1 queue slot.",
     costRP: 150,
+    durationMs: 1.5 * 60 * 1000, // 1.5m
     minLevel: 2,
     prerequisiteNodes: [],
     unlocks: {
@@ -537,6 +552,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Efficiency Expert",
     description: "Unlock hiring efficiency experts for +25% XP.",
     costRP: 300,
+    durationMs: 4 * 60 * 1000, // 4m
     minLevel: 4,
     prerequisiteNodes: ["rn_hire_junior_researcher"],
     unlocks: {
@@ -549,6 +565,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Business Partner",
     description: "Unlock hiring business partners for +30% money.",
     costRP: 450,
+    durationMs: 5 * 60 * 1000, // 5m
     minLevel: 6,
     prerequisiteNodes: ["rn_hire_efficiency_expert"],
     unlocks: {
@@ -561,6 +578,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
     name: "Senior Engineer",
     description: "Unlock hiring senior engineers for +1 compute.",
     costRP: 700,
+    durationMs: 8 * 60 * 1000, // 8m
     minLevel: 10,
     prerequisiteNodes: ["rn_hire_business_partner"],
     unlocks: {

@@ -2,12 +2,30 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import {
   LAB_UPGRADES,
+  FOUNDER_UPGRADE_BONUSES,
   getUpgradeValue,
   getRequiredLevelForRank,
   isRankUnlocked,
   type UpgradeType,
 } from "./lib/gameConfig";
 import { syncLeaderboardForLab } from "./leaderboard";
+
+// Helper to get rank for any upgrade type
+function getRankForType(playerState: {
+  queueRank?: number;
+  staffRank?: number;
+  computeRank?: number;
+  researchSpeedRank?: number;
+  moneyMultiplierRank?: number;
+}, type: UpgradeType): number {
+  switch (type) {
+    case "queue": return playerState.queueRank ?? 0;
+    case "staff": return playerState.staffRank ?? 0;
+    case "compute": return playerState.computeRank ?? 0;
+    case "researchSpeed": return playerState.researchSpeedRank ?? 0;
+    case "moneyMultiplier": return playerState.moneyMultiplierRank ?? 0;
+  }
+}
 
 // Get player's upgrade state (UP balance + all ranks)
 export const getUpgradeState = query({
@@ -20,28 +38,28 @@ export const getUpgradeState = query({
 
     if (!playerState) return null;
 
-    const queueRank = playerState.queueRank ?? 0;
-    const staffRank = playerState.staffRank ?? 0;
-    const computeRank = playerState.computeRank ?? 0;
-
     return {
       upgradePoints: playerState.upgradePoints ?? 0,
       level: playerState.level,
       ranks: {
-        queue: queueRank,
-        staff: staffRank,
-        compute: computeRank,
+        queue: playerState.queueRank ?? 0,
+        staff: playerState.staffRank ?? 0,
+        compute: playerState.computeRank ?? 0,
+        researchSpeed: playerState.researchSpeedRank ?? 0,
+        moneyMultiplier: playerState.moneyMultiplierRank ?? 0,
       },
       values: {
-        queue: getUpgradeValue("queue", queueRank),
-        staff: getUpgradeValue("staff", staffRank),
-        compute: getUpgradeValue("compute", computeRank),
+        queue: getUpgradeValue("queue", playerState.queueRank ?? 0),
+        staff: getUpgradeValue("staff", playerState.staffRank ?? 0),
+        compute: getUpgradeValue("compute", playerState.computeRank ?? 0),
+        researchSpeed: getUpgradeValue("researchSpeed", playerState.researchSpeedRank ?? 0),
+        moneyMultiplier: getUpgradeValue("moneyMultiplier", playerState.moneyMultiplierRank ?? 0),
       },
     };
   },
 });
 
-// Get detailed upgrade info for UI (includes lock reasons, next values, etc.)
+// Get detailed upgrade info for UI (includes lock reasons, next values, founder bonuses)
 export const getUpgradeDetails = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -52,17 +70,21 @@ export const getUpgradeDetails = query({
 
     if (!playerState) return null;
 
+    // Get lab for founder type
+    const lab = await ctx.db
+      .query("labs")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    const founderType = (lab?.founderType ?? "technical") as keyof typeof FOUNDER_UPGRADE_BONUSES;
+    const founderBonuses = FOUNDER_UPGRADE_BONUSES[founderType];
+
     const playerLevel = playerState.level;
     const upgradePoints = playerState.upgradePoints ?? 0;
 
     const upgrades = (Object.keys(LAB_UPGRADES) as UpgradeType[]).map((type) => {
       const def = LAB_UPGRADES[type];
-      const currentRank =
-        type === "queue"
-          ? playerState.queueRank ?? 0
-          : type === "staff"
-            ? playerState.staffRank ?? 0
-            : playerState.computeRank ?? 0;
+      const currentRank = getRankForType(playerState, type);
 
       const nextRank = currentRank + 1;
       const isMaxRank = currentRank >= def.maxRank;
@@ -78,6 +100,17 @@ export const getUpgradeDetails = query({
         lockReason = "Not enough UP";
       }
 
+      // Calculate founder bonus for this upgrade type
+      const founderBonus = type === "researchSpeed" 
+        ? founderBonuses.researchSpeed 
+        : type === "moneyMultiplier"
+          ? founderBonuses.moneyMultiplier
+          : 0;
+
+      const baseValue = getUpgradeValue(type, currentRank);
+      const maxBaseValue = getUpgradeValue(type, def.maxRank);
+      const nextBaseValue = isMaxRank ? null : getUpgradeValue(type, nextRank);
+
       return {
         id: type,
         name: def.name,
@@ -85,18 +118,24 @@ export const getUpgradeDetails = query({
         unit: def.unit,
         currentRank,
         maxRank: def.maxRank,
-        currentValue: getUpgradeValue(type, currentRank),
-        nextValue: isMaxRank ? null : getUpgradeValue(type, nextRank),
+        // For researchSpeed/moneyMultiplier, add founder bonus to display values
+        currentValue: baseValue + founderBonus,
+        maxValue: maxBaseValue + founderBonus,
+        nextValue: nextBaseValue !== null ? nextBaseValue + founderBonus : null,
+        founderBonus,  // So UI can show "25% from lab type"
         canUpgrade: !isMaxRank && nextRankUnlocked && upgradePoints >= 1,
         isMaxRank,
         lockReason,
         requiredLevelForNext: isMaxRank ? null : requiredLevel,
+        isPercent: def.isPercent,
+        isMultiplier: def.isMultiplier,
       };
     });
 
     return {
       upgradePoints,
       level: playerLevel,
+      founderType,
       upgrades,
     };
   },
@@ -109,7 +148,9 @@ export const purchaseUpgrade = mutation({
     upgradeType: v.union(
       v.literal("queue"),
       v.literal("staff"),
-      v.literal("compute")
+      v.literal("compute"),
+      v.literal("researchSpeed"),
+      v.literal("moneyMultiplier")
     ),
   },
   handler: async (ctx, args) => {
@@ -128,12 +169,7 @@ export const purchaseUpgrade = mutation({
     }
 
     const def = LAB_UPGRADES[args.upgradeType];
-    const currentRank =
-      args.upgradeType === "queue"
-        ? playerState.queueRank ?? 0
-        : args.upgradeType === "staff"
-          ? playerState.staffRank ?? 0
-          : playerState.computeRank ?? 0;
+    const currentRank = getRankForType(playerState, args.upgradeType);
 
     if (currentRank >= def.maxRank) {
       throw new Error("Already at max rank");
@@ -150,12 +186,22 @@ export const purchaseUpgrade = mutation({
       upgradePoints: upgradePoints - 1,
     };
 
-    if (args.upgradeType === "queue") {
-      updates.queueRank = nextRank;
-    } else if (args.upgradeType === "staff") {
-      updates.staffRank = nextRank;
-    } else {
-      updates.computeRank = nextRank;
+    switch (args.upgradeType) {
+      case "queue":
+        updates.queueRank = nextRank;
+        break;
+      case "staff":
+        updates.staffRank = nextRank;
+        break;
+      case "compute":
+        updates.computeRank = nextRank;
+        break;
+      case "researchSpeed":
+        updates.researchSpeedRank = nextRank;
+        break;
+      case "moneyMultiplier":
+        updates.moneyMultiplierRank = nextRank;
+        break;
     }
 
     await ctx.db.patch(playerState._id, updates);
@@ -165,7 +211,7 @@ export const purchaseUpgrade = mutation({
       userId: args.userId,
       type: "unlock",
       title: `${def.name} Upgraded`,
-      message: `Rank ${nextRank}: ${getUpgradeValue(args.upgradeType, nextRank)} ${def.unit}`,
+      message: `Rank ${nextRank}: ${getUpgradeValue(args.upgradeType, nextRank)}${def.unit}`,
       read: false,
       createdAt: Date.now(),
       deepLink: {
