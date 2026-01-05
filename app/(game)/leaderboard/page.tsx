@@ -9,7 +9,7 @@ import { SubNavContainer, SubNavButton } from "@/components/game/dashboard/sub-n
 
 type LeaderboardTab = "labs" | "models"
 
-export default function WorldPage() {
+export default function LeaderboardPage() {
   const { lab } = useGameData()
   const [activeTab, setActiveTab] = useState<LeaderboardTab>("labs")
 

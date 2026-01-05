@@ -53,7 +53,7 @@ export function GameTopNav({
     if (pathname === "/research") return "research"
     if (pathname?.startsWith("/lab")) return "lab"
     if (pathname === "/inbox") return "inbox"
-    if (pathname === "/world") return "world"
+    if (pathname === "/leaderboard") return "leaderboard"
     return null // No nav item active for unknown routes
   }
   
@@ -66,7 +66,7 @@ export function GameTopNav({
     { id: "research", label: "research", href: "/research" },
     { id: "lab", label: "lab", href: "/lab", badge: upgradePoints > 0 ? `${upgradePoints}` : undefined, badgeVariant: "up" },
     { id: "inbox", label: "inbox", href: "/inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined, badgeVariant: "secondary" },
-    { id: "world", label: "leaderboard", href: "/world" },
+    { id: "leaderboard", label: "leaderboard", href: "/leaderboard" },
   ]
 
   return (

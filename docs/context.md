@@ -108,7 +108,7 @@ The game dashboard is **fully implemented** with:
 - Blueprint-driven model training system
 - Research tree with Models, Revenue, Hiring, and Perks
 
-The homepage (`app/page.tsx`) is the landing page. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/world`.
+The homepage (`app/page.tsx`) is the landing page. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/leaderboard`.
 
 ### Navigation (5 top-level views)
 
@@ -116,7 +116,7 @@ The homepage (`app/page.tsx`) is the landing page. The game uses top-level route
 2. **Research**: Spend RP on all unlocks (Models, Revenue, Hiring, Perks)
 3. **Lab**: Your organization/ownership (model inventory, publishing controls, upgrades, team)
 4. **Inbox**: Events/offers/notifications with deep links
-5. **World**: Global layer (leaderboards by model type, public labs)
+5. **Leaderboard**: Global layer (leaderboards by model type, public labs)
 
 ### Research View Structure
 
@@ -290,7 +290,7 @@ endg4me/
 │   │   │   ├── models/page.tsx   # CollectionView (trained models)
 │   │   │   └── levels/page.tsx   # LevelsView (XP/UP progression)
 │   │   ├── inbox/page.tsx   # MsgsView (notifications)
-│   │   └── world/page.tsx   # LabsLeaderboard + ModelsLeaderboard
+│   │   └── leaderboard/page.tsx # LabsLeaderboard + ModelsLeaderboard
 │   ├── api/                 # API routes (auth callbacks)
 │   ├── globals.css          # Terminal theme (white accent)
 │   ├── layout.tsx           # Root layout
@@ -453,7 +453,7 @@ _Last updated: 2026-01-05 (Time Warp dev tool for accelerated testing)_
 
 ## Architecture Decisions (006 Leaderboard Day One)
 
-- **Leaderboard available from day one**: No level or research gating for World view
+- **Leaderboard available from day one**: No level or research gating
 - **Publishing available from day one**: Toggle visibility (public/private) without research unlock
 - **Lab Score**: Ranking metric = (level x 100) + sum(best public model scores) + (upgrade ranks x 20)
 - **Neighbors slice**: Leaderboard shows 20 above + you + 20 below (41 rows max)
@@ -484,7 +484,7 @@ _Last updated: 2026-01-05 (Time Warp dev tool for accelerated testing)_
 
 ## Architecture Decisions (003 Route-based Navigation)
 
-- **Top-level routes**: Views are real Next.js routes (`/operate`, `/research`, `/lab`, `/inbox`, `/world`)
+- **Top-level routes**: Views are real Next.js routes (`/operate`, `/research`, `/lab`, `/inbox`, `/leaderboard`)
 - **Route group**: `(game)` provides shared layout without adding URL segment
 - **GameDataProvider**: All Convex queries live in provider, persist across route changes
 - **GameShell**: Handles loading states, founder selection, wraps TopNav
