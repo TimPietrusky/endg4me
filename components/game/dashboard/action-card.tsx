@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { CurrencyDollar, Lightning, Star, Clock, CaretUp, CaretDown, Cpu } from "@phosphor-icons/react"
+import { CurrencyDollar, Lightning, Star, Clock, CaretUp, CaretDown, Cpu, type Icon as PhosphorIcon } from "@phosphor-icons/react"
 import { XpIcon } from "./xp-icon"
 import type { Action } from "@/lib/game-types"
 import { formatCompact, formatTimeCompact } from "@/lib/utils"
@@ -91,7 +91,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     isTime = false,
     isXP = false,
     isGain = true,
-  }: { icon?: React.ElementType; value?: number | string; color?: string; isTime?: boolean; isXP?: boolean; isGain?: boolean }) => {
+  }: { icon?: PhosphorIcon; value?: number | string; color?: string; isTime?: boolean; isXP?: boolean; isGain?: boolean }) => {
     if (!Icon && !isXP) {
       return <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0" />
     }
@@ -117,6 +117,10 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
       )
     }
 
+    if (!Icon) {
+      return <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0" />
+    }
+
     return (
       <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
         <span className="w-3 flex items-center justify-center flex-shrink-0">
@@ -137,7 +141,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     const hasCashCost = action.cost > 0
     const hasCashReward = action.cashReward && action.cashReward > 0
     const cashValue = hasCashCost ? action.cost : (hasCashReward ? action.cashReward : undefined)
-    const isCashGain = !hasCashCost && hasCashReward
+    const isCashGain = !hasCashCost && !!hasCashReward
     
     // GPU is always a cost (blocking resource)
     const hasGpuCost = action.gpuCost && action.gpuCost > 0

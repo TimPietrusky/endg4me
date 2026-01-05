@@ -371,18 +371,6 @@ export const RESEARCH_NODES: ResearchNode[] = [
     },
   },
   {
-    nodeId: "rn_cap_model_publishing",
-    category: "capability",
-    name: "Model Publishing",
-    description: "Publish models to the public lab and world rankings.",
-    costRP: 250,
-    minLevel: 4,
-    prerequisiteNodes: [],
-    unlocks: {
-      enablesSystemFlags: ["publishing"],
-    },
-  },
-  {
     nodeId: "rn_cap_model_api_income",
     category: "capability",
     name: "Model API Income",
@@ -402,7 +390,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
 
 export interface InboxEventDef {
   eventId: string
-  trigger: "first_level_up" | "first_research" | "first_model" | "publishing_unlocked" | "level_5"
+  trigger: "first_level_up" | "first_research" | "first_model" | "level_5"
   title: string
   message: string
   deepLink?: { view: "operate" | "research" | "lab" | "inbox" | "world"; target?: string }
@@ -427,14 +415,7 @@ export const INBOX_EVENTS: InboxEventDef[] = [
     eventId: "evt_first_model",
     trigger: "first_model",
     title: "First Model Trained!",
-    message: "Your model is now in Lab > Models. Train more versions to improve scores, or use it for contracts.",
-    deepLink: { view: "lab", target: "models" },
-  },
-  {
-    eventId: "evt_publishing_unlocked",
-    trigger: "publishing_unlocked",
-    title: "Publishing Unlocked!",
-    message: "You can now publish models to compete on the World leaderboards. Toggle visibility in Lab > Models.",
+    message: "Your model is now in Lab > Models. Train more versions to improve scores, or publish to compete on leaderboards.",
     deepLink: { view: "lab", target: "models" },
   },
   {

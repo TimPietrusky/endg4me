@@ -4,9 +4,8 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id, Doc } from "@/convex/_generated/dataModel"
-import { TASKS } from "@/convex/lib/gameConstants"
+import { getJobById, JOB_DEFS } from "@/convex/lib/contentCatalog"
 import { getUpgradeValue, getXpForNextLevel } from "@/convex/lib/gameConfig"
-import { formatTimeRemaining } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import type { Action, Notification } from "@/lib/game-types"
 
@@ -24,6 +23,7 @@ interface GameData {
   activeTaskCount: number
   isQueueFull: boolean
   availableGpus: number
+  usedCompute: number
   queueCapacity: number
   staffCapacity: number
   computeCapacity: number
@@ -33,7 +33,16 @@ interface GameData {
   actions: Action[]
   notifications: Notification[]
   trainedModels: Doc<"trainedModels">[] | undefined
-  modelStats: { bestModel?: { score: number } } | null | undefined
+  modelStats: {
+    totalModels: number
+    llmModels: number
+    ttsModels: number
+    vlmModels: number
+    publicModels: number
+    totalScore: number
+    averageScore: number
+    bestModel: Doc<"trainedModels"> | null
+  } | undefined
   
   // Counts
   unreadCount: number
@@ -59,79 +68,71 @@ export function useGameData() {
   return context
 }
 
-interface GameDataProviderProps {
-  children: ReactNode
+// Job image mapping
+const JOB_IMAGES: Record<string, string> = {
+  "job_train_tts_3b": "/ai-neural-network-training-blue-glow.jpg",
+  "job_train_vlm_7b": "/advanced-ai-training-purple-cyber.jpg",
+  "job_train_llm_3b": "/ai-neural-network-training-blue-glow.jpg",
+  "job_train_llm_17b": "/massive-ai-datacenter-training.jpg",
+  "job_contract_blog_basic": "/cyberpunk-freelance-coding-terminal.jpg",
+  "job_contract_voice_pack": "/cyberpunk-freelance-coding-terminal.jpg",
+  "job_contract_image_qa": "/cyberpunk-freelance-coding-terminal.jpg",
+  "job_research_literature": "/server-optimization-tech-infrastructure.jpg",
 }
 
-export function GameDataProvider({ children }: GameDataProviderProps) {
+interface GameDataProviderProps {
+  children: ReactNode
+  workosUserId: string
+}
+
+export function GameDataProvider({ children, workosUserId }: GameDataProviderProps) {
   const { toast } = useToast()
-  const [userId, setUserId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
 
-  // Fetch user ID from API
-  useEffect(() => {
-    async function initUser() {
-      try {
-        const res = await fetch("/api/user")
-        if (res.ok) {
-          const data = await res.json()
-          setUserId(data.convexUserId)
-        }
-      } catch (error) {
-        console.error("Failed to get user:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    initUser()
-  }, [])
-
-  // Convex queries - all in the provider so they persist across route changes
-  const labData = useQuery(
-    api.labs.getFullLabData,
-    userId ? { userId: userId as Id<"users"> } : "skip"
+  // First get the Convex user from WorkOS ID
+  const convexUser = useQuery(
+    api.users.getCurrentUser,
+    workosUserId ? { workosUserId } : "skip"
   )
   
+  // Extract Convex user ID
+  const userId = convexUser?._id ?? null
+
+  // Core queries - using Convex user ID
+  const labData = useQuery(
+    api.labs.getFullLabData,
+    userId ? { userId } : "skip"
+  )
+
   const activeTasks = useQuery(
     api.tasks.getActiveTasks,
     labData?.lab ? { labId: labData.lab._id } : "skip"
   )
-  
-  const freelanceCooldown = useQuery(
-    api.tasks.getFreelanceCooldown,
-    labData?.lab ? { labId: labData.lab._id } : "skip"
-  )
-  
-  const unreadCount = useQuery(
-    api.notifications.getUnreadCount,
-    userId ? { userId: userId as Id<"users"> } : "skip"
-  )
-  
+
   const recentActivity = useQuery(
     api.notifications.getRecentActivity,
-    userId ? { userId: userId as Id<"users">, limit: 20 } : "skip"
+    userId ? { userId, limit: 20 } : "skip"
   )
-  
+
   const modelStats = useQuery(
     api.tasks.getModelStats,
     labData?.lab ? { labId: labData.lab._id } : "skip"
   )
-  
+
   const trainedModels = useQuery(
     api.tasks.getTrainedModels,
-    labData?.lab ? { labId: labData.lab._id } : "skip"
+    labData?.lab ? { labId: labData.lab._id, limit: 50 } : "skip"
   )
 
   // Get available jobs with unlock status
   const availableJobs = useQuery(
     api.tasks.getAvailableJobs,
     labData?.lab && userId
-      ? { userId: userId as Id<"users">, labId: labData.lab._id }
+      ? { userId, labId: labData.lab._id }
       : "skip"
   )
 
   // Mutations
-  const startTask = useMutation(api.tasks.startTask)
+  const startJob = useMutation(api.tasks.startJob)
   const markNotificationRead = useMutation(api.notifications.markAsRead)
 
   // Re-render every second for task timers
@@ -148,7 +149,6 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
   const playerState = labData?.playerState ?? null
 
   // Derived calculations
-  // XP resets to 0 on level up - xpRequired is XP needed from current level to next
   const xpRequired = playerState ? getXpForNextLevel(playerState.level) : 100
   const inProgressTasks = activeTasks?.filter((t) => t.status === "in_progress") || []
   const queuedTasks = activeTasks?.filter((t) => t.status === "queued") || []
@@ -162,165 +162,117 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
   const maxParallelTasks = queueCapacity + (labState?.juniorResearchers || 0)
   const activeTaskCount = inProgressTasks.length
   const isQueueFull = activeTaskCount >= maxParallelTasks
-  const isStaffFull = labState ? labState.juniorResearchers >= staffCapacity : false
-  const isFreelanceOnCooldown = freelanceCooldown && freelanceCooldown > Date.now()
   
-  const usedGpus = inProgressTasks.filter(
-    (t) => t.type === "train_small_model" || t.type === "train_medium_model"
-  ).length
-  const availableGpus = computeCapacity - usedGpus
+  // Calculate used compute from active tasks
+  const usedCompute = inProgressTasks.reduce((sum, task) => {
+    const jobDef = getJobById(task.type)
+    return sum + (jobDef?.computeRequiredCU ?? 0)
+  }, 0)
+  const availableGpus = computeCapacity - usedCompute
 
-  // Helper functions for disabled info
-  const getTrainingDisabledInfo = (cost: number, gpuCost: number) => {
-    if (!labState) return { reason: "loading", fundsShortfall: 0, gpuShortfall: 0 }
-    if (labState.cash < cost) {
-      return { reason: "not enough funds", fundsShortfall: cost - labState.cash, gpuShortfall: 0 }
-    }
-    if (gpuCost > 0 && availableGpus < gpuCost) {
-      return { reason: "not enough CU", fundsShortfall: 0, gpuShortfall: gpuCost - availableGpus }
-    }
-    if (isQueueFull) {
-      return { reason: "queue full", fundsShortfall: 0, gpuShortfall: 0 }
-    }
-    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
-  }
-
-  const getFreelanceDisabledInfo = () => {
-    if (isFreelanceOnCooldown) {
-      return { reason: "on cooldown", fundsShortfall: 0, gpuShortfall: 0 }
-    }
-    if (isQueueFull) {
-      return { reason: "queue full", fundsShortfall: 0, gpuShortfall: 0 }
-    }
-    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
-  }
-
-  const getHireDisabledInfo = () => {
-    if (!labState) return { reason: "loading", fundsShortfall: 0, gpuShortfall: 0 }
-    if (labState.cash < TASKS.hire_junior_researcher.cost) {
-      return { reason: "not enough funds", fundsShortfall: TASKS.hire_junior_researcher.cost - labState.cash, gpuShortfall: 0 }
-    }
-    if (isStaffFull) {
-      return { reason: "staff capacity full", fundsShortfall: 0, gpuShortfall: 0 }
-    }
-    return { reason: undefined, fundsShortfall: 0, gpuShortfall: 0 }
-  }
-
-  function getTaskRemainingTime(taskType: string): number | undefined {
-    const task = inProgressTasks.find((t) => t.type === taskType)
+  // Helper to get remaining time for a job
+  function getJobRemainingTime(jobId: string): number | undefined {
+    const task = inProgressTasks.find((t) => t.type === jobId)
     if (task?.completesAt) {
       return Math.max(0, Math.floor((task.completesAt - Date.now()) / 1000))
     }
     return undefined
   }
 
-  // Helper to check if a job is unlocked
-  const isJobUnlocked = (jobId: string): boolean => {
-    if (!availableJobs) return false
-    const job = availableJobs.find((j) => j.jobId === jobId)
-    return job?.isUnlocked ?? false
+  // Helper to check job disabled status
+  function getJobDisabledInfo(jobId: string) {
+    const jobDef = getJobById(jobId)
+    if (!jobDef || !labState) {
+      return { disabled: true, reason: "loading" }
+    }
+
+    // Check funds
+    if (labState.cash < jobDef.moneyCost) {
+      return { 
+        disabled: true, 
+        reason: "not enough funds",
+        fundsShortfall: jobDef.moneyCost - labState.cash
+      }
+    }
+
+    // Check compute
+    if (jobDef.computeRequiredCU > 0 && availableGpus < jobDef.computeRequiredCU) {
+      return { 
+        disabled: true, 
+        reason: "not enough CU",
+        gpuShortfall: jobDef.computeRequiredCU - availableGpus
+      }
+    }
+
+    // Check queue
+    if (isQueueFull) {
+      return { disabled: true, reason: "queue full" }
+    }
+
+    return { disabled: false }
   }
 
-  const getJobLockReason = (jobId: string): string | undefined => {
-    if (!availableJobs) return undefined
-    const job = availableJobs.find((j) => j.jobId === jobId)
-    return job?.lockReason
-  }
+  // Build actions from available jobs
+  // Only show training and contract jobs in Operate (no research jobs)
+  const actions: Action[] = (availableJobs || [])
+    .filter((job) => {
+      if (!job.isUnlocked) return false
+      const jobDef = getJobById(job.jobId)
+      // Filter out research jobs - those belong in the Research tab
+      return jobDef && jobDef.category !== "research"
+    })
+    .map((job) => {
+      const jobDef = getJobById(job.jobId)
+      if (!jobDef) return null
 
-  // Build actions
-  const smallModelInfo = getTrainingDisabledInfo(TASKS.train_small_model.cost, TASKS.train_small_model.computeRequired)
-  const mediumModelInfo = getTrainingDisabledInfo(TASKS.train_medium_model.cost, TASKS.train_medium_model.computeRequired)
-  const freelanceInfo = getFreelanceDisabledInfo()
-  const hireInfo = getHireDisabledInfo()
+      const disabledInfo = getJobDisabledInfo(job.jobId)
+      const isActive = inProgressTasks.some((t) => t.type === job.jobId)
+      const isQueued = queuedTasks.some((t) => t.type === job.jobId)
 
-  // Map old task IDs to new job IDs for unlock checking
-  const ttsUnlocked = isJobUnlocked("job_train_tts_3b")
-  const vlmUnlocked = isJobUnlocked("job_train_vlm_7b")
+      // Determine category - only TRAINING and INCOME for Operate
+      let category: "TRAINING" | "INCOME" = "TRAINING"
+      if (jobDef.category === "contract") category = "INCOME"
 
-  const allActions: Action[] = labState ? [
-    {
-      id: "train-small",
-      category: "TRAINING",
-      name: "TTS",
-      description: "Train a text-to-speech model to gain research points",
-      size: "3B",
-      cost: TASKS.train_small_model.cost,
-      gpuCost: TASKS.train_small_model.computeRequired,
-      duration: Math.floor(TASKS.train_small_model.duration / 1000),
-      rpReward: TASKS.train_small_model.baseRewards.researchPoints,
-      xpReward: TASKS.train_small_model.baseRewards.experience,
-      disabled: !!smallModelInfo.reason,
-      disabledReason: smallModelInfo.reason,
-      fundsShortfall: smallModelInfo.fundsShortfall,
-      gpuShortfall: smallModelInfo.gpuShortfall,
-      image: "/ai-neural-network-training-blue-glow.jpg",
-      isActive: inProgressTasks.some((t) => t.type === "train_small_model"),
-      remainingTime: getTaskRemainingTime("train_small_model"),
-      isQueued: queuedTasks.some((t) => t.type === "train_small_model"),
-      locked: !ttsUnlocked,
-      lockReason: getJobLockReason("job_train_tts_3b"),
-    },
-    {
-      id: "train-medium",
-      category: "TRAINING",
-      name: "VLM",
-      description: "Train a vision language model for higher rewards",
-      size: "7B",
-      cost: TASKS.train_medium_model.cost,
-      gpuCost: TASKS.train_medium_model.computeRequired,
-      duration: Math.floor(TASKS.train_medium_model.duration / 1000),
-      rpReward: TASKS.train_medium_model.baseRewards.researchPoints,
-      xpReward: TASKS.train_medium_model.baseRewards.experience,
-      disabled: !!mediumModelInfo.reason,
-      disabledReason: mediumModelInfo.reason,
-      fundsShortfall: mediumModelInfo.fundsShortfall,
-      gpuShortfall: mediumModelInfo.gpuShortfall,
-      image: "/advanced-ai-training-purple-cyber.jpg",
-      isActive: inProgressTasks.some((t) => t.type === "train_medium_model"),
-      remainingTime: getTaskRemainingTime("train_medium_model"),
-      isQueued: queuedTasks.some((t) => t.type === "train_medium_model"),
-      locked: !vlmUnlocked,
-      lockReason: getJobLockReason("job_train_vlm_7b"),
-    },
-    {
-      id: "freelance",
-      category: "INCOME",
-      name: "Freelance AI Contract",
-      description: isFreelanceOnCooldown
-        ? `On cooldown - ${formatTimeRemaining(freelanceCooldown!)}`
-        : "Complete a contract for immediate cash payment",
-      cost: 0,
-      duration: Math.floor(TASKS.freelance_contract.duration / 1000),
-      cashReward: TASKS.freelance_contract.baseRewards.cash,
-      xpReward: TASKS.freelance_contract.baseRewards.experience,
-      disabled: !!freelanceInfo.reason,
-      disabledReason: freelanceInfo.reason,
-      image: "/cyberpunk-freelance-coding-terminal.jpg",
-      isActive: inProgressTasks.some((t) => t.type === "freelance_contract"),
-      remainingTime: getTaskRemainingTime("freelance_contract"),
-      isQueued: queuedTasks.some((t) => t.type === "freelance_contract"),
-    },
-    {
-      id: "hire",
-      category: "HIRING",
-      name: "Hire Junior Researcher",
-      description: `Expand your team (${labState.juniorResearchers}/${staffCapacity} staff)`,
-      cost: TASKS.hire_junior_researcher.cost,
-      duration: Math.floor(TASKS.hire_junior_researcher.duration / 1000),
-      speedBonus: 10,
-      xpReward: TASKS.hire_junior_researcher.baseRewards.experience,
-      disabled: !!hireInfo.reason,
-      disabledReason: hireInfo.reason,
-      fundsShortfall: hireInfo.fundsShortfall,
-      image: "/hiring-tech-researcher-futuristic.jpg",
-      isActive: inProgressTasks.some((t) => t.type === "hire_junior_researcher"),
-      remainingTime: getTaskRemainingTime("hire_junior_researcher"),
-      isQueued: queuedTasks.some((t) => t.type === "hire_junior_researcher"),
-    },
-  ] : []
+      // Get model size from name if training job
+      let size: string | undefined
+      if (jobDef.category === "training") {
+        const match = jobDef.name.match(/(\d+B)/)
+        size = match ? match[1] : undefined
+      }
 
-  // Filter out locked actions (don't show them at all)
-  const actions = allActions.filter((a) => !a.locked)
+      // Short name for display
+      let displayName = jobDef.name
+      if (jobDef.category === "training") {
+        // Extract model type (TTS, VLM, LLM) from name
+        if (jobDef.name.includes("TTS")) displayName = "TTS"
+        else if (jobDef.name.includes("VLM")) displayName = "VLM"
+        else if (jobDef.name.includes("LLM")) displayName = jobDef.name.includes("17B") ? "LLM 17B" : "LLM 3B"
+      }
+
+      return {
+        id: job.jobId,
+        category,
+        name: displayName,
+        description: jobDef.description,
+        size,
+        cost: jobDef.moneyCost,
+        gpuCost: jobDef.computeRequiredCU,
+        duration: Math.floor(jobDef.durationMs / 1000),
+        rpReward: jobDef.rewards.rp || undefined,
+        xpReward: jobDef.rewards.xp || undefined,
+        cashReward: jobDef.rewards.money || undefined,
+        disabled: disabledInfo.disabled,
+        disabledReason: disabledInfo.reason,
+        fundsShortfall: disabledInfo.fundsShortfall || 0,
+        gpuShortfall: disabledInfo.gpuShortfall || 0,
+        image: JOB_IMAGES[job.jobId] || "/server-optimization-tech-infrastructure.jpg",
+        isActive,
+        remainingTime: getJobRemainingTime(job.jobId),
+        isQueued,
+        locked: false,
+      } as Action
+    })
+    .filter((a): a is Action => a !== null)
 
   // Notifications
   const notifications: Notification[] = (recentActivity || []).map((n) => ({
@@ -340,27 +292,18 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
   // Action handlers
   const handleStartAction = async (action: Action) => {
     if (!lab) return
-    
-    const taskTypeMap: Record<string, "train_small_model" | "train_medium_model" | "freelance_contract" | "hire_junior_researcher"> = {
-      "train-small": "train_small_model",
-      "train-medium": "train_medium_model",
-      "freelance": "freelance_contract",
-      "hire": "hire_junior_researcher",
-    }
-
-    const taskType = taskTypeMap[action.id]
-    if (!taskType) return
 
     try {
-      await startTask({ labId: lab._id, taskType })
+      await startJob({ labId: lab._id, jobId: action.id })
       toast({
-        title: "Task Started",
+        title: "Job Started",
         description: `${action.name} is now in progress`,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred"
       toast({
-        title: "Failed to start task",
-        description: error.message || "An error occurred",
+        title: "Failed to start job",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -385,6 +328,7 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     activeTaskCount,
     isQueueFull,
     availableGpus,
+    usedCompute,
     queueCapacity,
     staffCapacity,
     computeCapacity,
@@ -393,13 +337,13 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     notifications,
     trainedModels,
     modelStats,
-    unreadCount: unreadCount || 0,
+    unreadCount: notifications.filter((n) => !n.read).length,
     publicModelCount,
     privateModelCount,
     handleStartAction,
     handleMarkAsRead,
-    isLoading: isLoading || labData === undefined,
-    needsFounderSelection: !isLoading && labData !== undefined && (!labData || !labData.lab),
+    isLoading: !labData,
+    needsFounderSelection: !!labData && !labData.lab,
   }
 
   return (
@@ -408,4 +352,3 @@ export function GameDataProvider({ children }: GameDataProviderProps) {
     </GameDataContext.Provider>
   )
 }
-

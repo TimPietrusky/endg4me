@@ -24,7 +24,7 @@ export default async function GameLayout({
   return (
     <div className={`${jetbrainsMono.variable} font-mono`}>
       <ConvexClientProvider>
-        <GameDataProvider>
+        <GameDataProvider workosUserId={user.id}>
           <GameShell>{children}</GameShell>
         </GameDataProvider>
       </ConvexClientProvider>

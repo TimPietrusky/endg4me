@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { CurrencyDollar, Lightning, Cpu, CaretDoubleUp } from "@phosphor-icons/react"
+import { CurrencyDollar, Lightning, Cpu, CaretDoubleUp, Users } from "@phosphor-icons/react"
 import { SettingsPanel } from "./settings-panel"
 import { LevelProgress } from "./dashboard/level-progress"
 import { Logo } from "@/components/logo"
@@ -18,7 +18,10 @@ interface GameTopNavProps {
   maxXp: number
   cash: number
   rp: number
-  gpus: number
+  usedCU: number
+  totalCU: number
+  staffCount: number
+  staffCapacity: number
   notificationCount: number
   upgradePoints: number
 }
@@ -32,7 +35,10 @@ export function GameTopNav({
   maxXp,
   cash,
   rp,
-  gpus,
+  usedCU,
+  totalCU,
+  staffCount,
+  staffCapacity,
   notificationCount,
   upgradePoints,
 }: GameTopNavProps) {
@@ -57,7 +63,7 @@ export function GameTopNav({
     { id: "research", label: "research", href: "/research" },
     { id: "lab", label: "lab", href: "/lab", badge: upgradePoints > 0 ? `${upgradePoints}` : undefined, badgeVariant: "up" },
     { id: "inbox", label: "inbox", href: "/inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined, badgeVariant: "secondary" },
-    { id: "world", label: "world", href: "/world" },
+    { id: "world", label: "leaderboard", href: "/world" },
   ]
 
   return (
@@ -96,37 +102,38 @@ export function GameTopNav({
                   )}
                 </Link>
               ))}
+              <SettingsPanel
+                labName={labName}
+                founderName={founderName}
+                founderType={founderType}
+              />
             </nav>
           </div>
 
-          {/* Right Side - Stats and Settings */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-4">
-              <LevelProgress
-                level={level}
-                xp={xp}
-                maxXp={maxXp}
-              />
-
-              <div className="flex items-center gap-1.5 text-sm">
-                <CurrencyDollar className="w-5 h-5 text-white" />
-                <span className="font-bold">{formatCompact(cash)}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-sm">
-                <Lightning className="w-5 h-5 text-white" />
-                <span className="font-bold">{formatCompact(rp)}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-sm">
-                <Cpu className="w-5 h-5 text-white" />
-                <span className="font-bold">{gpus}</span>
-              </div>
-            </div>
-
-            <SettingsPanel
-              labName={labName}
-              founderName={founderName}
-              founderType={founderType}
+          {/* Right Side - Stats */}
+          <div className="flex items-center gap-4">
+            <LevelProgress
+              level={level}
+              xp={xp}
+              maxXp={maxXp}
             />
+
+            <div className="flex items-center gap-1.5 text-sm">
+              <CurrencyDollar className="w-5 h-5 text-white" />
+              <span className="font-bold">{formatCompact(cash)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Lightning className="w-5 h-5 text-white" />
+              <span className="font-bold">{formatCompact(rp)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Cpu className="w-5 h-5 text-white" />
+              <span className="font-bold">{usedCU}/{totalCU}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm">
+              <Users className="w-5 h-5 text-white" />
+              <span className="font-bold">{staffCount}/{staffCapacity}</span>
+            </div>
           </div>
         </div>
       </div>

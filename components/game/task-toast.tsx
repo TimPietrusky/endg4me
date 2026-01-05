@@ -15,7 +15,6 @@ import {
   X,
   Confetti,
 } from "@phosphor-icons/react";
-import { TASKS, type TaskConfig } from "@/convex/lib/gameConstants";
 
 interface TaskToastProps {
   userId: string;

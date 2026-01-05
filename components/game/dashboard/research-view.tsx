@@ -73,7 +73,7 @@ export function ResearchView({ userId, currentRp, selectedCategory }: ResearchVi
     if (!acc[node.category]) {
       acc[node.category] = []
     }
-    acc[node.category].push(node)
+    acc[node.category]!.push(node)
     return acc
   }, {} as Record<string, typeof researchState>)
 

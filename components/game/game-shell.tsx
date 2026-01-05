@@ -24,7 +24,9 @@ export function GameShell({ children }: GameShellProps) {
     playerState,
     xpRequired,
     unreadCount,
+    usedCompute,
     computeCapacity,
+    staffCapacity,
     upgradePoints,
   } = useGameData()
 
@@ -63,7 +65,10 @@ export function GameShell({ children }: GameShellProps) {
         maxXp={xpRequired}
         cash={labState.cash}
         rp={labState.researchPoints}
-        gpus={computeCapacity}
+        usedCU={usedCompute}
+        totalCU={computeCapacity}
+        staffCount={labState.juniorResearchers}
+        staffCapacity={staffCapacity}
         notificationCount={unreadCount}
         upgradePoints={upgradePoints}
       />

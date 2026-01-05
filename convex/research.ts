@@ -315,31 +315,6 @@ export const purchaseResearchNode = mutation({
         }
       }
 
-      // Check for publishing unlock milestone
-      if (node.unlocks.enablesSystemFlags?.includes("publishing")) {
-        const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "publishing_unlocked");
-        if (milestoneEvent) {
-          const existingEvent = await ctx.db
-            .query("notifications")
-            .withIndex("by_user_event", (q) =>
-              q.eq("userId", args.userId).eq("eventId", milestoneEvent.eventId)
-            )
-            .first();
-
-          if (!existingEvent) {
-            await ctx.db.insert("notifications", {
-              userId: args.userId,
-              type: "milestone",
-              title: milestoneEvent.title,
-              message: milestoneEvent.message,
-              read: false,
-              createdAt: Date.now(),
-              eventId: milestoneEvent.eventId,
-              deepLink: milestoneEvent.deepLink,
-            });
-          }
-        }
-      }
     }
 
     // Record purchase (only the nodeId, not the full node data)

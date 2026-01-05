@@ -37,12 +37,9 @@ interface CollectionViewProps {
 
 export function CollectionView({ labName, userId, models, bestScore }: CollectionViewProps) {
   const toggleVisibility = useMutation(api.tasks.toggleModelVisibility)
-  const playerUnlocks = useQuery(api.research.getPlayerUnlocks, { userId })
   const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
   const [typeFilter, setTypeFilter] = useState<ModelTypeFilter>("all")
   const [sortOption, setSortOption] = useState<SortOption>("newest")
-
-  const publishingUnlocked = playerUnlocks?.enabledSystemFlags?.includes("publishing") ?? false
 
   // Filter models by visibility and type
   let filteredModels = models?.filter((model) => {
@@ -240,21 +237,12 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
       </div>
 
       {/* Info Banner */}
-      {publishingUnlocked ? (
-        <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-sm flex items-center gap-2">
-          <GlobeHemisphereWest className="w-4 h-4 text-green-400 flex-shrink-0" />
-          <span className="text-white/70">
-            Public models are eligible for leaderboards and visible on your public lab profile.
-          </span>
-        </div>
-      ) : (
-        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm flex items-center gap-2">
-          <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <span className="text-amber-200/70">
-            Publishing locked. Research &quot;Model Publishing&quot; to publish models and compete on leaderboards.
-          </span>
-        </div>
-      )}
+      <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-sm flex items-center gap-2">
+        <GlobeHemisphereWest className="w-4 h-4 text-green-400 flex-shrink-0" />
+        <span className="text-white/70">
+          Public models are eligible for leaderboards and visible on your public lab profile.
+        </span>
+      </div>
 
       {/* Model Grid */}
       {filteredModels && filteredModels.length > 0 ? (
@@ -263,7 +251,6 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
             <ModelCard 
               key={model._id} 
               model={model} 
-              publishingUnlocked={publishingUnlocked}
               onToggleVisibility={() => handleToggleVisibility(model._id)}
             />
           ))}
@@ -279,11 +266,10 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
 
 interface ModelCardProps {
   model: Doc<"trainedModels">
-  publishingUnlocked: boolean
   onToggleVisibility: () => void
 }
 
-function ModelCard({ model, publishingUnlocked, onToggleVisibility }: ModelCardProps) {
+function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
   const getModelTypeIcon = (type: string) => {
     switch (type) {
       case "llm":
@@ -380,36 +366,24 @@ function ModelCard({ model, publishingUnlocked, onToggleVisibility }: ModelCardP
         </div>
         
         {/* Visibility Toggle */}
-        {publishingUnlocked ? (
-          <Button
-            variant={isPublic ? "default" : "outline"}
-            size="sm"
-            className="w-full text-xs h-8"
-            onClick={onToggleVisibility}
-          >
-            {isPublic ? (
-              <>
-                <Eye className="w-3 h-3 mr-1" />
-                Public - Click to make Private
-              </>
-            ) : (
-              <>
-                <EyeSlash className="w-3 h-3 mr-1" />
-                Private - Click to Publish
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs h-8 opacity-50"
-            disabled
-          >
-            <Lock className="w-3 h-3 mr-1" />
-            Publishing Locked
-          </Button>
-        )}
+        <Button
+          variant={isPublic ? "default" : "outline"}
+          size="sm"
+          className="w-full text-xs h-8"
+          onClick={onToggleVisibility}
+        >
+          {isPublic ? (
+            <>
+              <Eye className="w-3 h-3 mr-1" />
+              Public - Click to make Private
+            </>
+          ) : (
+            <>
+              <EyeSlash className="w-3 h-3 mr-1" />
+              Private - Click to Publish
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   )

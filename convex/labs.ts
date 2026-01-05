@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { INITIAL_LAB_STATE } from "./lib/gameConstants";
+import { syncLeaderboardForLab } from "./leaderboard";
 
 // Create a new lab for user
 export const createLab = mutation({
@@ -33,6 +34,9 @@ export const createLab = mutation({
       labId,
       ...INITIAL_LAB_STATE,
     });
+
+    // Initialize leaderboard entry for the new lab
+    await syncLeaderboardForLab(ctx, labId);
 
     return labId;
   },

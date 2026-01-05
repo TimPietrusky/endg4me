@@ -11,6 +11,7 @@ import {
   Lightning,
   Sparkle,
   Medal,
+  type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
 
 interface ModelCollectionProps {
@@ -109,7 +110,11 @@ export function ModelCollection({ labId, onClose }: ModelCollectionProps) {
             <div className="grid gap-3">
               {models.map((model, index) => {
                 const isBest = stats?.bestModel?._id === model._id;
-                const isSmall = model.modelType === "small_3b";
+                const typeColors: Record<string, string> = {
+                  llm: "bg-gradient-to-br from-cyan-500 to-blue-600",
+                  tts: "bg-gradient-to-br from-violet-500 to-purple-600",
+                  vlm: "bg-gradient-to-br from-emerald-500 to-teal-600",
+                };
 
                 return (
                   <div
@@ -125,9 +130,7 @@ export function ModelCollection({ labId, onClose }: ModelCollectionProps) {
                     <div
                       className={cn(
                         "w-12 h-12 rounded-xl flex items-center justify-center relative",
-                        isSmall
-                          ? "bg-gradient-to-br from-cyan-500 to-blue-600"
-                          : "bg-gradient-to-br from-violet-500 to-purple-600"
+                        typeColors[model.modelType] || "bg-gradient-to-br from-violet-500 to-purple-600"
                       )}
                     >
                       <Brain className="w-6 h-6 text-white" weight="bold" />
@@ -152,7 +155,7 @@ export function ModelCollection({ labId, onClose }: ModelCollectionProps) {
                         )}
                       </div>
                       <p className="text-sm text-zinc-500">
-                        {isSmall ? "3B Parameters" : "7B Parameters"} ·{" "}
+                        {model.modelType.toUpperCase()} ·{" "}
                         {formatDate(model.trainedAt)}
                       </p>
                     </div>
@@ -188,7 +191,7 @@ function StatMini({
   value,
   color,
 }: {
-  icon: React.ComponentType<{ className?: string; weight?: string }>;
+  icon: PhosphorIcon;
   label: string;
   value: string;
   color: string;

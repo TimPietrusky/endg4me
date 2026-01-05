@@ -19,6 +19,8 @@ export const resetGameState = mutation({
       deletedModels: 0,
       deletedNotifications: 0,
       deletedCooldowns: 0,
+      deletedLeaderboardEntries: 0,
+      deletedBestModels: 0,
     };
 
     // Get all labs for this user
@@ -66,6 +68,26 @@ export const resetGameState = mutation({
       for (const cooldown of cooldowns) {
         await ctx.db.delete(cooldown._id);
         results.deletedCooldowns++;
+      }
+
+      // Delete leaderboard entries
+      const leaderboardEntries = await ctx.db
+        .query("worldLeaderboard")
+        .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+        .collect();
+      for (const entry of leaderboardEntries) {
+        await ctx.db.delete(entry._id);
+        results.deletedLeaderboardEntries++;
+      }
+
+      // Delete best models entries
+      const bestModels = await ctx.db
+        .query("worldBestModels")
+        .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+        .collect();
+      for (const entry of bestModels) {
+        await ctx.db.delete(entry._id);
+        results.deletedBestModels++;
       }
 
       // Delete the lab itself
@@ -145,6 +167,8 @@ export const resetGameStateByEmail = mutation({
       deletedModels: 0,
       deletedNotifications: 0,
       deletedCooldowns: 0,
+      deletedLeaderboardEntries: 0,
+      deletedBestModels: 0,
     };
 
     // Get all labs for this user
@@ -188,6 +212,26 @@ export const resetGameStateByEmail = mutation({
       for (const cooldown of cooldowns) {
         await ctx.db.delete(cooldown._id);
         results.deletedCooldowns++;
+      }
+
+      // Delete leaderboard entries
+      const leaderboardEntries = await ctx.db
+        .query("worldLeaderboard")
+        .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+        .collect();
+      for (const entry of leaderboardEntries) {
+        await ctx.db.delete(entry._id);
+        results.deletedLeaderboardEntries++;
+      }
+
+      // Delete best models entries
+      const bestModels = await ctx.db
+        .query("worldBestModels")
+        .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+        .collect();
+      for (const entry of bestModels) {
+        await ctx.db.delete(entry._id);
+        results.deletedBestModels++;
       }
 
       await ctx.db.delete(lab._id);
@@ -254,6 +298,8 @@ export const resetAllGameData = internalMutation({
       deletedModels: 0,
       deletedNotifications: 0,
       deletedCooldowns: 0,
+      deletedLeaderboardEntries: 0,
+      deletedBestModels: 0,
     };
 
     // Delete all labs
@@ -317,6 +363,20 @@ export const resetAllGameData = internalMutation({
     for (const cd of cooldowns) {
       await ctx.db.delete(cd._id);
       results.deletedCooldowns++;
+    }
+
+    // Delete all leaderboard entries
+    const leaderboardEntries = await ctx.db.query("worldLeaderboard").collect();
+    for (const entry of leaderboardEntries) {
+      await ctx.db.delete(entry._id);
+      results.deletedLeaderboardEntries++;
+    }
+
+    // Delete all best models entries
+    const bestModels = await ctx.db.query("worldBestModels").collect();
+    for (const entry of bestModels) {
+      await ctx.db.delete(entry._id);
+      results.deletedBestModels++;
     }
 
     return {

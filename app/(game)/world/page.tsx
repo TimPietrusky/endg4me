@@ -1,62 +1,46 @@
 "use client"
 
 import { useState } from "react"
-import { Trophy, Crown } from "@phosphor-icons/react"
+import { Trophy, Ranking } from "@phosphor-icons/react"
 import { useGameData } from "@/components/providers/game-data-provider"
-import { WorldView, type LeaderboardType, getLeaderboardUnlocks } from "@/components/game/dashboard/world-view"
+import { LabsLeaderboard } from "@/components/game/dashboard/labs-leaderboard"
+import { ModelsLeaderboard } from "@/components/game/dashboard/models-leaderboard"
 import { SubNavContainer, SubNavButton } from "@/components/game/dashboard/sub-nav"
 
-export default function WorldPage() {
-  const { lab, playerState } = useGameData()
-  const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>("weekly")
+type LeaderboardTab = "labs" | "models"
 
-  if (!lab || !playerState) {
+export default function WorldPage() {
+  const { lab } = useGameData()
+  const [activeTab, setActiveTab] = useState<LeaderboardTab>("labs")
+
+  if (!lab) {
     return null
   }
 
-  const leaderboardUnlocks = getLeaderboardUnlocks(playerState.level)
-
   return (
     <>
-      {/* SubNav */}
+      {/* SubNav - Labs and Models tabs (no level gates) */}
       <SubNavContainer>
         <SubNavButton
           isFirst
-          isActive={leaderboardType === "weekly"}
-          onClick={() => setLeaderboardType("weekly")}
-          disabled={!leaderboardUnlocks.weekly}
+          isActive={activeTab === "labs"}
+          onClick={() => setActiveTab("labs")}
         >
           <Trophy className="w-4 h-4 mr-1" />
-          WEEKLY
-          {!leaderboardUnlocks.weekly && <span className="ml-1 text-muted-foreground">(Lvl 5)</span>}
+          LABS
         </SubNavButton>
         <SubNavButton
-          isActive={leaderboardType === "monthly"}
-          onClick={() => setLeaderboardType("monthly")}
-          disabled={!leaderboardUnlocks.monthly}
+          isActive={activeTab === "models"}
+          onClick={() => setActiveTab("models")}
         >
-          <Trophy className="w-4 h-4 mr-1" />
-          MONTHLY
-          {!leaderboardUnlocks.monthly && <span className="ml-1 text-muted-foreground">(Lvl 7)</span>}
-        </SubNavButton>
-        <SubNavButton
-          isActive={leaderboardType === "allTime"}
-          onClick={() => setLeaderboardType("allTime")}
-          disabled={!leaderboardUnlocks.allTime}
-        >
-          <Crown className="w-4 h-4 mr-1" />
-          ALL-TIME
-          {!leaderboardUnlocks.allTime && <span className="ml-1 text-muted-foreground">(Lvl 9)</span>}
+          <Ranking className="w-4 h-4 mr-1" />
+          MODELS
         </SubNavButton>
       </SubNavContainer>
 
       {/* Main content */}
-      <WorldView
-        labName={lab.name}
-        playerLevel={playerState.level}
-        leaderboardType={leaderboardType}
-      />
+      {activeTab === "labs" && <LabsLeaderboard labId={lab._id} />}
+      {activeTab === "models" && <ModelsLeaderboard labId={lab._id} />}
     </>
   )
 }
-

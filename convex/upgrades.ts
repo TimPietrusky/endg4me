@@ -7,6 +7,7 @@ import {
   isRankUnlocked,
   type UpgradeType,
 } from "./lib/gameConfig";
+import { syncLeaderboardForLab } from "./leaderboard";
 
 // Get player's upgrade state (UP balance + all ranks)
 export const getUpgradeState = query({
@@ -172,6 +173,15 @@ export const purchaseUpgrade = mutation({
         target: "upgrades",
       },
     });
+
+    // Sync leaderboard (upgrade ranks affect Lab Score)
+    const lab = await ctx.db
+      .query("labs")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (lab) {
+      await syncLeaderboardForLab(ctx, lab._id);
+    }
 
     return {
       success: true,

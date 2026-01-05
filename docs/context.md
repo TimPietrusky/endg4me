@@ -188,7 +188,7 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 2. **Training Job**: Available once blueprint is unlocked
 3. **Trained Model**: Created by completing training jobs, scored from blueprint's scoreRange
 4. **Versioning**: Each training creates a new version (v1, v2, v3...)
-5. **Publishing**: Toggle visibility (public/private) in Lab > Models (requires publishing capability)
+5. **Publishing**: Toggle visibility (public/private) in Lab > Models (available from day one)
 6. **Leaderboards**: Only public models count, grouped by type (LLM/TTS/VLM)
 
 **Contract Jobs** use trained models:
@@ -215,7 +215,7 @@ All jobs are defined in `convex/lib/contentCatalog.ts`:
 Player unlocks are tracked in `playerUnlocks` table:
 - `unlockedBlueprintIds`: Which blueprints can be trained
 - `unlockedJobIds`: Which jobs can be started
-- `enabledSystemFlags`: System features like `publishing`, `model_api_income`
+- `enabledSystemFlags`: System features like `model_api_income`
 
 Free starter unlocks (0 RP, level 1):
 - `rn_cap_contracts_basic` - Basic blog contracts
@@ -276,7 +276,7 @@ endg4me/
 │   │   │   ├── models/page.tsx   # CollectionView (trained models)
 │   │   │   └── levels/page.tsx   # LevelsView (XP/UP progression)
 │   │   ├── inbox/page.tsx   # MsgsView (notifications)
-│   │   └── world/page.tsx   # WorldView (leaderboards)
+│   │   └── world/page.tsx   # LabsLeaderboard + ModelsLeaderboard
 │   ├── api/                 # API routes (auth callbacks)
 │   ├── globals.css          # Terminal theme (white accent)
 │   ├── layout.tsx           # Root layout
@@ -411,9 +411,20 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-04 (Playable MVP: blueprint-driven models, content catalog, research unlocks)_
+_Last updated: 2026-01-05 (Leaderboard day-one: Lab Score, neighbors slice, publishing available from start)_
 
 ---
+
+## Architecture Decisions (006 Leaderboard Day One)
+
+- **Leaderboard available from day one**: No level or research gating for World view
+- **Publishing available from day one**: Toggle visibility (public/private) without research unlock
+- **Lab Score**: Ranking metric = (level x 100) + sum(best public model scores) + (upgrade ranks x 20)
+- **Neighbors slice**: Leaderboard shows 20 above + you + 20 below (41 rows max)
+- **Two leaderboard views**: Labs (default, by Lab Score) and Models (by type: LLM/TTS/VLM)
+- **Materialized leaderboard**: `worldLeaderboard` and `worldBestModels` tables for fast queries
+- **Sync on activity**: Leaderboard updates when player levels up, upgrades, trains, or toggles visibility
+- **Only public models count**: Lab Score and model rankings only consider public models
 
 ## Architecture Decisions (005 Playable MVP)
 
@@ -422,9 +433,8 @@ _Last updated: 2026-01-04 (Playable MVP: blueprint-driven models, content catalo
 - **Model versioning**: Each training creates a new version of the blueprint
 - **Research unlocks**: Purchasing research nodes unlocks blueprints, jobs, and system flags
 - **Contract jobs**: Require both capability unlock AND trained model of the required type
-- **Publishing gated**: Must unlock "Model Publishing" capability to publish models
 - **Leaderboards by type**: World view filters by LLM/TTS/VLM
-- **Milestone inbox events**: Triggered on first level-up, first research, first model, publishing unlock, level 5
+- **Milestone inbox events**: Triggered on first level-up, first research, first model, level 5
 
 ## Architecture Decisions (004 Upgrade Points System)
 
@@ -454,6 +464,7 @@ _Last updated: 2026-01-04 (Playable MVP: blueprint-driven models, content catalo
 - `convex/lib/gameConstants.ts` — Legacy task definitions (kept for backwards compatibility)
 - `convex/tasks.ts` — Job mutations/queries (startJob, completeTask, getAvailableJobs)
 - `convex/research.ts` — Research mutations/queries (purchaseResearchNode, getResearchTreeState)
-- `convex/schema.ts` — Database schema (trainedModels, playerUnlocks, playerResearch)
+- `convex/leaderboard.ts` — Leaderboard sync and slice queries (Lab Score, neighbors)
+- `convex/schema.ts` — Database schema (trainedModels, playerUnlocks, playerResearch, worldLeaderboard, worldBestModels)
 
 Note: Game config lives in `convex/lib/` because Convex functions need direct access. Frontend imports via `@/convex/lib/contentCatalog`.

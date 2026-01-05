@@ -206,4 +206,40 @@ export default defineSchema({
       v.literal("world")
     ),
   }).index("by_unlock_id", ["unlockId"]),
+
+  // World Leaderboard - materialized Lab Score per player (006_leaderboard_day1)
+  worldLeaderboard: defineTable({
+    labId: v.id("labs"),
+    labName: v.string(),
+    level: v.number(),
+    labScore: v.number(),
+    // Best public model scores by type (only public models count)
+    bestPublicScores: v.object({
+      llm: v.optional(v.number()),
+      tts: v.optional(v.number()),
+      vlm: v.optional(v.number()),
+    }),
+    // Upgrade ranks for score calculation
+    queueRank: v.number(),
+    staffRank: v.number(),
+    computeRank: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_lab", ["labId"])
+    .index("by_lab_score", ["labScore"]),
+
+  // World Best Models - best public model per lab per type (006_leaderboard_day1)
+  worldBestModels: defineTable({
+    labId: v.id("labs"),
+    modelType: v.union(v.literal("llm"), v.literal("tts"), v.literal("vlm")),
+    blueprintId: v.string(),
+    modelName: v.string(),
+    score: v.number(),
+    version: v.number(),
+    modelId: v.id("trainedModels"),
+    updatedAt: v.number(),
+  })
+    .index("by_lab", ["labId"])
+    .index("by_lab_type", ["labId", "modelType"])
+    .index("by_type_score", ["modelType", "score"]),
 });
