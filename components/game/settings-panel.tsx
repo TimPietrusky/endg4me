@@ -10,7 +10,10 @@ import {
   SheetFooter,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { Gear, SignOut, User, Buildings } from "@phosphor-icons/react"
+import { Gear, SignOut, User, Buildings, Lightning } from "@phosphor-icons/react"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "@/convex/_generated/api"
+import { Id } from "@/convex/_generated/dataModel"
 
 interface TeamMember {
   name: string
@@ -23,14 +26,30 @@ interface SettingsPanelProps {
   founderName: string
   founderType: string
   team?: TeamMember[]
+  userId?: Id<"users">
 }
+
+const TIME_SCALES = [1, 5, 20, 100] as const
 
 export function SettingsPanel({
   labName,
   founderName,
   founderType,
   team = [],
+  userId,
 }: SettingsPanelProps) {
+  // Dev settings for Time Warp
+  const devSettings = useQuery(
+    api.dev.getDevSettings,
+    userId ? { userId } : "skip"
+  )
+  const setTimeScale = useMutation(api.dev.setTimeScale)
+
+  const handleTimeScaleChange = async (scale: number) => {
+    if (!userId) return
+    await setTimeScale({ userId, timeScale: scale })
+  }
+
   const getFounderBadge = (type: string) => {
     switch (type) {
       case "technical":
@@ -143,6 +162,39 @@ export function SettingsPanel({
               </div>
             </div>
           </section>
+
+          {/* Dev Tools Section - Only for dev admins */}
+          {devSettings?.allowed && (
+            <section className="border-t border-border pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Lightning className="w-4 h-4 text-yellow-500" />
+                <h3 className="text-sm font-medium lowercase text-yellow-500">dev tools</h3>
+              </div>
+              <div className="space-y-3 pl-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground lowercase">time warp</span>
+                  <div className="flex gap-1">
+                    {TIME_SCALES.map((scale) => (
+                      <button
+                        key={scale}
+                        onClick={() => handleTimeScaleChange(scale)}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          devSettings.timeScale === scale
+                            ? "bg-yellow-500 text-black font-bold"
+                            : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                        }`}
+                      >
+                        {scale}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  accelerates all timed jobs
+                </p>
+              </div>
+            </section>
+          )}
         </div>
 
         <SheetFooter className="border-t border-border">

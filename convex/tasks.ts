@@ -20,6 +20,7 @@ import {
 import { LEVEL_REWARDS } from "./lib/gameConstants";
 import { internal } from "./_generated/api";
 import { syncLeaderboardForLab } from "./leaderboard";
+import { getEffectiveNow, getRealTimeForEffective } from "./dev";
 
 // Dynamic starter unlocks - auto-unlock free research nodes (costRP=0, minLevel=1, no prereqs)
 function getStarterUnlocks() {
@@ -308,17 +309,18 @@ export const startJob = mutation({
       duration = duration / staffBonus;
     }
 
-    const now = Date.now();
-    const completesAt = now + duration;
+    // Use effective time for Time Warp support
+    const effectiveNow = await getEffectiveNow(ctx, lab.userId);
+    const effectiveCompletesAt = effectiveNow + duration;
 
-    // Create task
+    // Create task with effective times
     const taskId = await ctx.db.insert("tasks", {
       labId: args.labId,
       type: args.jobId,
       status: "in_progress",
-      startedAt: now,
-      completesAt,
-      createdAt: now,
+      startedAt: effectiveNow,
+      completesAt: effectiveCompletesAt,
+      createdAt: Date.now(), // createdAt stays real time for audit
     });
 
     // Deduct cost
@@ -326,12 +328,13 @@ export const startJob = mutation({
       cash: labState.cash - jobDef.moneyCost,
     });
 
-    // Schedule completion
-    await ctx.scheduler.runAt(completesAt, internal.tasks.completeTask, {
+    // Schedule completion at real time (accounting for Time Warp)
+    const realCompletesAt = await getRealTimeForEffective(ctx, lab.userId, effectiveCompletesAt);
+    await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
       taskId,
     });
 
-    return { taskId, status: "in_progress", completesAt };
+    return { taskId, status: "in_progress", completesAt: effectiveCompletesAt };
   },
 });
 
@@ -344,6 +347,18 @@ export const completeTask = internalMutation({
 
     const lab = await ctx.db.get(task.labId);
     if (!lab) return;
+
+    // Verify completion using effective time (for Time Warp support)
+    const effectiveNow = await getEffectiveNow(ctx, lab.userId);
+    if (task.completesAt && effectiveNow < task.completesAt) {
+      // Not actually complete yet (Time Warp may have changed)
+      // Reschedule for the correct real time
+      const realCompletesAt = await getRealTimeForEffective(ctx, lab.userId, task.completesAt);
+      await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
+        taskId: args.taskId,
+      });
+      return;
+    }
 
     const labState = await ctx.db
       .query("labState")
@@ -412,7 +427,7 @@ export const completeTask = internalMutation({
             name: modelName,
             version,
             score,
-            trainedAt: Date.now(),
+            trainedAt: effectiveNow,
             visibility: "private",
           });
 
@@ -628,7 +643,8 @@ async function startNextQueuedTask(
 
   if (!freshLabState || inProgressCount.length >= maxParallelTasks) return;
 
-  const now = Date.now();
+  // Use effective time for Time Warp support
+  const effectiveNow = await getEffectiveNow(ctx, userId);
   const jobDef = getJobById(nextQueued.type);
   let duration = jobDef?.durationMs || 5 * 60 * 1000;
 
@@ -643,15 +659,17 @@ async function startNextQueuedTask(
     }
   }
 
-  const completesAt = now + duration;
+  const effectiveCompletesAt = effectiveNow + duration;
 
   await ctx.db.patch(nextQueued._id, {
     status: "in_progress",
-    startedAt: now,
-    completesAt,
+    startedAt: effectiveNow,
+    completesAt: effectiveCompletesAt,
   });
 
-  await ctx.scheduler.runAt(completesAt, internal.tasks.completeTask, {
+  // Schedule at real time
+  const realCompletesAt = await getRealTimeForEffective(ctx, userId, effectiveCompletesAt);
+  await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
     taskId: nextQueued._id,
   });
 }
@@ -672,19 +690,26 @@ function formatRewards(rewards: {
 // QUERIES
 // ============================================================================
 
-// Get active tasks for a lab
+// Get active tasks for a lab (includes effectiveNow for Time Warp)
 export const getActiveTasks = query({
   args: { labId: v.id("labs") },
   handler: async (ctx, args) => {
+    const lab = await ctx.db.get(args.labId);
+    if (!lab) return { tasks: [], effectiveNow: Date.now() };
+
+    const effectiveNow = await getEffectiveNow(ctx, lab.userId);
+
     const tasks = await ctx.db
       .query("tasks")
       .withIndex("by_lab", (q) => q.eq("labId", args.labId))
       .order("desc")
       .collect();
 
-    return tasks.filter(
+    const activeTasks = tasks.filter(
       (t) => t.status === "in_progress" || t.status === "queued"
     );
+
+    return { tasks: activeTasks, effectiveNow };
   },
 });
 

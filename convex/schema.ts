@@ -242,4 +242,13 @@ export default defineSchema({
     .index("by_lab", ["labId"])
     .index("by_lab_type", ["labId", "modelType"])
     .index("by_type_score", ["modelType", "score"]),
+
+  // Dev User Settings - Time Warp for dev/testing (007_dev_time_warp)
+  devUserSettings: defineTable({
+    userId: v.id("users"),
+    timeScale: v.number(), // 1, 5, 20, or 100
+    warpEnabledAtRealMs: v.optional(v.number()),
+    warpEnabledAtEffectiveMs: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

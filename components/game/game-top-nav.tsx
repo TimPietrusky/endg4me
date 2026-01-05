@@ -8,6 +8,7 @@ import { LevelProgress } from "./dashboard/level-progress"
 import { Logo } from "@/components/logo"
 import type { ViewType } from "@/lib/game-types"
 import { formatCompact } from "@/lib/utils"
+import { Id } from "@/convex/_generated/dataModel"
 
 interface GameTopNavProps {
   labName: string
@@ -24,6 +25,7 @@ interface GameTopNavProps {
   teamCapacity: number
   notificationCount: number
   upgradePoints: number
+  userId?: Id<"users">
 }
 
 export function GameTopNav({
@@ -41,6 +43,7 @@ export function GameTopNav({
   teamCapacity,
   notificationCount,
   upgradePoints,
+  userId,
 }: GameTopNavProps) {
   const pathname = usePathname()
   
@@ -106,6 +109,7 @@ export function GameTopNav({
                 labName={labName}
                 founderName={founderName}
                 founderType={founderType}
+                userId={userId}
               />
             </nav>
           </div>

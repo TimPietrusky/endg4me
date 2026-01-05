@@ -1,5 +1,211 @@
 import { v } from "convex/values";
-import { mutation, internalMutation } from "./_generated/server";
+import {
+  mutation,
+  query,
+  internalMutation,
+  QueryCtx,
+  MutationCtx,
+} from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+
+// =============================================================================
+// TIME WARP - Dev-only time acceleration (007_dev_time_warp)
+// =============================================================================
+
+// Allowed time scales
+const ALLOWED_TIME_SCALES = [1, 5, 20, 100] as const;
+type TimeScale = (typeof ALLOWED_TIME_SCALES)[number];
+
+// Check if a user is a dev admin (server-side check)
+export async function isDevAdmin(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">
+): Promise<boolean> {
+  // Get user email
+  const user = await ctx.db.get(userId);
+  if (!user?.email) return false;
+
+  // Check allowlist from env
+  const allowlist = process.env.DEV_ADMIN_USER_EMAILS || "";
+  const allowedEmails = allowlist
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  return allowedEmails.includes(user.email.toLowerCase());
+}
+
+// Get user's time scale (returns 1 for non-dev users)
+export async function getTimeScale(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">
+): Promise<number> {
+  const isDev = await isDevAdmin(ctx, userId);
+  if (!isDev) return 1;
+
+  const settings = await ctx.db
+    .query("devUserSettings")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first();
+
+  return settings?.timeScale ?? 1;
+}
+
+// Get effective "now" for a user (accounts for Time Warp)
+export async function getEffectiveNow(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">
+): Promise<number> {
+  const realNow = Date.now();
+
+  const isDev = await isDevAdmin(ctx, userId);
+  if (!isDev) return realNow;
+
+  const settings = await ctx.db
+    .query("devUserSettings")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first();
+
+  if (!settings || settings.timeScale === 1) return realNow;
+  if (
+    settings.warpEnabledAtRealMs == null ||
+    settings.warpEnabledAtEffectiveMs == null
+  )
+    return realNow;
+
+  // effectiveNow = warpEnabledAtEffectiveMs + (realNow - warpEnabledAtRealMs) * timeScale
+  const elapsed = realNow - settings.warpEnabledAtRealMs;
+  return settings.warpEnabledAtEffectiveMs + elapsed * settings.timeScale;
+}
+
+// Calculate when in real time an effective time will be reached
+export async function getRealTimeForEffective(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  targetEffectiveTime: number
+): Promise<number> {
+  const realNow = Date.now();
+
+  const isDev = await isDevAdmin(ctx, userId);
+  if (!isDev) return targetEffectiveTime;
+
+  const settings = await ctx.db
+    .query("devUserSettings")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .first();
+
+  if (!settings || settings.timeScale === 1) return targetEffectiveTime;
+  if (
+    settings.warpEnabledAtRealMs == null ||
+    settings.warpEnabledAtEffectiveMs == null
+  )
+    return targetEffectiveTime;
+
+  // We want to find realTarget such that:
+  // warpEnabledAtEffectiveMs + (realTarget - warpEnabledAtRealMs) * timeScale = targetEffectiveTime
+  // (realTarget - warpEnabledAtRealMs) = (targetEffectiveTime - warpEnabledAtEffectiveMs) / timeScale
+  // realTarget = warpEnabledAtRealMs + (targetEffectiveTime - warpEnabledAtEffectiveMs) / timeScale
+  const effectiveDelta =
+    targetEffectiveTime - settings.warpEnabledAtEffectiveMs;
+  const realTarget =
+    settings.warpEnabledAtRealMs + effectiveDelta / settings.timeScale;
+
+  // If target is in the past, return now
+  return Math.max(realTarget, realNow);
+}
+
+// Query: Get dev settings for current user
+export const getDevSettings = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const allowed = await isDevAdmin(ctx, args.userId);
+
+    if (!allowed) {
+      return { allowed: false, timeScale: 1 };
+    }
+
+    const settings = await ctx.db
+      .query("devUserSettings")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    return {
+      allowed: true,
+      timeScale: settings?.timeScale ?? 1,
+    };
+  },
+});
+
+// Mutation: Set time scale (dev-only)
+export const setTimeScale = mutation({
+  args: {
+    userId: v.id("users"),
+    timeScale: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Validate dev admin
+    const allowed = await isDevAdmin(ctx, args.userId);
+    if (!allowed) {
+      throw new Error("Not authorized to use Time Warp");
+    }
+
+    // Validate time scale
+    if (!ALLOWED_TIME_SCALES.includes(args.timeScale as TimeScale)) {
+      throw new Error(
+        `Invalid time scale. Allowed: ${ALLOWED_TIME_SCALES.join(", ")}`
+      );
+    }
+
+    const realNow = Date.now();
+
+    // Get current settings
+    const existing = await ctx.db
+      .query("devUserSettings")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    const currentScale = existing?.timeScale ?? 1;
+    const newScale = args.timeScale;
+
+    // Calculate new baselines
+    let warpEnabledAtRealMs: number | undefined;
+    let warpEnabledAtEffectiveMs: number | undefined;
+
+    if (newScale === 1) {
+      // Switching to 1x: clear baselines
+      warpEnabledAtRealMs = undefined;
+      warpEnabledAtEffectiveMs = undefined;
+    } else if (currentScale === 1) {
+      // Switching from 1x to Nx: set baselines to now
+      warpEnabledAtRealMs = realNow;
+      warpEnabledAtEffectiveMs = realNow;
+    } else {
+      // Switching from Nx to Mx: compute current effectiveNow, then reset baselines
+      const currentEffectiveNow = await getEffectiveNow(ctx, args.userId);
+      warpEnabledAtRealMs = realNow;
+      warpEnabledAtEffectiveMs = currentEffectiveNow;
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        timeScale: newScale,
+        warpEnabledAtRealMs,
+        warpEnabledAtEffectiveMs,
+        updatedAt: realNow,
+      });
+    } else {
+      await ctx.db.insert("devUserSettings", {
+        userId: args.userId,
+        timeScale: newScale,
+        warpEnabledAtRealMs,
+        warpEnabledAtEffectiveMs,
+        updatedAt: realNow,
+      });
+    }
+
+    return { success: true, timeScale: newScale };
+  },
+});
 
 // =============================================================================
 // DEV TOOLS - Reset game state for testing
@@ -386,4 +592,3 @@ export const resetAllGameData = internalMutation({
     };
   },
 });
-

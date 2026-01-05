@@ -71,6 +71,7 @@ export function GameShell({ children }: GameShellProps) {
         teamCapacity={staffCapacity}
         notificationCount={unreadCount}
         upgradePoints={upgradePoints}
+        userId={userId}
       />
       
       <div className="px-6 pb-6">

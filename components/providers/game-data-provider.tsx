@@ -150,8 +150,14 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
 
   // Derived calculations
   const xpRequired = playerState ? getXpForNextLevel(playerState.level) : 100
-  const inProgressTasks = activeTasks?.filter((t) => t.status === "in_progress") || []
-  const queuedTasks = activeTasks?.filter((t) => t.status === "queued") || []
+  
+  // Extract tasks and effectiveNow from the query result (supports Time Warp)
+  const taskData = activeTasks as { tasks: typeof activeTasks; effectiveNow: number } | undefined
+  const allActiveTasks = taskData?.tasks || []
+  const effectiveNow = taskData?.effectiveNow || Date.now()
+  
+  const inProgressTasks = allActiveTasks.filter((t) => t.status === "in_progress") || []
+  const queuedTasks = allActiveTasks.filter((t) => t.status === "queued") || []
   
   // Compute values from UP-based ranks (playerState)
   const queueCapacity = playerState ? getUpgradeValue("queue", playerState.queueRank ?? 0) : 1
@@ -170,11 +176,11 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   }, 0)
   const availableGpus = computeCapacity - usedCompute
 
-  // Helper to get remaining time for a job
+  // Helper to get remaining time for a job (uses effectiveNow for Time Warp support)
   function getJobRemainingTime(jobId: string): number | undefined {
     const task = inProgressTasks.find((t) => t.type === jobId)
     if (task?.completesAt) {
-      return Math.max(0, Math.floor((task.completesAt - Date.now()) / 1000))
+      return Math.max(0, Math.floor((task.completesAt - effectiveNow) / 1000))
     }
     return undefined
   }

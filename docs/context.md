@@ -425,9 +425,21 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-05 (Research categories expanded, hiring system, income jobs)_
+_Last updated: 2026-01-05 (Time Warp dev tool for accelerated testing)_
 
 ---
+
+## Architecture Decisions (008 Dev Time Warp)
+
+- **Time Warp**: Dev-only feature to accelerate all timed jobs for testing
+- **Server-enforced**: Only users in `DEV_ADMIN_USER_EMAILS` env allowlist can use Time Warp
+- **Allowed scales**: 1x (normal), 5x, 20x, 100x
+- **Per-user setting**: Each dev user can independently set their time scale
+- **Effective time**: All job timing uses `getEffectiveNow()` instead of `Date.now()`
+- **Scheduler sync**: Job completion scheduled at real wall-clock time accounting for warp
+- **No gameplay changes for normal players**: Time Warp controls hidden from non-dev users
+- **New table**: `devUserSettings` stores per-user time scale and warp baselines
+- **UI location**: Settings panel shows Time Warp controls for dev admins only
 
 ## Architecture Decisions (007 Research Categories & Hiring)
 
@@ -489,6 +501,7 @@ _Last updated: 2026-01-05 (Research categories expanded, hiring system, income j
 - `convex/tasks.ts` — Job mutations/queries (startJob, completeTask, getAvailableJobs)
 - `convex/research.ts` — Research mutations/queries (purchaseResearchNode, getResearchTreeState)
 - `convex/leaderboard.ts` — Leaderboard sync and slice queries (Lab Score, neighbors)
-- `convex/schema.ts` — Database schema (trainedModels, playerUnlocks, playerResearch, worldLeaderboard, worldBestModels)
+- `convex/dev.ts` — Dev tools (Time Warp, game reset utilities)
+- `convex/schema.ts` — Database schema (trainedModels, playerUnlocks, playerResearch, worldLeaderboard, worldBestModels, devUserSettings)
 
 Note: Game config lives in `convex/lib/` because Convex functions need direct access. Frontend imports via `@/convex/lib/contentCatalog`.

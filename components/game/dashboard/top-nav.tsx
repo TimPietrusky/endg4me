@@ -8,6 +8,7 @@ import { XpIcon } from "./xp-icon"
 import { Logo } from "@/components/logo"
 import type { ViewType } from "@/lib/game-types"
 import { formatCompact } from "@/lib/utils"
+import { Id } from "@/convex/_generated/dataModel"
 
 interface TopNavProps {
   labName: string
@@ -22,6 +23,7 @@ interface TopNavProps {
   currentView: ViewType
   setCurrentView: (view: ViewType) => void
   notificationCount: number
+  userId?: Id<"users">
 }
 
 export function TopNav({
@@ -37,6 +39,7 @@ export function TopNav({
   currentView,
   setCurrentView,
   notificationCount,
+  userId,
 }: TopNavProps) {
   // Navigation items in order: operate, research, lab, inbox, world
   // Only inbox shows badge count - other counts were noise
@@ -127,6 +130,7 @@ export function TopNav({
               labName={labName}
               founderName={founderName}
               founderType={founderType}
+              userId={userId}
             />
           </div>
         </div>
