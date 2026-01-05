@@ -244,8 +244,8 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
       const isQueued = queuedTasks.some((t) => t.type === job.jobId)
 
       // Determine display category for Operate
-      let category: "TRAINING" | "INCOME" | "HIRING" = "TRAINING"
-      if (jobDef.category === "contract" || jobDef.category === "income") category = "INCOME"
+      let category: "TRAINING" | "REVENUE" | "HIRING" = "TRAINING"
+      if (jobDef.category === "contract" || jobDef.category === "revenue") category = "REVENUE"
       if (jobDef.category === "hire") category = "HIRING"
 
       // Get model size from name if training job

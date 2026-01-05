@@ -9,8 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 // Research view tabs
 const RESEARCH_TABS = [
   { id: "model", label: "MODELS" },
-  { id: "monetization", label: "MONETIZATION" },
-  { id: "income", label: "INCOME" },
+  { id: "revenue", label: "REVENUE" },
   { id: "hiring", label: "HIRING" },
   { id: "perk", label: "PERKS" },
 ] as const

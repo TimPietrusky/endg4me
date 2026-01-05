@@ -388,7 +388,7 @@ export const getResearchTreeState = query({
     const playerLevel = playerState?.level || 1;
     const currentRP = labState?.researchPoints || 0;
 
-    // Categories are already correct in contentCatalog (no mapping needed)
+    // Categories come from contentCatalog: model, revenue, perk, hiring
 
     // Helper to check if a node's unlocks are already owned (starter items)
     const isAlreadyUnlocked = (node: typeof RESEARCH_NODES[0]): boolean => {
@@ -440,7 +440,7 @@ export const getResearchTreeState = query({
 
       return {
         ...node,
-        // Category from contentCatalog (model, monetization, perk, income, hiring)
+        // Category from contentCatalog (model, revenue, perk, hiring)
         category: node.category,
         // Flatten unlocks for easier UI access
         rpCost: node.costRP,

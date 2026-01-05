@@ -112,9 +112,9 @@ Section header: "AI TRAINING"
 | Train Small Model (3B)  | $500   | 5 min    | +120 RP, +5 Rep, +25 XP  | Not enough cash OR compute full |
 | Train Medium Model (7B) | $1,200 | 12 min   | +260 RP, +12 Rep, +60 XP | Not enough cash OR compute full |
 
-### Income Section
+### Revenue Section
 
-Section header: "INCOME"
+Section header: "REVENUE"
 
 | Action                | Cost | Duration | Rewards               | Disabled When |
 | --------------------- | ---- | -------- | --------------------- | ------------- |

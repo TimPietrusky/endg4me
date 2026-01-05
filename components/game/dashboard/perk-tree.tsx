@@ -8,7 +8,6 @@ import {
   Lock, 
   CheckCircle, 
   Brain,
-  Wrench,
   Sparkle,
   CurrencyDollar,
   Users
@@ -24,7 +23,7 @@ type StatusFilter = "available" | "locked" | "researched"
 interface PerkTreeProps {
   userId: Id<"users">
   currentRp: number
-  category: "model" | "monetization" | "perk" | "income" | "hiring"
+  category: "model" | "revenue" | "perk" | "hiring"
 }
 
 const CATEGORY_CONFIG = {
@@ -39,16 +38,16 @@ const CATEGORY_CONFIG = {
     accentColor: "text-purple-400",
     bgAccent: "bg-purple-500",
   },
-  monetization: {
-    name: "Monetization",
-    description: "Ways to make money with your trained models",
-    icon: Wrench,
-    color: "cyan",
-    nodeGradient: "from-cyan-500/20 to-cyan-500/5",
-    nodeBorder: "border-cyan-500/30",
-    nodeActive: "border-cyan-400 shadow-cyan-500/20",
-    accentColor: "text-cyan-400",
-    bgAccent: "bg-cyan-500",
+  revenue: {
+    name: "Revenue",
+    description: "Ways to earn money through contracts and freelance work",
+    icon: CurrencyDollar,
+    color: "green",
+    nodeGradient: "from-green-500/20 to-green-500/5",
+    nodeBorder: "border-green-500/30",
+    nodeActive: "border-green-400 shadow-green-500/20",
+    accentColor: "text-green-400",
+    bgAccent: "bg-green-500",
   },
   perk: {
     name: "Perks",
@@ -60,17 +59,6 @@ const CATEGORY_CONFIG = {
     nodeActive: "border-amber-400 shadow-amber-500/20",
     accentColor: "text-amber-400",
     bgAccent: "bg-amber-500",
-  },
-  income: {
-    name: "Income",
-    description: "Freelance work to earn money without models",
-    icon: CurrencyDollar,
-    color: "green",
-    nodeGradient: "from-green-500/20 to-green-500/5",
-    nodeBorder: "border-green-500/30",
-    nodeActive: "border-green-400 shadow-green-500/20",
-    accentColor: "text-green-400",
-    bgAccent: "bg-green-500",
   },
   hiring: {
     name: "Hiring",
@@ -163,6 +151,7 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
   const renderNode = (node: typeof nodes[0]) => {
     const canAfford = currentRp >= node.rpCost
     const isReady = !node.isPurchased && !node.isLocked && canAfford
+    const isAvailable = !node.isPurchased && !node.isLocked
 
     return (
       <div
@@ -172,7 +161,9 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
           "rounded-lg border p-4",
           node.isPurchased 
             ? "bg-gradient-to-br from-green-500/20 to-green-500/5 border-green-500/50"
-            : cn("border", config.nodeBorder)
+            : isAvailable
+              ? cn("bg-gradient-to-br", config.nodeGradient, "border", config.nodeBorder)
+              : "bg-black/20 border border-white/10 opacity-60"
         )}
       >
         {/* Status indicator */}

@@ -106,14 +106,14 @@ The game dashboard is **fully implemented** with:
 - Settings panel (slide-out sheet) with Profile, Organization/Team, and Sign out
 - Level-based milestone system (max level 20)
 - Blueprint-driven model training system
-- Research tree with Models, Monetization, Income, Hiring, and Perks
+- Research tree with Models, Revenue, Hiring, and Perks
 
 The homepage (`app/page.tsx`) is the landing page. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/world`.
 
 ### Navigation (5 top-level views)
 
 1. **Operate**: Run the lab day-to-day (queue management, job catalog, run jobs, hire temporary staff)
-2. **Research**: Spend RP on all unlocks (Models, Monetization, Income, Hiring, Perks)
+2. **Research**: Spend RP on all unlocks (Models, Revenue, Hiring, Perks)
 3. **Lab**: Your organization/ownership (model inventory, publishing controls, upgrades, team)
 4. **Inbox**: Events/offers/notifications with deep links
 5. **World**: Global layer (leaderboards by model type, public labs)
@@ -123,10 +123,9 @@ The homepage (`app/page.tsx`) is the landing page. The game uses top-level route
 Research is for RP-based unlocks:
 
 1. **Models**: Unlock training for new model types and sizes
-2. **Monetization**: Ways to make money with trained models (contracts, API income, licensing)
-3. **Income**: Freelance work to earn money without models (website gigs, API integration)
-4. **Hiring**: Unlock temporary hire types for boosts (junior researcher, efficiency expert, etc.)
-5. **Perks**: Passive bonuses like research speed and income boost
+2. **Revenue**: Ways to earn money (contracts, freelance work, API income, licensing)
+3. **Hiring**: Unlock temporary hire types for boosts (junior researcher, efficiency expert, etc.)
+4. **Perks**: Passive bonuses like research speed and money boost
 
 Each node has:
 
@@ -169,8 +168,7 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 - Earned by training jobs and research jobs
 - Spent in Research view for all unlocks:
   - **Models**: unlock training for new model types and sizes
-  - **Monetization**: contract types, API income, licensing
-  - **Income**: freelance jobs (no model required)
+  - **Revenue**: contracts, freelance jobs, API income, licensing
   - **Hiring**: temporary staff boosts
   - **Perks**: passive bonuses (research speed, money multiplier)
 
@@ -212,7 +210,7 @@ All jobs are defined in `convex/lib/contentCatalog.ts`:
 - `job_contract_voice_pack` (uses TTS)
 - `job_contract_image_qa` (uses VLM)
 
-**Income Jobs**: Freelance work, no models needed
+**Revenue Jobs**: Freelance work, no models needed
 - `job_income_basic_website` (level 1, $200 + 30 XP)
 - `job_income_api_integration` (level 3, $400 + 50 XP)
 
@@ -433,8 +431,7 @@ _Last updated: 2026-01-05 (Research categories expanded, hiring system, income j
 
 ## Architecture Decisions (007 Research Categories & Hiring)
 
-- **Research categories expanded**: Models, Monetization, Income, Hiring, Perks (was: Models, Capabilities, Perks)
-- **Income category**: Freelance jobs that earn money without models (Basic Website, API Integration)
+- **Research categories consolidated**: Models, Revenue, Hiring, Perks (merged Monetization + Income into Revenue)
 - **Hiring system**: Research unlocks hire types, Operate lets you hire for temporary boosts
 - **Hire types**: Junior Researcher (+1 queue), Efficiency Expert (+25% XP), Business Partner (+30% money), Senior Engineer (+1 compute)
 - **Hire mechanic**: Jobs with duration, cost money, no cooldown - can re-hire immediately after expiry

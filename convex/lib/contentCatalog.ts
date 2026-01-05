@@ -7,17 +7,17 @@
 // MODEL BLUEPRINTS
 // -----------------------------------------------------------------------------
 
-export type ModelType = "llm" | "tts" | "vlm"
+export type ModelType = "llm" | "tts" | "vlm";
 
 export interface ModelBlueprint {
-  id: string
-  name: string
-  type: ModelType
-  description: string
-  minLevelToTrain: number
-  trainingJobId: string
-  scoreRange: { min: number; max: number }
-  tags?: string[]
+  id: string;
+  name: string;
+  type: ModelType;
+  description: string;
+  minLevelToTrain: number;
+  trainingJobId: string;
+  scoreRange: { min: number; max: number };
+  tags?: string[];
 }
 
 export const MODEL_BLUEPRINTS: ModelBlueprint[] = [
@@ -57,42 +57,42 @@ export const MODEL_BLUEPRINTS: ModelBlueprint[] = [
     trainingJobId: "job_train_llm_17b",
     scoreRange: { min: 65, max: 95 },
   },
-]
+];
 
 // -----------------------------------------------------------------------------
 // JOB DEFINITIONS
 // -----------------------------------------------------------------------------
 
 export interface JobRewards {
-  money: number
-  xp: number
-  rp: number
+  money: number;
+  xp: number;
+  rp: number;
 }
 
 export interface JobRequirements {
-  minLevel: number
-  requiredResearchNodeIds?: string[]
-  requiredBlueprintIds?: string[]
-  requiredModelType?: ModelType // For contracts that need a trained model
+  minLevel: number;
+  requiredResearchNodeIds?: string[];
+  requiredBlueprintIds?: string[];
+  requiredModelType?: ModelType; // For contracts that need a trained model
 }
 
 export interface JobOutput {
-  trainsBlueprintId?: string
-  usesBlueprintType?: ModelType
-  hiresRole?: string
+  trainsBlueprintId?: string;
+  usesBlueprintType?: ModelType;
+  hiresRole?: string;
 }
 
 export interface JobDefinition {
-  jobId: string
-  name: string
-  description: string
-  durationMs: number
-  moneyCost: number
-  computeRequiredCU: number
-  rewards: JobRewards
-  requirements: JobRequirements
-  output: JobOutput
-  category: "training" | "contract" | "research" | "income" | "hire"
+  jobId: string;
+  name: string;
+  description: string;
+  durationMs: number;
+  moneyCost: number;
+  computeRequiredCU: number;
+  rewards: JobRewards;
+  requirements: JobRequirements;
+  output: JobOutput;
+  category: "training" | "contract" | "research" | "revenue" | "hire";
 }
 
 export const JOB_DEFS: JobDefinition[] = [
@@ -238,12 +238,13 @@ export const JOB_DEFS: JobDefinition[] = [
       requiredResearchNodeIds: ["rn_income_basic_website"],
     },
     output: {},
-    category: "income",
+    category: "revenue",
   },
   {
     jobId: "job_income_api_integration",
     name: "API Integration Gig",
-    description: "Integrate third-party APIs for a startup. More complex freelance.",
+    description:
+      "Integrate third-party APIs for a startup. More complex freelance.",
     durationMs: 5 * 60 * 1000, // 5 minutes
     moneyCost: 0,
     computeRequiredCU: 0,
@@ -253,7 +254,7 @@ export const JOB_DEFS: JobDefinition[] = [
       requiredResearchNodeIds: ["rn_income_api_integration"],
     },
     output: {},
-    category: "income",
+    category: "revenue",
   },
 
   // === HIRE JOBS (temporary boosts, cost money) ===
@@ -305,7 +306,8 @@ export const JOB_DEFS: JobDefinition[] = [
   {
     jobId: "job_hire_senior_engineer",
     name: "Hire Senior Engineer",
-    description: "Top talent joins temporarily. +1 compute unit for 20 minutes.",
+    description:
+      "Top talent joins temporarily. +1 compute unit for 20 minutes.",
     durationMs: 20 * 60 * 1000, // 20 minutes
     moneyCost: 1500,
     computeRequiredCU: 0,
@@ -317,39 +319,39 @@ export const JOB_DEFS: JobDefinition[] = [
     output: { hiresRole: "senior_engineer" },
     category: "hire",
   },
-]
+];
 
 // -----------------------------------------------------------------------------
 // RESEARCH NODES
 // -----------------------------------------------------------------------------
 
-export type ResearchCategory = "model" | "monetization" | "perk" | "income" | "hiring"
-export type PerkType = "research_speed" | "money_multiplier"
+export type ResearchCategory = "model" | "revenue" | "perk" | "hiring";
+export type PerkType = "research_speed" | "money_multiplier";
 
 export interface ResearchNodeUnlocks {
-  unlocksBlueprintIds?: string[]
-  unlocksJobIds?: string[]
-  enablesSystemFlags?: string[]
-  perkType?: PerkType
-  perkValue?: number
+  unlocksBlueprintIds?: string[];
+  unlocksJobIds?: string[];
+  enablesSystemFlags?: string[];
+  perkType?: PerkType;
+  perkValue?: number;
 }
 
 export interface ResearchNode {
-  nodeId: string
-  category: ResearchCategory
-  name: string
-  description: string
-  costRP: number
-  minLevel: number
-  prerequisiteNodes: string[]
-  unlocks: ResearchNodeUnlocks
+  nodeId: string;
+  category: ResearchCategory;
+  name: string;
+  description: string;
+  costRP: number;
+  minLevel: number;
+  prerequisiteNodes: string[];
+  unlocks: ResearchNodeUnlocks;
 }
 
 export const RESEARCH_NODES: ResearchNode[] = [
   // === INCOME (freelance work, no models needed) ===
   {
     nodeId: "rn_income_basic_website",
-    category: "income",
+    category: "revenue",
     name: "Basic Website Gigs",
     description: "Unlock freelance website work to earn money.",
     costRP: 0,
@@ -361,7 +363,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_income_api_integration",
-    category: "income",
+    category: "revenue",
     name: "API Integration Gigs",
     description: "Unlock more complex freelance integration work.",
     costRP: 180,
@@ -375,7 +377,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   // === MONETIZATION (ways to make money with models) ===
   {
     nodeId: "rn_cap_contracts_basic",
-    category: "monetization",
+    category: "revenue",
     name: "Basic Contracts",
     description: "Unlock simple paid contracts in Operate.",
     costRP: 0,
@@ -428,7 +430,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_cap_contracts_voice",
-    category: "monetization",
+    category: "revenue",
     name: "Voice Gigs",
     description: "Unlock audio contracts that use your TTS models.",
     costRP: 200,
@@ -440,7 +442,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_cap_contracts_vision",
-    category: "monetization",
+    category: "revenue",
     name: "Vision Contracts",
     description: "Unlock image QA contracts that use your VLM models.",
     costRP: 220,
@@ -493,7 +495,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_cap_model_api_income",
-    category: "monetization",
+    category: "revenue",
     name: "Model API Income",
     description: "Earn passive money from hosted model APIs.",
     costRP: 350,
@@ -505,7 +507,7 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
   {
     nodeId: "rn_cap_model_licensing",
-    category: "monetization",
+    category: "revenue",
     name: "Model Licensing",
     description: "License your models to enterprises for big payouts.",
     costRP: 500,
@@ -565,18 +567,21 @@ export const RESEARCH_NODES: ResearchNode[] = [
       unlocksJobIds: ["job_hire_senior_engineer"],
     },
   },
-]
+];
 
 // -----------------------------------------------------------------------------
 // INBOX EVENTS (MVP milestone notifications)
 // -----------------------------------------------------------------------------
 
 export interface InboxEventDef {
-  eventId: string
-  trigger: "first_level_up" | "first_research" | "first_model" | "level_5"
-  title: string
-  message: string
-  deepLink?: { view: "operate" | "research" | "lab" | "inbox" | "world"; target?: string }
+  eventId: string;
+  trigger: "first_level_up" | "first_research" | "first_model" | "level_5";
+  title: string;
+  message: string;
+  deepLink?: {
+    view: "operate" | "research" | "lab" | "inbox" | "world";
+    target?: string;
+  };
 }
 
 export const INBOX_EVENTS: InboxEventDef[] = [
@@ -584,70 +589,78 @@ export const INBOX_EVENTS: InboxEventDef[] = [
     eventId: "evt_first_level_up",
     trigger: "first_level_up",
     title: "Level Up! Upgrade Points Unlocked",
-    message: "You earned UP from leveling. Spend them in Lab > Upgrades to increase your queue, staff, or compute capacity.",
+    message:
+      "You earned UP from leveling. Spend them in Lab > Upgrades to increase your queue, staff, or compute capacity.",
     deepLink: { view: "lab", target: "upgrades" },
   },
   {
     eventId: "evt_first_research",
     trigger: "first_research",
     title: "Research Unlocked!",
-    message: "Use Research Points to unlock new models, capabilities, and perks. Check out the Models and Capabilities tabs.",
+    message:
+      "Use Research Points to unlock new models, capabilities, and perks. Check out the Models and Capabilities tabs.",
     deepLink: { view: "research" },
   },
   {
     eventId: "evt_first_model",
     trigger: "first_model",
     title: "First Model Trained!",
-    message: "Your model is now in Lab > Models. Train more versions to improve scores, or publish to compete on leaderboards.",
+    message:
+      "Your model is now in Lab > Models. Train more versions to improve scores, or publish to compete on leaderboards.",
     deepLink: { view: "lab", target: "models" },
   },
   {
     eventId: "evt_level_5",
     trigger: "level_5",
     title: "Passive Income Available",
-    message: "At level 5 you can unlock Model API Income in Research. Published models will earn passive money.",
+    message:
+      "At level 5 you can unlock Model API Income in Research. Published models will earn passive money.",
     deepLink: { view: "research" },
   },
-]
+];
 
 // -----------------------------------------------------------------------------
 // HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
 
 export function getBlueprintById(id: string): ModelBlueprint | undefined {
-  return MODEL_BLUEPRINTS.find((bp) => bp.id === id)
+  return MODEL_BLUEPRINTS.find((bp) => bp.id === id);
 }
 
 export function getJobById(id: string): JobDefinition | undefined {
-  return JOB_DEFS.find((job) => job.jobId === id)
+  return JOB_DEFS.find((job) => job.jobId === id);
 }
 
 export function getResearchNodeById(id: string): ResearchNode | undefined {
-  return RESEARCH_NODES.find((node) => node.nodeId === id)
+  return RESEARCH_NODES.find((node) => node.nodeId === id);
 }
 
 export function getJobsForBlueprint(blueprintId: string): JobDefinition[] {
-  return JOB_DEFS.filter((job) => job.output.trainsBlueprintId === blueprintId)
+  return JOB_DEFS.filter((job) => job.output.trainsBlueprintId === blueprintId);
 }
 
-export function getContractJobsForModelType(modelType: ModelType): JobDefinition[] {
-  return JOB_DEFS.filter((job) => job.output.usesBlueprintType === modelType)
+export function getContractJobsForModelType(
+  modelType: ModelType
+): JobDefinition[] {
+  return JOB_DEFS.filter((job) => job.output.usesBlueprintType === modelType);
 }
 
 // Calculate model score from blueprint range + randomness
-export function calculateModelScore(blueprint: ModelBlueprint, bonusPercent: number = 0): number {
-  const { min, max } = blueprint.scoreRange
-  const baseScore = min + Math.random() * (max - min)
-  const bonusMultiplier = 1 + bonusPercent / 100
-  return Math.round(baseScore * bonusMultiplier)
+export function calculateModelScore(
+  blueprint: ModelBlueprint,
+  bonusPercent: number = 0
+): number {
+  const { min, max } = blueprint.scoreRange;
+  const baseScore = min + Math.random() * (max - min);
+  const bonusMultiplier = 1 + bonusPercent / 100;
+  return Math.round(baseScore * bonusMultiplier);
 }
 
 // Get all job IDs (for schema validation)
-export const ALL_JOB_IDS = JOB_DEFS.map((j) => j.jobId)
+export const ALL_JOB_IDS = JOB_DEFS.map((j) => j.jobId);
 
 // Get all blueprint IDs
-export const ALL_BLUEPRINT_IDS = MODEL_BLUEPRINTS.map((bp) => bp.id)
+export const ALL_BLUEPRINT_IDS = MODEL_BLUEPRINTS.map((bp) => bp.id);
 
 // Get all research node IDs
-export const ALL_RESEARCH_NODE_IDS = RESEARCH_NODES.map((n) => n.nodeId)
-
+export const ALL_RESEARCH_NODE_IDS = RESEARCH_NODES.map((n) => n.nodeId);
