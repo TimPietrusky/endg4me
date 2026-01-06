@@ -46,6 +46,10 @@ export interface Action {
   locked?: boolean
   lockReason?: string
   unlockLink?: { view: ViewType; target?: string }
+  // Training history (for retrain UI)
+  latestVersion?: number
+  versionCount?: number
+  bestScore?: number
 }
 
 export interface Notification {

@@ -6,74 +6,67 @@ import {
   Brain, 
   Trophy, 
   Star, 
-  Eye, 
-  EyeSlash, 
-  GlobeHemisphereWest, 
-  Lock,
-  SortAscending,
-  CheckCircle,
-  XCircle,
   Microphone,
   Image as ImageIcon,
-  TextAa
+  TextAa,
+  CaretDown,
+  CaretUp,
+  Stack
 } from "@phosphor-icons/react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useMutation, useQuery } from "convex/react"
+import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { formatCompact } from "@/lib/utils"
 
-export type VisibilityFilter = "all" | "public" | "private"
 export type ModelTypeFilter = "all" | "llm" | "tts" | "vlm"
-export type SortOption = "newest" | "oldest" | "highest_score" | "lowest_score"
+
+// Aggregated model type from the query
+interface AggregatedModel {
+  blueprintId: string
+  modelType: "llm" | "tts" | "vlm"
+  latestVersion: number
+  latestModel: Doc<"trainedModels">
+  bestScore: number
+  bestModel: Doc<"trainedModels">
+  versionCount: number
+  publicCount: number
+  allVersions: Doc<"trainedModels">[]
+}
 
 interface CollectionViewProps {
   labName: string
   userId: Id<"users">
   models?: Doc<"trainedModels">[]
   bestScore?: number
+  labId?: Id<"labs">
 }
 
-export function CollectionView({ labName, userId, models, bestScore }: CollectionViewProps) {
-  const toggleVisibility = useMutation(api.tasks.toggleModelVisibility)
-  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
+export function CollectionView({ labName, userId, models, bestScore, labId }: CollectionViewProps) {
   const [typeFilter, setTypeFilter] = useState<ModelTypeFilter>("all")
-  const [sortOption, setSortOption] = useState<SortOption>("newest")
+  const [expandedBlueprint, setExpandedBlueprint] = useState<string | null>(null)
 
-  // Filter models by visibility and type
-  let filteredModels = models?.filter((model) => {
-    // Visibility filter
-    if (visibilityFilter === "public" && model.visibility !== "public") return false
-    if (visibilityFilter === "private" && model.visibility === "public") return false
-    // Type filter
-    if (typeFilter !== "all" && model.modelType !== typeFilter) return false
+  // Use aggregated models query for grouped view
+  const aggregatedModels = useQuery(
+    api.tasks.getAggregatedModels,
+    labId ? { labId } : "skip"
+  )
+
+  // Filter aggregated models by type
+  const filteredAggregated = aggregatedModels?.filter((agg) => {
+    if (typeFilter !== "all" && agg.modelType !== typeFilter) return false
     return true
   })
 
-  // Sort models
-  if (filteredModels) {
-    filteredModels = [...filteredModels].sort((a, b) => {
-      switch (sortOption) {
-        case "newest":
-          return b.trainedAt - a.trainedAt
-        case "oldest":
-          return a.trainedAt - b.trainedAt
-        case "highest_score":
-          return (b.score || 0) - (a.score || 0)
-        case "lowest_score":
-          return (a.score || 0) - (b.score || 0)
-        default:
-          return 0
-      }
-    })
-  }
+  // Stats
+  const totalVersions = models?.length || 0
+  const uniqueModels = aggregatedModels?.length || 0
 
-  const publicCount = models?.filter((m) => m.visibility === "public").length || 0
-  const privateCount = models?.filter((m) => m.visibility !== "public").length || 0
-  const llmCount = models?.filter((m) => m.modelType === "llm").length || 0
-  const ttsCount = models?.filter((m) => m.modelType === "tts").length || 0
-  const vlmCount = models?.filter((m) => m.modelType === "vlm").length || 0
+  // Type counts (unique blueprints)
+  const llmCount = aggregatedModels?.filter((m) => m.modelType === "llm").length || 0
+  const ttsCount = aggregatedModels?.filter((m) => m.modelType === "tts").length || 0
+  const vlmCount = aggregatedModels?.filter((m) => m.modelType === "vlm").length || 0
 
   if (!models || models.length === 0) {
     return (
@@ -86,14 +79,6 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
     )
   }
 
-  const handleToggleVisibility = async (modelId: Id<"trainedModels">) => {
-    try {
-      await toggleVisibility({ modelId })
-    } catch (error: any) {
-      console.error("Failed to toggle visibility:", error?.message || error)
-    }
-  }
-
   return (
     <div className="space-y-4 mt-4">
       {/* Stats Header */}
@@ -103,8 +88,17 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
             <Brain className="w-6 h-6 text-white" weight="bold" />
           </div>
           <div>
-            <p className="text-2xl font-bold">{models.length}</p>
-            <p className="text-sm text-muted-foreground">models trained</p>
+            <p className="text-2xl font-bold">{uniqueModels}</p>
+            <p className="text-sm text-muted-foreground">models</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
+            <Stack className="w-6 h-6 text-white" weight="bold" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{totalVersions}</p>
+            <p className="text-sm text-muted-foreground">versions</p>
           </div>
         </div>
         {bestScore !== undefined && bestScore > 0 && (
@@ -118,65 +112,10 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
             </div>
           </div>
         )}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-            <GlobeHemisphereWest className="w-6 h-6 text-white" weight="fill" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{publicCount}</p>
-            <p className="text-sm text-muted-foreground">public</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg flex items-center justify-center">
-            <Lock className="w-6 h-6 text-white" weight="fill" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold">{privateCount}</p>
-            <p className="text-sm text-muted-foreground">private</p>
-          </div>
-        </div>
       </div>
 
-      {/* Filters Row */}
+      {/* Type Filter Chips */}
       <div className="flex flex-wrap items-center gap-4">
-        {/* Visibility Filter */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setVisibilityFilter("all")}
-            className={`text-xs px-2 py-1 rounded transition-colors ${
-              visibilityFilter === "all" 
-                ? "bg-white text-black font-bold" 
-                : "bg-white/10 hover:bg-white/20"
-            }`}
-          >
-            All ({models?.length || 0})
-          </button>
-          <button
-            onClick={() => setVisibilityFilter("public")}
-            className={`text-xs px-2 py-1 rounded transition-colors ${
-              visibilityFilter === "public" 
-                ? "bg-green-500 text-black font-bold" 
-                : "bg-white/10 hover:bg-white/20"
-            }`}
-          >
-            Public ({publicCount})
-          </button>
-          <button
-            onClick={() => setVisibilityFilter("private")}
-            className={`text-xs px-2 py-1 rounded transition-colors ${
-              visibilityFilter === "private" 
-                ? "bg-white/60 text-black font-bold" 
-                : "bg-white/10 hover:bg-white/20"
-            }`}
-          >
-            Private ({privateCount})
-          </button>
-        </div>
-
-        <span className="text-white/20">|</span>
-
-        {/* Type Filter Chips */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTypeFilter("all")}
@@ -186,7 +125,7 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
                 : "bg-white/10 hover:bg-white/20"
             }`}
           >
-            All Types
+            All Types ({uniqueModels})
           </button>
           <button
             onClick={() => setTypeFilter("llm")}
@@ -219,39 +158,27 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
             <ImageIcon className="w-3 h-3" /> VLM ({vlmCount})
           </button>
         </div>
-
-        {/* Sort Dropdown - pushed to right */}
-        <div className="flex items-center gap-2 ml-auto">
-          <SortAscending className="w-4 h-4 text-muted-foreground" />
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as SortOption)}
-            className="text-xs bg-white/10 border border-white/20 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-white/40"
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="highest_score">Highest Score</option>
-            <option value="lowest_score">Lowest Score</option>
-          </select>
-        </div>
       </div>
 
       {/* Info Banner */}
       <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-sm flex items-center gap-2">
-        <GlobeHemisphereWest className="w-4 h-4 text-green-400 flex-shrink-0" />
+        <Trophy className="w-4 h-4 text-green-400 flex-shrink-0" weight="fill" />
         <span className="text-white/70">
-          Public models are eligible for leaderboards and visible on your public lab profile.
+          Best-scoring version of each model competes on the leaderboard.
         </span>
       </div>
 
-      {/* Model Grid */}
-      {filteredModels && filteredModels.length > 0 ? (
+      {/* Model Grid - grouped by blueprint */}
+      {filteredAggregated && filteredAggregated.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredModels.map((model) => (
-            <ModelCard 
-              key={model._id} 
-              model={model} 
-              onToggleVisibility={() => handleToggleVisibility(model._id)}
+          {filteredAggregated.map((agg) => (
+            <AggregatedModelCard 
+              key={agg.blueprintId} 
+              aggregated={agg}
+              isExpanded={expandedBlueprint === agg.blueprintId}
+              onToggleExpand={() => setExpandedBlueprint(
+                expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
+              )}
             />
           ))}
         </div>
@@ -264,127 +191,164 @@ export function CollectionView({ labName, userId, models, bestScore }: Collectio
   )
 }
 
-interface ModelCardProps {
-  model: Doc<"trainedModels">
-  onToggleVisibility: () => void
+// Helper functions for model display
+function getModelTypeIcon(type: string) {
+  switch (type) {
+    case "llm":
+      return <TextAa className="w-5 h-5 text-blue-400" weight="bold" />
+    case "tts":
+      return <Microphone className="w-5 h-5 text-cyan-400" weight="bold" />
+    case "vlm":
+      return <ImageIcon className="w-5 h-5 text-purple-400" weight="bold" />
+    default:
+      return <Brain className="w-5 h-5 text-primary" weight="bold" />
+  }
 }
 
-function ModelCard({ model, onToggleVisibility }: ModelCardProps) {
-  const getModelTypeIcon = (type: string) => {
-    switch (type) {
-      case "llm":
-        return <TextAa className="w-5 h-5 text-blue-400" weight="bold" />
-      case "tts":
-        return <Microphone className="w-5 h-5 text-cyan-400" weight="bold" />
-      case "vlm":
-        return <ImageIcon className="w-5 h-5 text-purple-400" weight="bold" />
-      default:
-        return <Brain className="w-5 h-5 text-primary" weight="bold" />
-    }
+function getModelTypeName(type: string) {
+  switch (type) {
+    case "llm":
+      return "LLM"
+    case "tts":
+      return "TTS"
+    case "vlm":
+      return "VLM"
+    default:
+      return "Unknown"
   }
+}
 
-  const getModelTypeName = (type: string) => {
-    switch (type) {
-      case "llm":
-        return "LLM"
-      case "tts":
-        return "TTS"
-      case "vlm":
-        return "VLM"
-      default:
-        return "Unknown"
-    }
+function getModelColor(type: string) {
+  switch (type) {
+    case "llm":
+      return "from-blue-500/20 to-blue-500/5 border-blue-500/30"
+    case "tts":
+      return "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30"
+    case "vlm":
+      return "from-purple-500/20 to-purple-500/5 border-purple-500/30"
+    default:
+      return "from-gray-500/20 to-gray-500/5 border-gray-500/30"
   }
+}
 
-  const getModelColor = (type: string) => {
-    switch (type) {
-      case "llm":
-        return "from-blue-500/20 to-blue-500/5 border-blue-500/30"
-      case "tts":
-        return "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30"
-      case "vlm":
-        return "from-purple-500/20 to-purple-500/5 border-purple-500/30"
-      default:
-        return "from-gray-500/20 to-gray-500/5 border-gray-500/30"
-    }
-  }
+function formatDate(timestamp: number) {
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+// Aggregated Model Card - shows one card per blueprint with version count
+interface AggregatedModelCardProps {
+  aggregated: AggregatedModel
+  isExpanded: boolean
+  onToggleExpand: () => void
+}
 
-  const isPublic = model.visibility === "public"
+function AggregatedModelCard({ aggregated, isExpanded, onToggleExpand }: Omit<AggregatedModelCardProps, 'onToggleVisibility'>) {
+  const { latestModel, bestScore, bestModel, versionCount, allVersions, modelType } = aggregated
 
   return (
-    <Card className={`overflow-hidden bg-gradient-to-br ${getModelColor(model.modelType)}`}>
+    <Card className={`overflow-hidden bg-gradient-to-br ${getModelColor(modelType)}`}>
       <CardContent className="p-4">
-        {/* Header with type and score */}
+        {/* Header with type, version count, and best score */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            {getModelTypeIcon(model.modelType)}
+            {getModelTypeIcon(modelType)}
             <div>
-              <span className="font-bold">{getModelTypeName(model.modelType)}</span>
-              <span className="text-xs text-muted-foreground ml-1">v{model.version}</span>
+              <span className="font-bold">{getModelTypeName(modelType)}</span>
+              <span className="text-xs text-muted-foreground ml-1">v{latestModel.version}</span>
             </div>
           </div>
-          {model.score && (
+          <div className="flex items-center gap-2">
+            {/* Version count badge */}
+            <div className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded text-xs">
+              <Stack className="w-3 h-3" />
+              <span>{versionCount}</span>
+            </div>
+            {/* Best score */}
             <div className="flex items-center gap-1 text-amber-400">
               <Star className="w-4 h-4" weight="fill" />
-              <span className="text-sm font-bold">{model.score}</span>
+              <span className="text-sm font-bold">{bestScore}</span>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Model name and timestamp */}
-        <p className="text-sm font-medium mb-1">{model.name}</p>
+        {/* Model name from blueprint */}
+        <p className="text-sm font-medium mb-1">{latestModel.name}</p>
         <p className="text-xs text-muted-foreground mb-3">
-          Trained {formatDate(model.trainedAt)}
+          Latest: {formatDate(latestModel.trainedAt)}
         </p>
 
-        {/* Leaderboard Eligibility */}
-        <div className={`mb-3 p-2 rounded text-xs flex items-center gap-2 ${
-          isPublic 
-            ? "bg-green-500/10 border border-green-500/20" 
-            : "bg-white/5 border border-white/10"
-        }`}>
-          {isPublic ? (
-            <>
-              <CheckCircle className="w-4 h-4 text-green-400" weight="fill" />
-              <span className="text-green-400">Leaderboard Eligible</span>
-            </>
-          ) : (
-            <>
-              <XCircle className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Not Eligible (private)</span>
-            </>
-          )}
+        {/* Leaderboard status - best version competes */}
+        <div className="mb-3 p-2 rounded text-xs flex items-center gap-2 bg-green-500/10 border border-green-500/20">
+          <Trophy className="w-4 h-4 text-green-400" weight="fill" />
+          <span className="text-green-400">v{bestModel.version} competes (score {bestScore})</span>
         </div>
         
-        {/* Visibility Toggle */}
+        {/* Expand/Collapse button */}
         <Button
-          variant={isPublic ? "default" : "outline"}
+          variant="outline"
           size="sm"
           className="w-full text-xs h-8"
-          onClick={onToggleVisibility}
+          onClick={onToggleExpand}
         >
-          {isPublic ? (
+          {isExpanded ? (
             <>
-              <Eye className="w-3 h-3 mr-1" />
-              Public - Click to make Private
+              <CaretUp className="w-3 h-3 mr-1" />
+              Hide {versionCount} version{versionCount > 1 ? "s" : ""}
             </>
           ) : (
             <>
-              <EyeSlash className="w-3 h-3 mr-1" />
-              Private - Click to Publish
+              <CaretDown className="w-3 h-3 mr-1" />
+              Show {versionCount} version{versionCount > 1 ? "s" : ""}
             </>
           )}
         </Button>
+
+        {/* Expanded version list */}
+        {isExpanded && (
+          <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+            {allVersions.map((version) => (
+              <VersionRow 
+                key={version._id} 
+                model={version}
+                isBest={version._id === bestModel._id}
+              />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
 }
+
+// Compact version row for expanded view
+interface VersionRowProps {
+  model: Doc<"trainedModels">
+  isBest: boolean
+}
+
+function VersionRow({ model, isBest }: VersionRowProps) {
+  return (
+    <div className={`flex items-center justify-between p-2 rounded ${
+      isBest ? "bg-green-500/10 border border-green-500/20" : "bg-black/20"
+    }`}>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-mono text-muted-foreground">v{model.version}</span>
+        <div className="flex items-center gap-1 text-amber-400">
+          <Star className="w-3 h-3" weight="fill" />
+          <span className="text-xs font-bold">{model.score}</span>
+        </div>
+        {isBest && (
+          <span className="text-xs text-green-400 font-medium">BEST</span>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground">{formatDate(model.trainedAt)}</span>
+    </div>
+  )
+}
+
+

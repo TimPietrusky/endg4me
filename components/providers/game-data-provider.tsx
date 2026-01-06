@@ -123,6 +123,12 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
     labData?.lab ? { labId: labData.lab._id, limit: 50 } : "skip"
   )
 
+  // Training history for showing version info on action cards
+  const trainingHistory = useQuery(
+    api.tasks.getTrainingHistory,
+    labData?.lab ? { labId: labData.lab._id } : "skip"
+  )
+
   // Get available jobs with unlock status
   const availableJobs = useQuery(
     api.tasks.getAvailableJobs,
@@ -279,6 +285,10 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
         else if (jobDef.name.includes("LLM")) displayName = jobDef.name.includes("17B") ? "LLM 17B" : "LLM 3B"
       }
 
+      // Get training history for this job's blueprint (if training job)
+      const blueprintId = jobDef.output.trainsBlueprintId
+      const history = blueprintId && trainingHistory ? trainingHistory[blueprintId] : undefined
+
       return {
         id: job.jobId,
         category,
@@ -301,6 +311,10 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
         speedFactor: isActive ? getJobSpeedFactor(job.jobId) : 1,
         isQueued,
         locked: false,
+        // Training history
+        latestVersion: history?.latestVersion,
+        versionCount: history?.versionCount,
+        bestScore: history?.bestScore,
       } as Action
     })
     .filter((a): a is Action => a !== null)

@@ -452,7 +452,7 @@ export const completeTask = internalMutation({
             version,
             score,
             trainedAt: effectiveNow,
-            visibility: "private",
+            visibility: "public", // All models are public for leaderboard competition
           });
 
           // Check for first model milestone
@@ -782,6 +782,86 @@ export const getTrainedModels = query({
       .take(args.limit || 50);
 
     return models;
+  },
+});
+
+// Get aggregated models grouped by blueprint (for Lab > Models view)
+export const getAggregatedModels = query({
+  args: { labId: v.id("labs") },
+  handler: async (ctx, args) => {
+    const models = await ctx.db
+      .query("trainedModels")
+      .withIndex("by_lab", (q) => q.eq("labId", args.labId))
+      .collect();
+
+    // Group by blueprintId
+    const byBlueprint: Record<string, typeof models> = {};
+    for (const model of models) {
+      if (!byBlueprint[model.blueprintId]) {
+        byBlueprint[model.blueprintId] = [];
+      }
+      byBlueprint[model.blueprintId].push(model);
+    }
+
+    // Build aggregated result
+    const aggregated = Object.entries(byBlueprint).map(([blueprintId, versions]) => {
+      // Sort by version desc to get latest first
+      const sorted = [...versions].sort((a, b) => b.version - a.version);
+      const latest = sorted[0];
+      const best = sorted.reduce((b, m) => (m.score > b.score ? m : b), sorted[0]);
+
+      return {
+        blueprintId,
+        modelType: latest.modelType,
+        latestVersion: latest.version,
+        latestModel: latest,
+        bestScore: best.score,
+        bestModel: best,
+        versionCount: versions.length,
+        publicCount: versions.filter((m) => m.visibility === "public").length,
+        allVersions: sorted,
+      };
+    });
+
+    // Sort by latest trained
+    aggregated.sort((a, b) => b.latestModel.trainedAt - a.latestModel.trainedAt);
+
+    return aggregated;
+  },
+});
+
+// Get training history summary per blueprint (for Operate view)
+export const getTrainingHistory = query({
+  args: { labId: v.id("labs") },
+  handler: async (ctx, args) => {
+    const models = await ctx.db
+      .query("trainedModels")
+      .withIndex("by_lab", (q) => q.eq("labId", args.labId))
+      .collect();
+
+    // Group by blueprintId and extract summary
+    const history: Record<string, { latestVersion: number; versionCount: number; bestScore: number }> = {};
+    
+    for (const model of models) {
+      const existing = history[model.blueprintId];
+      if (!existing) {
+        history[model.blueprintId] = {
+          latestVersion: model.version,
+          versionCount: 1,
+          bestScore: model.score,
+        };
+      } else {
+        existing.versionCount++;
+        if (model.version > existing.latestVersion) {
+          existing.latestVersion = model.version;
+        }
+        if (model.score > existing.bestScore) {
+          existing.bestScore = model.score;
+        }
+      }
+    }
+
+    return history;
   },
 });
 

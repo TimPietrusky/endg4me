@@ -16,7 +16,10 @@ export default function LabLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { trainedModels } = useGameData()
 
-  const totalModels = trainedModels?.length || 0
+  // Count unique blueprints (model families), not total versions
+  const uniqueBlueprints = trainedModels 
+    ? new Set(trainedModels.map(m => m.blueprintId)).size 
+    : 0
   const isActive = (href: string) => pathname === href
 
   return (
@@ -35,8 +38,8 @@ export default function LabLayout({ children }: { children: React.ReactNode }) {
           >
             <span className="flex items-center">
               {route.label}
-              {route.label === "MODELS" && totalModels > 0 && (
-                <span className="ml-1 text-white/60">({totalModels})</span>
+              {route.label === "MODELS" && uniqueBlueprints > 0 && (
+                <span className="ml-1 text-white/60">({uniqueBlueprints})</span>
               )}
             </span>
           </Link>

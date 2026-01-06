@@ -28,7 +28,8 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
   const getButtonLabel = (action: Action): string => {
     switch (action.category) {
       case "TRAINING":
-        return "train"
+        // Show "retrain" if this model has been trained before
+        return action.latestVersion ? "retrain" : "train"
       case "INCOME":
         return "do job"
       case "HIRING":
@@ -103,6 +104,12 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
           )}
           <h3 className="font-bold text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{action.name}</h3>
         </div>
+        {/* Version badge for trained models */}
+        {action.latestVersion && (
+          <div className="absolute top-2 left-3 bg-black/70 text-white text-xs font-mono px-2 py-0.5 rounded">
+            v{action.latestVersion}
+          </div>
+        )}
         {action.isQueued && (
           <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded">
             QUEUED

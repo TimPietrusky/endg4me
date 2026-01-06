@@ -192,7 +192,12 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 3. **Trained Model**: Created by completing training jobs, scored from blueprint's scoreRange
 4. **Versioning**: Each training creates a new version (v1, v2, v3...)
 5. **Publishing**: Toggle visibility (public/private) in Lab > Models (available from day one)
-6. **Leaderboards**: Only public models count, grouped by type (LLM/TTS/VLM)
+6. **Leaderboards**: Only best public model per lab per type counts (no duplicate entries)
+
+**Model UI Patterns**:
+- **Operate view**: Training cards show version badge ("v9") and "retrain" button when previously trained
+- **Lab > Models**: One card per blueprint (grouped), shows latest version + version count, expandable to see all versions
+- **Leaderboard**: One entry per lab per model type, always the highest-scoring public model
 
 **Contract Jobs** use trained models:
 - Auto-select best model by score for the required type
@@ -425,9 +430,20 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-06 (Speed + Money Multiplier rework)_
+_Last updated: 2026-01-06 (Model Versioning UI)_
 
 ---
+
+## Architecture Decisions (011 Model Versioning UI)
+
+- **Aggregated model view**: Lab > Models shows one card per blueprint, not per version
+- **Card data**: Latest version number, total version count, best score across all versions
+- **Expandable versions**: Click card to reveal all versions with individual visibility toggles
+- **Training state indicator**: Operate shows version badge ("v9") on cards for previously trained models
+- **Retrain button**: Training cards show "retrain" instead of "train" when model has versions
+- **Leaderboard deduplication**: Only best-scoring public model per lab per type appears on leaderboard
+- **New queries**: `getAggregatedModels` (grouped by blueprint), `getTrainingHistory` (summary per blueprint)
+- **Action type extended**: Added `latestVersion`, `versionCount`, `bestScore` to Action interface
 
 ## Architecture Decisions (010 Speed + Money Multiplier Rework)
 

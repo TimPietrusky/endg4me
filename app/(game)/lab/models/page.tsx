@@ -17,6 +17,7 @@ export default function LabModelsPage() {
       userId={userId as Id<"users">}
       models={trainedModels}
       bestScore={modelStats?.bestModel?.score}
+      labId={lab._id}
     />
   )
 }
