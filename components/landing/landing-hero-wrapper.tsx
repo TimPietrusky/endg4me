@@ -22,6 +22,7 @@ interface LandingHeroWrapperProps {
   signInUrl: string;
   hasError?: boolean;
   errorMessage?: string;
+  seed: number;
 }
 
 export function LandingHeroWrapper({
@@ -29,6 +30,7 @@ export function LandingHeroWrapper({
   signInUrl,
   hasError,
   errorMessage,
+  seed,
 }: LandingHeroWrapperProps) {
   return (
     <TerminalHero
@@ -36,6 +38,7 @@ export function LandingHeroWrapper({
       signInUrl={signInUrl}
       hasError={hasError}
       errorMessage={errorMessage}
+      seed={seed}
     />
   );
 }
