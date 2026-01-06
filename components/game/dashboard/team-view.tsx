@@ -6,7 +6,6 @@ import {
   Users, 
   Clock,
   Briefcase,
-  Lightning,
   CurrencyDollar,
   UserPlus
 } from "@phosphor-icons/react"
@@ -80,10 +79,10 @@ export function TeamView({
               <p className="text-xs text-muted-foreground mb-2">Abilities</p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center gap-2 text-sm p-2 bg-white/5 rounded">
-                  <Lightning className="w-4 h-4 text-cyan-400" />
-                  <span>Research Speed</span>
-                  <span className={`ml-auto font-bold ${modifiers.researchSpeed > 1 ? "text-green-400" : modifiers.researchSpeed < 1 ? "text-red-400" : "text-muted-foreground"}`}>
-                    {formatModifier(modifiers.researchSpeed)}
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <span>Speed</span>
+                  <span className={`ml-auto font-bold ${modifiers.speed > 1 ? "text-green-400" : modifiers.speed < 1 ? "text-red-400" : "text-muted-foreground"}`}>
+                    {formatModifier(modifiers.speed)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm p-2 bg-white/5 rounded">

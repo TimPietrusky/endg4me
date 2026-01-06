@@ -26,7 +26,7 @@ export default defineSchema({
     researchPoints: v.number(),
     juniorResearchers: v.number(),
     // RP-based perk bonuses (from Research spending)
-    researchSpeedBonus: v.optional(v.number()), // Percentage bonus, e.g., 10 = 10% faster
+    speedBonus: v.optional(v.number()), // Percentage bonus, e.g., 10 = 10% faster
     moneyMultiplier: v.optional(v.number()),    // Multiplier, e.g., 1.1 = 10% more
   }).index("by_lab", ["labId"]),
 
@@ -41,7 +41,7 @@ export default defineSchema({
     queueRank: v.optional(v.number()),     // Queue upgrade rank (0 = base)
     staffRank: v.optional(v.number()),     // Staff upgrade rank (0 = base)
     computeRank: v.optional(v.number()),   // Compute upgrade rank (0 = base)
-    researchSpeedRank: v.optional(v.number()),  // Research speed rank (0 = base)
+    speedRank: v.optional(v.number()),  // Speed rank (0 = base)
     moneyMultiplierRank: v.optional(v.number()), // Money multiplier rank (0 = base)
   }).index("by_user", ["userId"]),
 
@@ -150,7 +150,7 @@ export default defineSchema({
     .index("by_user_unread", ["userId", "read"])
     .index("by_user_event", ["userId", "eventId"]),
 
-  // Research Nodes - RP spending for perks (speed, money bonuses)
+  // Research Nodes - RP spending for perks (speed bonus, money multiplier)
   // NOTE: This table is for DB storage if needed, but nodes come from contentCatalog
   researchNodes: defineTable({
     nodeId: v.string(),
@@ -175,7 +175,7 @@ export default defineSchema({
     unlockDescription: v.string(),
     // For perks: which bonus and how much
     perkType: v.optional(v.union(
-      v.literal("research_speed"),
+      v.literal("speed"),
       v.literal("money_multiplier")
     )),
     perkValue: v.optional(v.number()),

@@ -125,7 +125,7 @@ Research is for RP-based unlocks:
 1. **Models**: Unlock training for new model types and sizes
 2. **Revenue**: Ways to earn money (contracts, freelance work, API income, licensing)
 3. **Hiring**: Unlock temporary hire types for boosts (junior researcher, efficiency expert, etc.)
-4. **Perks**: Passive bonuses like research speed and money boost
+4. **Perks**: Passive bonuses like speed and money multiplier
 
 Each node has:
 
@@ -170,7 +170,7 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
   - **Models**: unlock training for new model types and sizes
   - **Revenue**: contracts, freelance jobs, API income, licensing
   - **Hiring**: temporary staff boosts
-  - **Perks**: passive bonuses (research speed, money multiplier)
+  - **Perks**: passive bonuses (speed, money multiplier)
 
 **Money**:
 
@@ -425,9 +425,22 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-05 (SpendButton unified action component)_
+_Last updated: 2026-01-06 (Speed + Money Multiplier rework)_
 
 ---
+
+## Architecture Decisions (010 Speed + Money Multiplier Rework)
+
+- **Speed renamed from Research Speed**: Generic speed bonus that applies to ALL timed operations (training, operate jobs, research)
+- **Speed upgrades**: Purchased with UP in Lab > Upgrades (5 ranks, +5% per rank)
+- **Speed perks**: Purchased with RP in Research > Perks (Speed I = +10%)
+- **Founder speed bonus**: Technical founder gets +25% speed, Business founder gets -20%
+- **Money Multiplier expanded scope**: Now affects both costs and rewards
+  - **Reduces costs**: Job money costs and research RP costs are divided by multiplier
+  - **Increases income**: Money rewards are multiplied by multiplier
+- **Example at 1.5x multiplier**: A $300 job costs $200, a 150 RP research costs 100 RP, a $200 reward becomes $300
+- **DB fields renamed**: `researchSpeedBonus` -> `speedBonus`, `researchSpeedRank` -> `speedRank`
+- **Icon change**: Speed now uses Clock icon (was Lightning)
 
 ## Architecture Decisions (009 SpendButton Component)
 

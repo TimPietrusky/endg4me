@@ -17,7 +17,7 @@ import { XpIcon } from "./xp-icon"
 import { formatCompact, formatTimeCompact } from "@/lib/utils"
 
 // Attribute types for the grid
-export type AttributeType = "time" | "cash" | "gpu" | "rp" | "xp" | "up" | "queue" | "staff" | "compute" | "researchSpeed" | "moneyMultiplier"
+export type AttributeType = "time" | "cash" | "gpu" | "rp" | "xp" | "up" | "queue" | "staff" | "compute" | "speed" | "moneyMultiplier"
 
 export interface SpendAttribute {
   type: AttributeType
@@ -70,7 +70,7 @@ const ATTRIBUTE_ICONS: Record<AttributeType, PhosphorIcon | null> = {
   queue: ListChecks,
   staff: Users,
   compute: Cpu,
-  researchSpeed: Lightning,
+  speed: Clock, // Speed uses clock icon
   moneyMultiplier: CurrencyDollar,
 }
 
@@ -247,7 +247,7 @@ export function SpendButton({
   // Maxed/completed state - subtle and minimal
   if (isMaxed) {
     return (
-      <div className="w-full border-b border-border">
+      <div className="w-full border-t border-b border-white/10">
         <div className="flex items-center justify-center h-[72px] border-b border-white/10">
           <span className="text-lg text-white lowercase tracking-wider">
             {maxedLabel}

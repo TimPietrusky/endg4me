@@ -4,13 +4,13 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useGameData } from "@/components/providers/game-data-provider"
 import { Card, CardContent } from "@/components/ui/card"
-import { Cpu, Users, ListChecks, CaretDoubleUp, Lightning, CurrencyDollar } from "@phosphor-icons/react"
+import { Cpu, Users, ListChecks, CaretDoubleUp, Clock, CurrencyDollar } from "@phosphor-icons/react"
 import { useToast } from "@/hooks/use-toast"
 import type { Id } from "@/convex/_generated/dataModel"
 import { SpendButton } from "./spend-button"
 import { cn } from "@/lib/utils"
 
-type UpgradeType = "queue" | "staff" | "compute" | "researchSpeed" | "moneyMultiplier"
+type UpgradeType = "queue" | "staff" | "compute" | "speed" | "moneyMultiplier"
 
 // Visual squares component - shrinks to fit
 function CapacitySquares({ 
@@ -56,7 +56,7 @@ const UPGRADE_ACCENTS = {
   queue: { bg: "bg-cyan-500", text: "text-cyan-400", border: "border-cyan-500/30" },
   staff: { bg: "bg-red-500", text: "text-red-400", border: "border-red-500/30" },
   compute: { bg: "bg-amber-500", text: "text-amber-400", border: "border-amber-500/30" },
-  researchSpeed: { bg: "bg-pink-500", text: "text-pink-400", border: "border-pink-500/30" },
+  speed: { bg: "bg-pink-500", text: "text-pink-400", border: "border-pink-500/30" },
   moneyMultiplier: { bg: "bg-emerald-500", text: "text-emerald-400", border: "border-emerald-500/30" },
 }
 
@@ -105,8 +105,8 @@ export function UpgradesView() {
         return Users
       case "compute":
         return Cpu
-      case "researchSpeed":
-        return Lightning
+      case "speed":
+        return Clock
       case "moneyMultiplier":
         return CurrencyDollar
       default:
@@ -189,7 +189,7 @@ export function UpgradesView() {
                     attributes={[
                       { type: "up", value: 1, isGain: false },
                       { 
-                        type: upgrade.id as "queue" | "staff" | "compute" | "researchSpeed" | "moneyMultiplier", 
+                        type: upgrade.id as "queue" | "staff" | "compute" | "speed" | "moneyMultiplier", 
                         value: upgrade.isPercent ? "5%" : upgrade.isMultiplier ? "0.1x" : 1, 
                         isGain: true 
                       },
@@ -207,7 +207,7 @@ export function UpgradesView() {
                     attributes={[
                       { type: "up", value: 1, isGain: false },
                       { 
-                        type: upgrade.id as "queue" | "staff" | "compute" | "researchSpeed" | "moneyMultiplier", 
+                        type: upgrade.id as "queue" | "staff" | "compute" | "speed" | "moneyMultiplier", 
                         value: upgrade.isPercent ? "5%" : upgrade.isMultiplier ? "0.1x" : 1, 
                         isGain: true 
                       },

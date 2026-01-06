@@ -260,18 +260,22 @@ export const purchaseResearchNode = mutation({
       throw new Error("Lab state not found");
     }
 
-    if (labState.researchPoints < node.costRP) {
+    // Calculate effective RP cost with money multiplier (higher multiplier = lower cost)
+    const moneyMultiplier = labState.moneyMultiplier || 1.0;
+    const effectiveRPCost = Math.floor(node.costRP / moneyMultiplier);
+
+    if (labState.researchPoints < effectiveRPCost) {
       throw new Error("Not enough Research Points");
     }
 
-    // Deduct RP immediately (like jobs deduct money)
+    // Deduct RP immediately (with money multiplier applied)
     await ctx.db.patch(labState._id, {
-      researchPoints: labState.researchPoints - node.costRP,
+      researchPoints: labState.researchPoints - effectiveRPCost,
     });
 
-    // Calculate duration (apply research speed bonus)
+    // Calculate duration (apply speed bonus)
     let duration = node.durationMs;
-    const speedBonus = labState.researchSpeedBonus || 0;
+    const speedBonus = labState.speedBonus || 0;
     if (speedBonus > 0) {
       duration = duration / (1 + speedBonus / 100);
     }
@@ -434,8 +438,8 @@ function getUnlockDescription(node: typeof RESEARCH_NODES[0]): string {
   if (node.unlocks.enablesSystemFlags?.length) {
     return `Enable: ${node.unlocks.enablesSystemFlags.join(", ")}`;
   }
-  if (node.unlocks.perkType === "research_speed") {
-    return `+${node.unlocks.perkValue}% research speed`;
+  if (node.unlocks.perkType === "speed") {
+    return `+${node.unlocks.perkValue}% speed`;
   }
   if (node.unlocks.perkType === "money_multiplier") {
     return `+${(node.unlocks.perkValue || 0) * 100}% income`;
@@ -533,8 +537,8 @@ export const completeResearchNode = internalMutation({
     if (node.category === "perk" && node.unlocks.perkType && node.unlocks.perkValue !== undefined) {
       const labUpdates: Record<string, number> = {};
       switch (node.unlocks.perkType) {
-        case "research_speed":
-          labUpdates.researchSpeedBonus = (labState.researchSpeedBonus || 0) + node.unlocks.perkValue;
+        case "speed":
+          labUpdates.speedBonus = (labState.speedBonus || 0) + node.unlocks.perkValue;
           break;
         case "money_multiplier":
           labUpdates.moneyMultiplier = (labState.moneyMultiplier || 1.0) + node.unlocks.perkValue;

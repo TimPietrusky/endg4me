@@ -326,7 +326,7 @@ export const JOB_DEFS: JobDefinition[] = [
 // -----------------------------------------------------------------------------
 
 export type ResearchCategory = "model" | "revenue" | "perk" | "hiring";
-export type PerkType = "research_speed" | "money_multiplier";
+export type PerkType = "speed" | "money_multiplier";
 
 export interface ResearchNodeUnlocks {
   unlocksBlueprintIds?: string[];
@@ -406,16 +406,16 @@ export const RESEARCH_NODES: ResearchNode[] = [
     },
   },
   {
-    nodeId: "rn_perk_research_speed_1",
+    nodeId: "rn_perk_speed_1",
     category: "perk",
-    name: "Research Speed I",
-    description: "Earn research points a bit faster.",
+    name: "Speed I",
+    description: "Complete all tasks a bit faster.",
     costRP: 120,
     durationMs: 1 * 60 * 1000, // 1m
     minLevel: 1,
     prerequisiteNodes: [],
     unlocks: {
-      perkType: "research_speed",
+      perkType: "speed",
       perkValue: 10, // +10%
     },
   },

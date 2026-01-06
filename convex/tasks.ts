@@ -223,8 +223,12 @@ export const startJob = mutation({
       throw new Error(availability.reason || "Job not available");
     }
 
+    // Calculate effective cost with money multiplier (higher multiplier = lower cost)
+    const moneyMultiplier = labState.moneyMultiplier || 1.0;
+    const effectiveCost = Math.floor(jobDef.moneyCost / moneyMultiplier);
+
     // Check cost
-    if (labState.cash < jobDef.moneyCost) {
+    if (labState.cash < effectiveCost) {
       throw new Error("Not enough cash");
     }
 
@@ -286,9 +290,9 @@ export const startJob = mutation({
     const founderMods = FOUNDER_MODIFIERS[lab.founderType as FounderType];
     let duration = jobDef.durationMs;
 
-    // Apply research speed modifier for training
+    // Apply speed modifier for training
     if (jobDef.category === "training") {
-      duration = duration / founderMods.researchSpeed;
+      duration = duration / founderMods.speed;
     }
 
     // Apply level bonus
@@ -298,8 +302,8 @@ export const startJob = mutation({
       duration = duration / levelBonus;
     }
 
-    // Apply research speed bonus from perks
-    const speedBonus = labState.researchSpeedBonus || 0;
+    // Apply speed bonus from perks/upgrades (applies to all jobs)
+    const speedBonus = labState.speedBonus || 0;
     if (speedBonus > 0) {
       duration = duration / (1 + speedBonus / 100);
     }
@@ -324,9 +328,9 @@ export const startJob = mutation({
       createdAt: Date.now(), // createdAt stays real time for audit
     });
 
-    // Deduct cost
+    // Deduct cost (with money multiplier applied)
     await ctx.db.patch(labState._id, {
-      cash: labState.cash - jobDef.moneyCost,
+      cash: labState.cash - effectiveCost,
     });
 
     // Schedule completion at real time (accounting for Time Warp)
@@ -407,17 +411,16 @@ export const completeTask = internalMutation({
     if (jobDef) {
       // New blueprint-driven job system
       const moneyMultiplier = labState.moneyMultiplier || 1.0;
-      const researchSpeedBonus = labState.researchSpeedBonus || 0;
 
       if (jobDef.rewards.money > 0) {
+        // Money multiplier increases income
         rewards.cash = Math.floor(
           jobDef.rewards.money * founderMods.moneyRewards * moneyMultiplier
         );
       }
 
       if (jobDef.rewards.rp > 0) {
-        const rpBonus = 1 + researchSpeedBonus / 100;
-        rewards.researchPoints = Math.floor(jobDef.rewards.rp * rpBonus);
+        rewards.researchPoints = jobDef.rewards.rp;
       }
 
       if (jobDef.rewards.xp > 0) {
@@ -438,7 +441,7 @@ export const completeTask = internalMutation({
 
           const version = existingModels.length + 1;
           const modelName = `${blueprint.name} v${version}`;
-          const score = calculateModelScore(blueprint, labState.researchSpeedBonus);
+          const score = calculateModelScore(blueprint, labState.speedBonus);
 
           await ctx.db.insert("trainedModels", {
             labId: task.labId,
@@ -674,7 +677,7 @@ async function startNextQueuedTask(
   duration = duration / levelBonus;
 
   if (jobDef?.category === "training") {
-    duration = duration / founderMods.researchSpeed;
+    duration = duration / founderMods.speed;
     if (freshLabState.juniorResearchers > 0) {
       duration = duration / (1 + freshLabState.juniorResearchers * 0.1);
     }

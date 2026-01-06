@@ -43,7 +43,7 @@ export const XP_PER_LEVEL: Record<number, number> = {
 // UPGRADE POINTS (UP) SYSTEM
 // -----------------------------------------------------------------------------
 
-export type UpgradeType = "queue" | "moneyMultiplier" | "researchSpeed" | "compute" | "staff"
+export type UpgradeType = "queue" | "moneyMultiplier" | "speed" | "compute" | "staff"
 
 export interface UpgradeDefinition {
   id: UpgradeType
@@ -58,7 +58,7 @@ export interface UpgradeDefinition {
 }
 
 // Total maxRanks = 19 (matches 19 UP from levels 2-20)
-// queue 3 + moneyMultiplier 5 + researchSpeed 5 + compute 3 + staff 3 = 19
+// queue 3 + moneyMultiplier 5 + speed 5 + compute 3 + staff 3 = 19
 export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
   queue: {
     id: "queue",
@@ -79,10 +79,10 @@ export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
     unit: "x",
     isMultiplier: true,
   },
-  researchSpeed: {
-    id: "researchSpeed",
-    name: "Research Speed",
-    description: "Faster research completion",
+  speed: {
+    id: "speed",
+    name: "Speed",
+    description: "Faster task completion",
     base: 0,  // Base 0%, founder bonus added separately
     perRank: 5,  // +5% per rank
     maxRank: 5,  // max +25% from upgrades
@@ -112,11 +112,11 @@ export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
 // Founder bonuses applied to base values
 export const FOUNDER_UPGRADE_BONUSES = {
   technical: {
-    researchSpeed: 25,  // +25% base research speed
+    speed: 25,  // +25% base speed
     moneyMultiplier: 0,  // No bonus
   },
   business: {
-    researchSpeed: 0,  // No bonus
+    speed: 0,  // No bonus
     moneyMultiplier: 50,  // +50% base (1.5x)
   },
 }
@@ -145,13 +145,13 @@ export const BASE_STATS = {
 
 export const FOUNDER_MODIFIERS = {
   technical: {
-    researchSpeed: 1.25, // +25%
+    speed: 1.25, // +25%
     modelScore: 1.1, // +10%
     moneyRewards: 0.8, // -20%
     hiringSpeed: 1.0,
   },
   business: {
-    researchSpeed: 0.8, // -20%
+    speed: 0.8, // -20%
     modelScore: 1.0,
     moneyRewards: 1.3, // +30%
     hiringSpeed: 1.2, // +20%

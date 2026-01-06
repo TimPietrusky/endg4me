@@ -1,4 +1,4 @@
-// Skill Tree - RP-based perks (Research Speed, Money Multiplier)
+// Skill Tree - RP-based perks (Speed, Money Multiplier)
 // NOTE: Queue, Staff, Compute have moved to UP system (lib/game-config.ts)
 // This file now only contains RP-purchasable perks
 
@@ -7,7 +7,7 @@
 // =============================================================================
 
 export type PerkType = 
-  | "research_speed"
+  | "speed"
   | "money_multiplier"
 
 export interface PerkNode {
@@ -27,19 +27,19 @@ export interface PerkNode {
 
 // Base values at start (before any upgrades)
 export const BASE_PERK_STATS = {
-  researchSpeedBonus: 0,
+  speedBonus: 0,
   moneyMultiplier: 1.0,
 }
 
 // Perk upgrade definitions
-// Research Speed and Money Multiplier remain as RP purchases
+// Speed and Money Multiplier remain as RP purchases
 export const PERK_NODES: PerkNode[] = [
-  // Research Speed - 5 tiers of +10% each (up to +50%)
-  { nodeId: "speed_1", name: "+10% Research Speed", description: "Tasks complete 10% faster", category: "perks", perkType: "research_speed", perkValue: 10, rpCost: 400, minLevel: 3, prerequisiteNodes: [], unlockType: "perk", unlockTarget: "research_speed", unlockDescription: "+10% task speed" },
-  { nodeId: "speed_2", name: "+10% Research Speed", description: "Tasks complete 20% faster", category: "perks", perkType: "research_speed", perkValue: 10, rpCost: 1500, minLevel: 6, prerequisiteNodes: ["speed_1"], unlockType: "perk", unlockTarget: "research_speed", unlockDescription: "+20% task speed" },
-  { nodeId: "speed_3", name: "+10% Research Speed", description: "Tasks complete 30% faster", category: "perks", perkType: "research_speed", perkValue: 10, rpCost: 6000, minLevel: 10, prerequisiteNodes: ["speed_2"], unlockType: "perk", unlockTarget: "research_speed", unlockDescription: "+30% task speed" },
-  { nodeId: "speed_4", name: "+10% Research Speed", description: "Tasks complete 40% faster", category: "perks", perkType: "research_speed", perkValue: 10, rpCost: 25000, minLevel: 14, prerequisiteNodes: ["speed_3"], unlockType: "perk", unlockTarget: "research_speed", unlockDescription: "+40% task speed" },
-  { nodeId: "speed_5", name: "+10% Research Speed", description: "Tasks complete 50% faster", category: "perks", perkType: "research_speed", perkValue: 10, rpCost: 100000, minLevel: 18, prerequisiteNodes: ["speed_4"], unlockType: "perk", unlockTarget: "research_speed", unlockDescription: "+50% task speed" },
+  // Speed - 5 tiers of +10% each (up to +50%)
+  { nodeId: "speed_1", name: "+10% Speed", description: "Tasks complete 10% faster", category: "perks", perkType: "speed", perkValue: 10, rpCost: 400, minLevel: 3, prerequisiteNodes: [], unlockType: "perk", unlockTarget: "speed", unlockDescription: "+10% task speed" },
+  { nodeId: "speed_2", name: "+10% Speed", description: "Tasks complete 20% faster", category: "perks", perkType: "speed", perkValue: 10, rpCost: 1500, minLevel: 6, prerequisiteNodes: ["speed_1"], unlockType: "perk", unlockTarget: "speed", unlockDescription: "+20% task speed" },
+  { nodeId: "speed_3", name: "+10% Speed", description: "Tasks complete 30% faster", category: "perks", perkType: "speed", perkValue: 10, rpCost: 6000, minLevel: 10, prerequisiteNodes: ["speed_2"], unlockType: "perk", unlockTarget: "speed", unlockDescription: "+30% task speed" },
+  { nodeId: "speed_4", name: "+10% Speed", description: "Tasks complete 40% faster", category: "perks", perkType: "speed", perkValue: 10, rpCost: 25000, minLevel: 14, prerequisiteNodes: ["speed_3"], unlockType: "perk", unlockTarget: "speed", unlockDescription: "+40% task speed" },
+  { nodeId: "speed_5", name: "+10% Speed", description: "Tasks complete 50% faster", category: "perks", perkType: "speed", perkValue: 10, rpCost: 100000, minLevel: 18, prerequisiteNodes: ["speed_4"], unlockType: "perk", unlockTarget: "speed", unlockDescription: "+50% task speed" },
 
   // Money Multiplier - 5 tiers of +10% each (up to +50%)
   { nodeId: "money_1", name: "+10% Income", description: "All cash rewards increased by 10%", category: "perks", perkType: "money_multiplier", perkValue: 0.1, rpCost: 350, minLevel: 2, prerequisiteNodes: [], unlockType: "perk", unlockTarget: "money_multiplier", unlockDescription: "1.1x cash" },
@@ -76,7 +76,7 @@ export function calculatePerkValue(
   purchasedNodeIds: Set<string>
 ): number {
   const base = {
-    research_speed: BASE_PERK_STATS.researchSpeedBonus,
+    speed: BASE_PERK_STATS.speedBonus,
     money_multiplier: BASE_PERK_STATS.moneyMultiplier,
   }[type]
 

@@ -15,14 +15,14 @@ function getRankForType(playerState: {
   queueRank?: number;
   staffRank?: number;
   computeRank?: number;
-  researchSpeedRank?: number;
+  speedRank?: number;
   moneyMultiplierRank?: number;
 }, type: UpgradeType): number {
   switch (type) {
     case "queue": return playerState.queueRank ?? 0;
     case "staff": return playerState.staffRank ?? 0;
     case "compute": return playerState.computeRank ?? 0;
-    case "researchSpeed": return playerState.researchSpeedRank ?? 0;
+    case "speed": return playerState.speedRank ?? 0;
     case "moneyMultiplier": return playerState.moneyMultiplierRank ?? 0;
   }
 }
@@ -45,14 +45,14 @@ export const getUpgradeState = query({
         queue: playerState.queueRank ?? 0,
         staff: playerState.staffRank ?? 0,
         compute: playerState.computeRank ?? 0,
-        researchSpeed: playerState.researchSpeedRank ?? 0,
+        speed: playerState.speedRank ?? 0,
         moneyMultiplier: playerState.moneyMultiplierRank ?? 0,
       },
       values: {
         queue: getUpgradeValue("queue", playerState.queueRank ?? 0),
         staff: getUpgradeValue("staff", playerState.staffRank ?? 0),
         compute: getUpgradeValue("compute", playerState.computeRank ?? 0),
-        researchSpeed: getUpgradeValue("researchSpeed", playerState.researchSpeedRank ?? 0),
+        speed: getUpgradeValue("speed", playerState.speedRank ?? 0),
         moneyMultiplier: getUpgradeValue("moneyMultiplier", playerState.moneyMultiplierRank ?? 0),
       },
     };
@@ -101,8 +101,8 @@ export const getUpgradeDetails = query({
       }
 
       // Calculate founder bonus for this upgrade type
-      const founderBonus = type === "researchSpeed" 
-        ? founderBonuses.researchSpeed 
+      const founderBonus = type === "speed" 
+        ? founderBonuses.speed 
         : type === "moneyMultiplier"
           ? founderBonuses.moneyMultiplier
           : 0;
@@ -118,7 +118,7 @@ export const getUpgradeDetails = query({
         unit: def.unit,
         currentRank,
         maxRank: def.maxRank,
-        // For researchSpeed/moneyMultiplier, add founder bonus to display values
+        // For speed/moneyMultiplier, add founder bonus to display values
         currentValue: baseValue + founderBonus,
         maxValue: maxBaseValue + founderBonus,
         nextValue: nextBaseValue !== null ? nextBaseValue + founderBonus : null,
@@ -149,7 +149,7 @@ export const purchaseUpgrade = mutation({
       v.literal("queue"),
       v.literal("staff"),
       v.literal("compute"),
-      v.literal("researchSpeed"),
+      v.literal("speed"),
       v.literal("moneyMultiplier")
     ),
   },
@@ -196,8 +196,8 @@ export const purchaseUpgrade = mutation({
       case "compute":
         updates.computeRank = nextRank;
         break;
-      case "researchSpeed":
-        updates.researchSpeedRank = nextRank;
+      case "speed":
+        updates.speedRank = nextRank;
         break;
       case "moneyMultiplier":
         updates.moneyMultiplierRank = nextRank;
