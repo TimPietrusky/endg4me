@@ -66,6 +66,7 @@ Power comes from **systems**, not clicks.
 
 - **Frontend**: Next.js 16 (App Router), React Server Components by default
 - **UI**: shadcn/ui + Base UI primitives, Tailwind CSS v4, icons: Phosphor
+- **3D**: React Three Fiber + Drei for landing page 3D scene
 - **Dashboard Font**: JetBrains Mono (terminal aesthetic)
 - **Backend / State**: Convex (reactive game state)
 - **Authentication**: WorkOS
@@ -108,7 +109,16 @@ The game dashboard is **fully implemented** with:
 - Blueprint-driven model training system
 - Research tree with Models, Revenue, Hiring, and Perks
 
-The homepage (`app/page.tsx`) is the landing page. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/leaderboard`.
+The homepage (`app/page.tsx`) is the landing page with a 3D CRT monitor hero scene. The game uses top-level routes: `/operate`, `/research`, `/lab`, `/inbox`, `/leaderboard`.
+
+### Landing Page (3D CRT Hero)
+
+The landing page features a 3D CRT monitor scene using React Three Fiber:
+- CRT model from Poly Haven (CC0, stored in `public/models/crt.glb`)
+- HTML overlay on the screen renders logo, slogan, and CTA button
+- Responsive camera presets for mobile/tablet/desktop
+- WebGL fallback to static hero when unsupported
+- Credits page at `/credits` with Poly Haven attribution
 
 ### Navigation (5 top-level views)
 
@@ -269,6 +279,8 @@ The settings panel is accessed via a gear icon in the top nav. It contains:
 ### Notable frontend libs
 
 - **@base-ui/react** — **Primary UI primitive library** (all shadcn components use this, NOT Radix)
+- **@react-three/fiber** — React renderer for Three.js (3D scenes)
+- **@react-three/drei** — Useful helpers for R3F (useGLTF, Html, etc.)
 - **class-variance-authority (CVA)** — Component variants
 - **clsx** — Conditional class composition
 - **tailwind-merge** — Intelligent Tailwind class merging
