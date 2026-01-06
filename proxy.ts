@@ -2,7 +2,10 @@ import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
 
 export default authkitMiddleware({
   // Routes that don't require authentication
-  publicPaths: ["/", "/api/health"],
+  middlewareAuth: {
+    enabled: true,
+    unauthenticatedPaths: ["/", "/credits", "/api/health"],
+  },
 });
 
 export const config = {

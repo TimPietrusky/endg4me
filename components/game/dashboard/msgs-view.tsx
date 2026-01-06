@@ -70,8 +70,10 @@ export function MsgsView({ notifications, filter, onMarkAsRead }: MsgsViewProps)
         return "Go to Research"
       case "lab":
         return "View in Lab"
-      case "world":
-        return "View in World"
+      case "leaderboard":
+        return "View Leaderboard"
+      case "inbox":
+        return "View in Inbox"
       default:
         return "View"
     }

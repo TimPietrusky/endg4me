@@ -48,7 +48,7 @@ export function TopNav({
     { id: "research", label: "research" },
     { id: "lab", label: "lab" },
     { id: "inbox", label: "inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined },
-    { id: "world", label: "world" },
+    { id: "leaderboard", label: "leaderboard" },
   ]
 
   return (

@@ -1,27 +1,117 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef, useMemo } from "react";
+import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useTexture, Html, RoundedBox } from "@react-three/drei";
 import { FallbackHero } from "./fallback-hero";
 import { Logo } from "@/components/logo";
 import * as THREE from "three";
 
-// Hook to track mouse position normalized to -1 to 1
-function useMousePosition() {
-  const mouse = useRef({ x: 0, y: 0 });
+// Extend Window interface for iOS DeviceOrientationEvent permission
+declare global {
+  interface DeviceOrientationEventiOS extends DeviceOrientationEvent {
+    requestPermission?: () => Promise<"granted" | "denied">;
+  }
+}
+
+// Hook to track input position normalized to -1 to 1
+// Uses mouse on desktop, device orientation on mobile
+function useInputPosition() {
+  const position = useRef({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+  const [orientationPermission, setOrientationPermission] = useState<"granted" | "denied" | "pending">("pending");
+  const [needsPermissionRequest, setNeedsPermissionRequest] = useState(false);
   
+  // Check if device is mobile
   useEffect(() => {
+    const checkMobile = () => {
+      const hasTouchScreen = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const hasOrientation = "DeviceOrientationEvent" in window;
+      setIsMobile(hasTouchScreen && hasOrientation);
+    };
+    checkMobile();
+  }, []);
+  
+  // Check if iOS requires permission request
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const DeviceOrientationEventIOS = DeviceOrientationEvent as unknown as DeviceOrientationEventiOS;
+    if (typeof DeviceOrientationEventIOS.requestPermission === "function") {
+      // iOS 13+ requires permission
+      setNeedsPermissionRequest(true);
+    } else {
+      // Android or older iOS - permission granted by default
+      setOrientationPermission("granted");
+    }
+  }, [isMobile]);
+  
+  // Request permission callback for iOS
+  const requestOrientationPermission = useCallback(async () => {
+    const DeviceOrientationEventIOS = DeviceOrientationEvent as unknown as DeviceOrientationEventiOS;
+    if (typeof DeviceOrientationEventIOS.requestPermission === "function") {
+      try {
+        const permission = await DeviceOrientationEventIOS.requestPermission();
+        setOrientationPermission(permission);
+        setNeedsPermissionRequest(false);
+      } catch {
+        setOrientationPermission("denied");
+      }
+    }
+  }, []);
+  
+  // Set up mouse tracking for desktop
+  useEffect(() => {
+    if (isMobile) return;
+    
     const handleMouseMove = (e: MouseEvent) => {
-      mouse.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      position.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      position.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
     };
     
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  }, [isMobile]);
   
-  return mouse;
+  // Set up device orientation for mobile
+  useEffect(() => {
+    if (!isMobile || orientationPermission !== "granted") return;
+    
+    // Store initial orientation to use as baseline
+    let baselineBeta: number | null = null;
+    let baselineGamma: number | null = null;
+    
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      if (e.beta === null || e.gamma === null) return;
+      
+      // Set baseline on first reading (device's natural position)
+      if (baselineBeta === null) baselineBeta = e.beta;
+      if (baselineGamma === null) baselineGamma = e.gamma;
+      
+      // Calculate offset from baseline
+      // beta: front-back tilt (-180 to 180) - map to y
+      // gamma: left-right tilt (-90 to 90) - map to x
+      const betaOffset = e.beta - baselineBeta;
+      const gammaOffset = e.gamma - baselineGamma;
+      
+      // Normalize to -1 to 1 range with sensitivity adjustment
+      // Clamp to prevent extreme values
+      const sensitivity = 0.03; // Lower = more subtle movement
+      position.current.x = Math.max(-1, Math.min(1, gammaOffset * sensitivity));
+      position.current.y = Math.max(-1, Math.min(1, -betaOffset * sensitivity));
+    };
+    
+    window.addEventListener("deviceorientation", handleOrientation);
+    return () => window.removeEventListener("deviceorientation", handleOrientation);
+  }, [isMobile, orientationPermission]);
+  
+  return { 
+    position, 
+    isMobile, 
+    needsPermissionRequest, 
+    requestOrientationPermission,
+    orientationPermission 
+  };
 }
 
 // Floating sci-fi screen dimensions
@@ -311,21 +401,21 @@ function GlitchScreen({
 function CyberMonitor({ 
   isLoggedIn, 
   signInUrl,
-  mouse,
+  inputPosition,
 }: { 
   isLoggedIn: boolean; 
   signInUrl: string;
-  mouse: React.MutableRefObject<{ x: number; y: number }>;
+  inputPosition: React.MutableRefObject<{ x: number; y: number }>;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const targetRotation = useRef({ x: 0, y: 0 });
   
-  // Subtle floating animation + mouse tracking
+  // Subtle floating animation + input tracking (mouse or device orientation)
   useFrame((state) => {
     if (groupRef.current) {
-      // Target rotation based on mouse position - increased for more dramatic effect
-      targetRotation.current.y = mouse.current.x * 0.3;
-      targetRotation.current.x = -mouse.current.y * 0.15;
+      // Target rotation based on input position - increased for more dramatic effect
+      targetRotation.current.y = inputPosition.current.x * 0.3;
+      targetRotation.current.x = -inputPosition.current.y * 0.15;
       
       // Smooth interpolation (lerp)
       groupRef.current.rotation.y += (targetRotation.current.y - groupRef.current.rotation.y) * 0.05;
@@ -488,9 +578,7 @@ function Particles() {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
+          args={[positions, 3]}
         />
       </bufferGeometry>
       <pointsMaterial size={0.02} color="#ffffff" transparent opacity={0.4} sizeAttenuation />
@@ -505,15 +593,15 @@ interface TerminalHeroProps {
   errorMessage?: string;
 }
 
-// Scene content component that uses mouse tracking
+// Scene content component that uses input tracking (mouse or device orientation)
 function SceneContent({ 
   isLoggedIn, 
   signInUrl,
-  mouse,
+  inputPosition,
 }: { 
   isLoggedIn: boolean; 
   signInUrl: string;
-  mouse: React.MutableRefObject<{ x: number; y: number }>;
+  inputPosition: React.MutableRefObject<{ x: number; y: number }>;
 }) {
   return (
     <>
@@ -538,7 +626,7 @@ function SceneContent({
         <CyberMonitor 
           isLoggedIn={isLoggedIn} 
           signInUrl={signInUrl}
-          mouse={mouse}
+          inputPosition={inputPosition}
         />
         <Particles />
       </Suspense>
@@ -553,7 +641,13 @@ export function TerminalHero({
   errorMessage,
 }: TerminalHeroProps) {
   const [webglSupported, setWebglSupported] = useState(true);
-  const mouse = useMousePosition();
+  const { 
+    position, 
+    isMobile, 
+    needsPermissionRequest, 
+    requestOrientationPermission,
+    orientationPermission 
+  } = useInputPosition();
 
   useEffect(() => {
     try {
@@ -577,6 +671,12 @@ export function TerminalHero({
   }
 
   const handleClick = () => {
+    // On iOS, first tap requests orientation permission
+    if (isMobile && needsPermissionRequest && orientationPermission === "pending") {
+      requestOrientationPermission();
+      return;
+    }
+    
     if (isLoggedIn) {
       window.location.href = "/operate";
     } else {
@@ -605,9 +705,20 @@ export function TerminalHero({
         <SceneContent 
           isLoggedIn={isLoggedIn} 
           signInUrl={signInUrl}
-          mouse={mouse}
+          inputPosition={position}
         />
       </Canvas>
+
+      {/* iOS permission request hint */}
+      {isMobile && needsPermissionRequest && orientationPermission === "pending" && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1001] pointer-events-none">
+          <div className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg backdrop-blur-sm">
+            <p className="text-white/80 text-sm font-mono tracking-wide">
+              TAP TO ENABLE MOTION CONTROL
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Error overlay */}
       {hasError && (

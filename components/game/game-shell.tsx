@@ -7,6 +7,7 @@ import { GameTopNav } from "./game-top-nav"
 import { TaskToastContainer } from "./task-toast"
 import { Toaster } from "@/components/ui/toaster"
 import type { ReactNode } from "react"
+import type { Id } from "@/convex/_generated/dataModel"
 
 interface GameShellProps {
   children: ReactNode
@@ -75,14 +76,14 @@ export function GameShell({ children }: GameShellProps) {
         upgradePoints={upgradePoints}
         activeTaskCount={activeTaskCount}
         maxParallelTasks={maxParallelTasks}
-        userId={userId}
+        userId={userId as Id<"users">}
       />
       
       <div className="px-6 pb-6">
         {children}
       </div>
 
-      <TaskToastContainer userId={userId} />
+      <TaskToastContainer userId={userId as Id<"users">} />
       <Toaster />
     </div>
   )

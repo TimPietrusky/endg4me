@@ -263,12 +263,8 @@ export const purchaseResearchNode = mutation({
 
     // Calculate total money multiplier from all sources
     const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
-    const playerState = await ctx.db
-      .query("playerState")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
     
-    // UP rank bonus for money multiplier
+    // UP rank bonus for money multiplier (reuse playerState from above)
     const moneyMultiplierRank = playerState?.moneyMultiplierRank ?? 0;
     const upMoneyBonus = getUpgradeValue("moneyMultiplier", moneyMultiplierRank) - 100;
     

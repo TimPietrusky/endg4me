@@ -158,12 +158,11 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   const xpRequired = playerState ? getXpForNextLevel(playerState.level) : 100
   
   // Extract tasks and effectiveNow from the query result (supports Time Warp)
-  const taskData = activeTasks as { tasks: typeof activeTasks; effectiveNow: number } | undefined
-  const allActiveTasks = taskData?.tasks || []
-  const effectiveNow = taskData?.effectiveNow || Date.now()
+  const allActiveTasks = activeTasks?.tasks || []
+  const effectiveNow = activeTasks?.effectiveNow || Date.now()
   
-  const inProgressTasks = allActiveTasks.filter((t) => t.status === "in_progress") || []
-  const queuedTasks = allActiveTasks.filter((t) => t.status === "queued") || []
+  const inProgressTasks = allActiveTasks.filter((t) => t.status === "in_progress")
+  const queuedTasks = allActiveTasks.filter((t) => t.status === "queued")
   
   // Compute values from UP-based ranks (playerState)
   const queueCapacity = playerState ? getUpgradeValue("queue", playerState.queueRank ?? 0) : 1

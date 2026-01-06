@@ -321,7 +321,7 @@ export const startJob = mutation({
 
     // Calculate duration with modifiers
     // NOTE: Hire jobs have fixed duration - speed bonuses don't affect contract length
-    const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
+    // (reuse founderBonuses from money multiplier calculation above)
     let duration = jobDef.durationMs;
 
     if (jobDef.category !== "hire") {
