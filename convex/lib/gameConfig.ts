@@ -40,6 +40,12 @@ export const XP_PER_LEVEL: Record<number, number> = {
 }
 
 // -----------------------------------------------------------------------------
+// FOUNDER TYPE
+// -----------------------------------------------------------------------------
+
+export type FounderType = "technical" | "business"
+
+// -----------------------------------------------------------------------------
 // UPGRADE POINTS (UP) SYSTEM
 // -----------------------------------------------------------------------------
 
@@ -109,15 +115,16 @@ export const LAB_UPGRADES: Record<UpgradeType, UpgradeDefinition> = {
   },
 }
 
-// Founder bonuses applied to base values
-export const FOUNDER_UPGRADE_BONUSES = {
+// Founder bonuses - permanent bonuses based on founder type
+// These add to lab stats (speed as %, moneyMultiplier as % points)
+// Technical founder: faster operations
+// Business founder: better money returns
+export const FOUNDER_BONUSES: Record<FounderType, Partial<Record<UpgradeType, number>>> = {
   technical: {
-    speed: 25,  // +25% base speed
-    moneyMultiplier: 0,  // No bonus
+    speed: 25,  // +25% speed bonus
   },
   business: {
-    speed: 0,  // No bonus
-    moneyMultiplier: 50,  // +50% base (1.5x)
+    moneyMultiplier: 50,  // +50% (adds to base 100%, so 1.5x total)
   },
 }
 
@@ -138,27 +145,6 @@ export const BASE_STATS = {
   cash: 1000,
   researchPoints: 0,
 }
-
-// -----------------------------------------------------------------------------
-// FOUNDER MODIFIERS
-// -----------------------------------------------------------------------------
-
-export const FOUNDER_MODIFIERS = {
-  technical: {
-    speed: 1.25, // +25%
-    modelScore: 1.1, // +10%
-    moneyRewards: 0.8, // -20%
-    hiringSpeed: 1.0,
-  },
-  business: {
-    speed: 0.8, // -20%
-    modelScore: 1.0,
-    moneyRewards: 1.3, // +30%
-    hiringSpeed: 1.2, // +20%
-  },
-} as const
-
-export type FounderType = keyof typeof FOUNDER_MODIFIERS
 
 // -----------------------------------------------------------------------------
 // HELPER FUNCTIONS

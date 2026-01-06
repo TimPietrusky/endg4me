@@ -11,7 +11,7 @@ import {
   type JobDefinition,
 } from "./lib/contentCatalog";
 import {
-  FOUNDER_MODIFIERS,
+  FOUNDER_BONUSES,
   MAX_LEVEL,
   UP_PER_LEVEL,
   getUpgradeValue,
@@ -223,9 +223,42 @@ export const startJob = mutation({
       throw new Error(availability.reason || "Job not available");
     }
 
-    // Calculate effective cost with money multiplier (higher multiplier = lower cost)
-    const moneyMultiplier = labState.moneyMultiplier || 1.0;
-    const effectiveCost = Math.floor(jobDef.moneyCost / moneyMultiplier);
+    // Calculate total money multiplier from all sources
+    // Base: 100%, Founder bonus (business: +50%), UP ranks, RP perks, active hires
+    const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
+    const playerStateForMoney = await ctx.db
+      .query("playerState")
+      .withIndex("by_user", (q) => q.eq("userId", lab.userId))
+      .first();
+    
+    // Get UP rank bonus for money multiplier
+    const moneyMultiplierRank = playerStateForMoney?.moneyMultiplierRank ?? 0;
+    const upMoneyBonus = getUpgradeValue("moneyMultiplier", moneyMultiplierRank) - 100; // subtract base
+    
+    // Get active hire bonuses for money multiplier
+    const activeTasksForHires = await ctx.db
+      .query("tasks")
+      .withIndex("by_lab_status", (q) =>
+        q.eq("labId", args.labId).eq("status", "in_progress")
+      )
+      .collect();
+    
+    let hireMoneyBonus = 0;
+    for (const task of activeTasksForHires) {
+      const hireJobDef = getJobById(task.type);
+      if (hireJobDef?.category === "hire" && hireJobDef.output.hireStat === "moneyMultiplier") {
+        hireMoneyBonus += hireJobDef.output.hireBonus ?? 0;
+      }
+    }
+    
+    // Total multiplier: base 100% + founder + UP + RP perks + hires
+    const baseMultiplier = 100;
+    const founderMoneyBonus = founderBonuses.moneyMultiplier ?? 0;
+    const rpMoneyBonus = (labState.moneyMultiplier ?? 1.0) > 1 ? ((labState.moneyMultiplier ?? 1.0) - 1) * 100 : 0;
+    const totalMoneyMultiplier = (baseMultiplier + founderMoneyBonus + upMoneyBonus + rpMoneyBonus + hireMoneyBonus) / 100;
+    
+    // Calculate effective cost (higher multiplier = lower cost)
+    const effectiveCost = Math.floor(jobDef.moneyCost / totalMoneyMultiplier);
 
     // Check cost
     if (labState.cash < effectiveCost) {
@@ -287,31 +320,35 @@ export const startJob = mutation({
     }
 
     // Calculate duration with modifiers
-    const founderMods = FOUNDER_MODIFIERS[lab.founderType as FounderType];
+    // NOTE: Hire jobs have fixed duration - speed bonuses don't affect contract length
+    const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
     let duration = jobDef.durationMs;
 
-    // Apply speed modifier for training
-    if (jobDef.category === "training") {
-      duration = duration / founderMods.speed;
-    }
+    if (jobDef.category !== "hire") {
+      // Apply founder speed bonus (if any)
+      const founderSpeedBonus = founderBonuses.speed ?? 0;
+      if (founderSpeedBonus > 0) {
+        duration = duration / (1 + founderSpeedBonus / 100);
+      }
 
-    // Apply level bonus
-    if (playerState) {
-      const levelBonus =
-        1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
-      duration = duration / levelBonus;
-    }
+      // Apply level bonus
+      if (playerState) {
+        const levelBonus =
+          1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
+        duration = duration / levelBonus;
+      }
 
-    // Apply speed bonus from perks/upgrades (applies to all jobs)
-    const speedBonus = labState.speedBonus || 0;
-    if (speedBonus > 0) {
-      duration = duration / (1 + speedBonus / 100);
-    }
+      // Apply speed bonus from perks/upgrades
+      const speedBonus = labState.speedBonus || 0;
+      if (speedBonus > 0) {
+        duration = duration / (1 + speedBonus / 100);
+      }
 
-    // Apply staff bonus for training
-    if (jobDef.category === "training" && labState.juniorResearchers > 0) {
-      const staffBonus = 1 + labState.juniorResearchers * 0.1;
-      duration = duration / staffBonus;
+      // Apply staff bonus for training
+      if (jobDef.category === "training" && labState.juniorResearchers > 0) {
+        const staffBonus = 1 + labState.juniorResearchers * 0.1;
+        duration = duration / staffBonus;
+      }
     }
 
     // Use effective time for Time Warp support
@@ -399,7 +436,7 @@ export const completeTask = internalMutation({
 
     // Get job definition (supports both new and legacy task types)
     const jobDef = getJobById(task.type);
-    const founderMods = FOUNDER_MODIFIERS[lab.founderType as FounderType];
+    const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
 
     // Calculate rewards
     const rewards: {
@@ -409,14 +446,35 @@ export const completeTask = internalMutation({
     } = {};
 
     if (jobDef) {
-      // New blueprint-driven job system
-      const moneyMultiplier = labState.moneyMultiplier || 1.0;
+      // Calculate total money multiplier from all sources (same as in startJob)
+      const moneyMultiplierRank = playerState?.moneyMultiplierRank ?? 0;
+      const upMoneyBonus = getUpgradeValue("moneyMultiplier", moneyMultiplierRank) - 100;
+      
+      // Get active hire bonuses for money multiplier
+      const activeTasksForHires = await ctx.db
+        .query("tasks")
+        .withIndex("by_lab_status", (q) =>
+          q.eq("labId", task.labId).eq("status", "in_progress")
+        )
+        .collect();
+      
+      let hireMoneyBonus = 0;
+      for (const hireTask of activeTasksForHires) {
+        const hireJobDef = getJobById(hireTask.type);
+        if (hireJobDef?.category === "hire" && hireJobDef.output.hireStat === "moneyMultiplier") {
+          hireMoneyBonus += hireJobDef.output.hireBonus ?? 0;
+        }
+      }
+      
+      // Total: base 100% + founder + UP + RP perks + hires
+      const baseMultiplier = 100;
+      const founderMoneyBonus = founderBonuses.moneyMultiplier ?? 0;
+      const rpMoneyBonus = (labState.moneyMultiplier ?? 1.0) > 1 ? ((labState.moneyMultiplier ?? 1.0) - 1) * 100 : 0;
+      const totalMoneyMultiplier = (baseMultiplier + founderMoneyBonus + upMoneyBonus + rpMoneyBonus + hireMoneyBonus) / 100;
 
       if (jobDef.rewards.money > 0) {
         // Money multiplier increases income
-        rewards.cash = Math.floor(
-          jobDef.rewards.money * founderMods.moneyRewards * moneyMultiplier
-        );
+        rewards.cash = Math.floor(jobDef.rewards.money * totalMoneyMultiplier);
       }
 
       if (jobDef.rewards.rp > 0) {
@@ -628,7 +686,7 @@ export const completeTask = internalMutation({
     await syncLeaderboardForLab(ctx, task.labId);
 
     // Start next queued task if any
-    await startNextQueuedTask(ctx, task.labId, lab.userId, playerState, founderMods);
+    await startNextQueuedTask(ctx, task.labId, lab.userId, playerState, founderBonuses);
   },
 });
 
@@ -638,7 +696,7 @@ async function startNextQueuedTask(
   labId: any,
   userId: any,
   playerState: any,
-  founderMods: any
+  founderBonuses: Partial<Record<import("./lib/gameConfig").UpgradeType, number>>
 ) {
   const nextQueued = await ctx.db
     .query("tasks")
@@ -672,13 +730,20 @@ async function startNextQueuedTask(
   const jobDef = getJobById(nextQueued.type);
   let duration = jobDef?.durationMs || 5 * 60 * 1000;
 
-  const levelBonus =
-    1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
-  duration = duration / levelBonus;
+  // Hire jobs have fixed duration - speed bonuses don't affect contract length
+  if (jobDef?.category !== "hire") {
+    const levelBonus =
+      1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
+    duration = duration / levelBonus;
 
-  if (jobDef?.category === "training") {
-    duration = duration / founderMods.speed;
-    if (freshLabState.juniorResearchers > 0) {
+    // Apply founder speed bonus
+    const founderSpeedBonus = founderBonuses.speed ?? 0;
+    if (founderSpeedBonus > 0) {
+      duration = duration / (1 + founderSpeedBonus / 100);
+    }
+
+    // Apply staff bonus for training
+    if (jobDef?.category === "training" && freshLabState.juniorResearchers > 0) {
       duration = duration / (1 + freshLabState.juniorResearchers * 0.1);
     }
   }

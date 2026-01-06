@@ -5,12 +5,11 @@ import {
   ChartLineUp, 
   Users, 
   Clock,
-  Briefcase,
   CurrencyDollar,
-  UserPlus
+  Flask
 } from "@phosphor-icons/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { FOUNDER_MODIFIERS } from "@/convex/lib/gameConfig"
+import { FOUNDER_BONUSES } from "@/convex/lib/gameConfig"
 
 interface TeamViewProps {
   founderName: string
@@ -23,14 +22,12 @@ export function TeamView({
   founderType, 
   juniorResearchers,
 }: TeamViewProps) {
-  const modifiers = FOUNDER_MODIFIERS[founderType]
+  const founderBonus = FOUNDER_BONUSES[founderType]
 
-  // Format modifier as percentage string
-  const formatModifier = (value: number) => {
-    if (value === 1) return "base"
-    const percent = Math.round((value - 1) * 100)
-    return percent > 0 ? `+${percent}%` : `${percent}%`
-  }
+  // Get the primary bonus for this founder type
+  const primaryBonus = founderType === "technical" 
+    ? { label: "Speed", value: founderBonus.speed ?? 0, icon: Clock, color: "text-cyan-400" }
+    : { label: "Money Multiplier", value: founderBonus.moneyMultiplier ?? 0, icon: CurrencyDollar, color: "text-emerald-400" }
 
   return (
     <div className="space-y-6 mt-4">
@@ -74,38 +71,17 @@ export function TeamView({
             </div>
           </CardHeader>
           <CardContent>
-            {/* Abilities */}
+            {/* Founder Bonus */}
             <div className="mt-2">
-              <p className="text-xs text-muted-foreground mb-2">Abilities</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center gap-2 text-sm p-2 bg-white/5 rounded">
-                  <Clock className="w-4 h-4 text-cyan-400" />
-                  <span>Speed</span>
-                  <span className={`ml-auto font-bold ${modifiers.speed > 1 ? "text-green-400" : modifiers.speed < 1 ? "text-red-400" : "text-muted-foreground"}`}>
-                    {formatModifier(modifiers.speed)}
-                  </span>
+              <p className="text-xs text-muted-foreground mb-2">Lab Bonus</p>
+              <div className="flex items-center gap-3 p-3 bg-white/5 rounded border border-white/10">
+                <primaryBonus.icon className={`w-6 h-6 ${primaryBonus.color}`} weight="duotone" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium">{primaryBonus.label}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm p-2 bg-white/5 rounded">
-                  <Briefcase className="w-4 h-4 text-purple-400" />
-                  <span>Model Score</span>
-                  <span className={`ml-auto font-bold ${modifiers.modelScore > 1 ? "text-green-400" : modifiers.modelScore < 1 ? "text-red-400" : "text-muted-foreground"}`}>
-                    {formatModifier(modifiers.modelScore)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm p-2 bg-white/5 rounded">
-                  <CurrencyDollar className="w-4 h-4 text-green-400" />
-                  <span>Money Rewards</span>
-                  <span className={`ml-auto font-bold ${modifiers.moneyRewards > 1 ? "text-green-400" : modifiers.moneyRewards < 1 ? "text-red-400" : "text-muted-foreground"}`}>
-                    {formatModifier(modifiers.moneyRewards)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm p-2 bg-white/5 rounded">
-                  <UserPlus className="w-4 h-4 text-yellow-400" />
-                  <span>Hiring Speed</span>
-                  <span className={`ml-auto font-bold ${modifiers.hiringSpeed > 1 ? "text-green-400" : modifiers.hiringSpeed < 1 ? "text-red-400" : "text-muted-foreground"}`}>
-                    {formatModifier(modifiers.hiringSpeed)}
-                  </span>
-                </div>
+                <span className={`text-lg font-bold ${primaryBonus.color}`}>
+                  +{primaryBonus.value}%
+                </span>
               </div>
             </div>
 
@@ -114,15 +90,17 @@ export function TeamView({
               <p className="text-xs text-muted-foreground mb-2">What this affects</p>
               {founderType === "technical" ? (
                 <ul className="text-xs space-y-1 text-white/70">
-                  <li>+ Faster research and training jobs</li>
-                  <li>+ Higher quality trained models</li>
-                  <li>- Lower cash rewards from contracts</li>
+                  <li className="flex items-center gap-2">
+                    <Flask className="w-3 h-3 text-cyan-400" />
+                    All jobs complete 25% faster
+                  </li>
                 </ul>
               ) : (
                 <ul className="text-xs space-y-1 text-white/70">
-                  <li>+ Higher cash rewards from contracts</li>
-                  <li>+ Faster hiring process</li>
-                  <li>- Slower research progress</li>
+                  <li className="flex items-center gap-2">
+                    <CurrencyDollar className="w-3 h-3 text-emerald-400" />
+                    All money rewards increased by 50%
+                  </li>
                 </ul>
               )}
             </div>
@@ -133,7 +111,7 @@ export function TeamView({
       {/* Contracts / Hires Section */}
       <div>
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">
-          Contracts / Hires
+          Active Hires
         </h3>
 
         {juniorResearchers > 0 ? (
@@ -148,13 +126,13 @@ export function TeamView({
                       </div>
                       <div>
                         <p className="font-medium text-sm">Junior Researcher #{i + 1}</p>
-                        <p className="text-xs text-muted-foreground">Permanent hire</p>
+                        <p className="text-xs text-muted-foreground">Temporary hire</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
                         <p className="text-xs text-muted-foreground">Effect</p>
-                        <p className="text-sm font-bold text-green-400">+1 parallel task</p>
+                        <p className="text-sm font-bold text-green-400">+1 Queue</p>
                       </div>
                       <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded">
                         ACTIVE
@@ -168,9 +146,9 @@ export function TeamView({
         ) : (
           <div className="text-center py-8 border border-dashed border-white/20 rounded-lg">
             <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" />
-            <p className="text-sm text-muted-foreground">No active contracts</p>
+            <p className="text-sm text-muted-foreground">No active hires</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Hire staff in Operate to expand your team
+              Hire staff in Operate to get temporary bonuses
             </p>
           </div>
         )}
@@ -193,4 +171,3 @@ export function TeamView({
     </div>
   )
 }
-

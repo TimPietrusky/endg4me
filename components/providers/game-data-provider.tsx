@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id, Doc } from "@/convex/_generated/dataModel"
 import { getJobById, JOB_DEFS } from "@/convex/lib/contentCatalog"
-import { getUpgradeValue, getXpForNextLevel } from "@/convex/lib/gameConfig"
+import { getUpgradeValue, getXpForNextLevel, FOUNDER_BONUSES, type FounderType } from "@/convex/lib/gameConfig"
 import { useToast } from "@/hooks/use-toast"
 import type { Action, Notification } from "@/lib/game-types"
 
@@ -205,21 +205,85 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
     return 1
   }
 
-  // Helper to check job disabled status
+  // Calculate total bonuses from all sources (founder, UP ranks, active hires)
+  // NOTE: This must be before getJobDisabledInfo so it can use the adjusted costs
+  const founderType = lab?.founderType as FounderType | undefined
+  const founderBonuses = founderType ? FOUNDER_BONUSES[founderType] : {}
+  
+  // Speed bonus: founder + UP ranks + RP perks + active hires
+  const founderSpeedBonus = founderBonuses.speed ?? 0
+  const upSpeedBonus = playerState ? getUpgradeValue("speed", playerState.speedRank ?? 0) : 0
+  const rpSpeedBonus = labState?.speedBonus ?? 0
+  
+  // Money multiplier: base 100% + founder + UP ranks + RP perks + active hires
+  // NOTE: labState.moneyMultiplier is stored as a multiplier (1.0, 1.1, etc.), not percentage
+  const baseMoneyMultiplier = 100
+  const founderMoneyBonus = founderBonuses.moneyMultiplier ?? 0
+  const upMoneyBonus = playerState ? getUpgradeValue("moneyMultiplier", playerState.moneyMultiplierRank ?? 0) - 100 : 0 // subtract base since we add it
+  const rpMoneyBonus = labState?.moneyMultiplier && labState.moneyMultiplier > 1 
+    ? (labState.moneyMultiplier - 1) * 100 // Convert 1.1 to 10%
+    : 0
+  
+  // Calculate active hire bonuses from in-progress hire tasks
+  let hireSpeedBonus = 0
+  let hireMoneyBonus = 0
+  for (const task of inProgressTasks) {
+    const jobDef = getJobById(task.type)
+    if (jobDef?.category === "hire" && jobDef.output) {
+      const output = jobDef.output as { hireStat?: string; hireBonus?: number }
+      if (output.hireStat === "speed") {
+        hireSpeedBonus += output.hireBonus ?? 0
+      } else if (output.hireStat === "moneyMultiplier") {
+        hireMoneyBonus += output.hireBonus ?? 0
+      }
+    }
+  }
+  
+  // Total bonuses
+  const totalSpeedBonus = founderSpeedBonus + upSpeedBonus + rpSpeedBonus + hireSpeedBonus
+  const totalMoneyMultiplier = baseMoneyMultiplier + founderMoneyBonus + upMoneyBonus + rpMoneyBonus + hireMoneyBonus
+  
+  // Helper to adjust duration based on speed bonus (hire jobs are NOT affected)
+  function getAdjustedDuration(jobDef: { durationMs: number; category: string }): number {
+    if (jobDef.category === "hire") {
+      // Hire jobs have fixed duration
+      return Math.floor(jobDef.durationMs / 1000)
+    }
+    // Apply speed bonus: duration / (1 + bonus/100)
+    const adjustedMs = jobDef.durationMs / (1 + totalSpeedBonus / 100)
+    return Math.floor(adjustedMs / 1000)
+  }
+  
+  // Helper to adjust money reward based on multiplier (income goes UP)
+  function getAdjustedCashReward(baseReward: number): number {
+    if (baseReward <= 0) return 0
+    return Math.floor(baseReward * (totalMoneyMultiplier / 100))
+  }
+  
+  // Helper to adjust money cost based on multiplier (costs go DOWN)
+  function getAdjustedCost(baseCost: number): number {
+    if (baseCost <= 0) return 0
+    return Math.floor(baseCost / (totalMoneyMultiplier / 100))
+  }
+
+  // Helper to check job disabled status (uses adjusted costs)
   function getJobDisabledInfo(jobId: string) {
     const jobDef = getJobById(jobId)
     if (!jobDef || !labState) {
       return { disabled: true, reason: "loading" }
     }
 
+    // Calculate adjusted cost
+    const adjustedCost = getAdjustedCost(jobDef.moneyCost)
+
     // Check all conditions and collect all shortfalls
     let fundsShortfall = 0
     let gpuShortfall = 0
     const reasons: string[] = []
 
-    // Check funds
-    if (labState.cash < jobDef.moneyCost) {
-      fundsShortfall = jobDef.moneyCost - labState.cash
+    // Check funds (using adjusted cost)
+    if (labState.cash < adjustedCost) {
+      fundsShortfall = adjustedCost - labState.cash
       reasons.push("not enough funds")
     }
 
@@ -289,18 +353,23 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
       const blueprintId = jobDef.output.trainsBlueprintId
       const history = blueprintId && trainingHistory ? trainingHistory[blueprintId] : undefined
 
+      // Calculate adjusted values based on current bonuses
+      const adjustedDuration = getAdjustedDuration(jobDef)
+      const adjustedCashReward = getAdjustedCashReward(jobDef.rewards.money || 0)
+      const adjustedCost = getAdjustedCost(jobDef.moneyCost)
+
       return {
         id: job.jobId,
         category,
         name: displayName,
         description: jobDef.description,
         size,
-        cost: jobDef.moneyCost,
+        cost: adjustedCost,
         gpuCost: jobDef.computeRequiredCU,
-        duration: Math.floor(jobDef.durationMs / 1000),
+        duration: adjustedDuration,
         rpReward: jobDef.rewards.rp || undefined,
         xpReward: jobDef.rewards.xp || undefined,
-        cashReward: jobDef.rewards.money || undefined,
+        cashReward: adjustedCashReward || undefined,
         disabled: disabledInfo.disabled,
         disabledReason: disabledInfo.reason,
         fundsShortfall: disabledInfo.fundsShortfall || 0,

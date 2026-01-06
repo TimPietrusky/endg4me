@@ -219,11 +219,12 @@ All jobs are defined in `convex/lib/contentCatalog.ts`:
 - `job_income_basic_website` (level 1, $200 + 30 XP)
 - `job_income_api_integration` (level 3, $400 + 50 XP)
 
-**Hire Jobs**: Temporary boosts, cost money
-- `job_hire_junior_researcher` (level 2, +1 queue, 8 min)
-- `job_hire_efficiency_expert` (level 4, +25% XP, 12 min)
-- `job_hire_business_partner` (level 6, +30% money, 15 min)
-- `job_hire_senior_engineer` (level 10, +1 compute, 20 min)
+**Hire Jobs**: Temporary boosts to lab stats, cost money
+- `job_hire_junior_researcher` (level 2, +1 queue, 8 min, $300)
+- `job_hire_optimization_specialist` (level 3, +15% speed, 10 min, $1000)
+- `job_hire_hr_manager` (level 5, +1 staff, 15 min, $500)
+- `job_hire_business_partner` (level 6, +25% money multiplier, 15 min, $900)
+- `job_hire_senior_engineer` (level 10, +1 compute, 20 min, $1500)
 
 **Research Job**: Always available RP trickle
 - `job_research_literature`
@@ -430,9 +431,27 @@ node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-back
 
 ---
 
-_Last updated: 2026-01-06 (Model Versioning UI)_
+_Last updated: 2026-01-06 (Lab Stats Architecture)_
 
 ---
+
+## Architecture Decisions (012 Lab Stats & Founder Simplification)
+
+- **5 Lab Stats**: Queue, Compute, Speed, Money Multiplier, Staff - single source of truth
+- **Multiple sources feed into stats**: UP ranks (permanent), Founder (permanent), Hires (temporary)
+- **Founder simplification**: Technical = +25% Speed only, Business = +50% Money Multiplier only
+- **Removed founder abilities**: modelScore, moneyRewards, hiringSpeed (dead code)
+- **FOUNDER_BONUSES config**: Single config mapping founder type to lab stat bonuses
+- **Hires reworked**: 5 hires, one per lab stat:
+  - Junior Researcher (+1 Queue)
+  - Optimization Specialist (+15% Speed)
+  - HR Manager (+1 Staff)
+  - Business Partner (+25% Money Multiplier)
+  - Senior Engineer (+1 Compute)
+- **Removed**: Efficiency Expert (XP boost doesn't map to lab stats)
+- **Upgrades view breakdown**: Shows total + sources (UP rank, Founder, Hires)
+- **getUpgradeDetails query**: Returns breakdown per source for UI display
+- **getActiveHires query**: Returns active hire jobs with stat contributions
 
 ## Architecture Decisions (011 Model Versioning UI)
 
@@ -449,12 +468,11 @@ _Last updated: 2026-01-06 (Model Versioning UI)_
 
 - **Speed renamed from Research Speed**: Generic speed bonus that applies to ALL timed operations (training, operate jobs, research)
 - **Speed upgrades**: Purchased with UP in Lab > Upgrades (5 ranks, +5% per rank)
-- **Speed perks**: Purchased with RP in Research > Perks (Speed I = +10%)
-- **Founder speed bonus**: Technical founder gets +25% speed, Business founder gets -20%
+- **Founder speed bonus**: Technical founder gets +25% speed (Business gets none)
 - **Money Multiplier expanded scope**: Now affects both costs and rewards
-  - **Reduces costs**: Job money costs and research RP costs are divided by multiplier
+  - **Reduces costs**: Job money costs are divided by multiplier
   - **Increases income**: Money rewards are multiplied by multiplier
-- **Example at 1.5x multiplier**: A $300 job costs $200, a 150 RP research costs 100 RP, a $200 reward becomes $300
+- **Founder money bonus**: Business founder gets +50% money multiplier (Technical gets none)
 - **DB fields renamed**: `researchSpeedBonus` -> `speedBonus`, `researchSpeedRank` -> `speedRank`
 - **Icon change**: Speed now uses Clock icon (was Lightning)
 
@@ -486,7 +504,7 @@ _Last updated: 2026-01-06 (Model Versioning UI)_
 
 - **Research categories consolidated**: Models, Revenue, Hiring, Perks (merged Monetization + Income into Revenue)
 - **Hiring system**: Research unlocks hire types, Operate lets you hire for temporary boosts
-- **Hire types**: Junior Researcher (+1 queue), Efficiency Expert (+25% XP), Business Partner (+30% money), Senior Engineer (+1 compute)
+- **Hire types**: Each hire boosts one lab stat (see 012 for current list)
 - **Hire mechanic**: Jobs with duration, cost money, no cooldown - can re-hire immediately after expiry
 - **Starting cash reduced**: $1,000 (was $5,000) for tighter early-game economy
 - **3B TTS rebalanced**: 2 min duration (was 5), 50 XP (was 80), 125 RP (was 120)

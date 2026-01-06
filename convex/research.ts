@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { RESEARCH_NODES, getResearchNodeById, INBOX_EVENTS } from "./lib/contentCatalog";
+import { RESEARCH_NODES, getResearchNodeById, INBOX_EVENTS, getJobById } from "./lib/contentCatalog";
+import { FOUNDER_BONUSES, getUpgradeValue, type FounderType } from "./lib/gameConfig";
 import { internal } from "./_generated/api";
 import { getEffectiveNow, getRealTimeForEffective } from "./dev";
 
@@ -260,9 +261,41 @@ export const purchaseResearchNode = mutation({
       throw new Error("Lab state not found");
     }
 
-    // Calculate effective RP cost with money multiplier (higher multiplier = lower cost)
-    const moneyMultiplier = labState.moneyMultiplier || 1.0;
-    const effectiveRPCost = Math.floor(node.costRP / moneyMultiplier);
+    // Calculate total money multiplier from all sources
+    const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
+    const playerState = await ctx.db
+      .query("playerState")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    
+    // UP rank bonus for money multiplier
+    const moneyMultiplierRank = playerState?.moneyMultiplierRank ?? 0;
+    const upMoneyBonus = getUpgradeValue("moneyMultiplier", moneyMultiplierRank) - 100;
+    
+    // Active hire bonuses for money multiplier
+    const activeTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_lab_status", (q) =>
+        q.eq("labId", lab._id).eq("status", "in_progress")
+      )
+      .collect();
+    
+    let hireMoneyBonus = 0;
+    for (const task of activeTasks) {
+      const hireJobDef = getJobById(task.type);
+      if (hireJobDef?.category === "hire" && hireJobDef.output.hireStat === "moneyMultiplier") {
+        hireMoneyBonus += hireJobDef.output.hireBonus ?? 0;
+      }
+    }
+    
+    // Total: base 100% + founder + UP + RP perks + hires
+    const baseMultiplier = 100;
+    const founderMoneyBonus = founderBonuses.moneyMultiplier ?? 0;
+    const rpMoneyBonus = (labState.moneyMultiplier ?? 1.0) > 1 ? ((labState.moneyMultiplier ?? 1.0) - 1) * 100 : 0;
+    const totalMoneyMultiplier = (baseMultiplier + founderMoneyBonus + upMoneyBonus + rpMoneyBonus + hireMoneyBonus) / 100;
+    
+    // Calculate effective RP cost (higher multiplier = lower cost)
+    const effectiveRPCost = Math.floor(node.costRP / totalMoneyMultiplier);
 
     if (labState.researchPoints < effectiveRPCost) {
       throw new Error("Not enough Research Points");

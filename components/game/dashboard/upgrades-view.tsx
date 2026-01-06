@@ -4,49 +4,124 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useGameData } from "@/components/providers/game-data-provider"
 import { Card, CardContent } from "@/components/ui/card"
-import { Cpu, Users, ListChecks, CaretDoubleUp, Clock, CurrencyDollar } from "@phosphor-icons/react"
+import { Cpu, Users, ListChecks, CaretDoubleUp, Clock, CurrencyDollar, User } from "@phosphor-icons/react"
 import { useToast } from "@/hooks/use-toast"
 import type { Id } from "@/convex/_generated/dataModel"
 import { SpendButton } from "./spend-button"
 import { cn } from "@/lib/utils"
+import { LAB_UPGRADES } from "@/convex/lib/gameConfig"
 
 type UpgradeType = "queue" | "staff" | "compute" | "speed" | "moneyMultiplier"
 
-// Visual squares component - shrinks to fit
-function CapacitySquares({ 
-  current, 
-  max, 
+// UP upgrade squares - what you can purchase with UP
+function UpgradeSquares({ 
+  upgradeType,
+  currentRank,
+  maxRank,
   accentClass,
-  maxLabel
 }: { 
-  current: number
-  max: number
+  upgradeType: UpgradeType
+  currentRank: number
+  maxRank: number
   accentClass: string
-  maxLabel?: string
 }) {
-  // Use smaller squares for more items
-  const size = max > 5 ? "w-4 h-4" : "w-5 h-5"
-  const gapClass = max > 5 ? "gap-1" : "gap-1.5"
+  const def = LAB_UPGRADES[upgradeType]
+  const isCapacity = !def.isPercent && !def.isMultiplier
+  
+  // For capacity stats, show actual values (base + ranks)
+  // For percent/multiplier, show ranks only
+  const totalSquares = isCapacity ? def.base + maxRank : maxRank
+  const filledSquares = isCapacity ? def.base + currentRank : currentRank
+  
+  const size = "w-5 h-5"
   
   return (
-    <div className={cn("flex items-center", gapClass)}>
-      {Array.from({ length: max }).map((_, i) => (
+    <div className="flex items-center gap-1.5 justify-center">
+      {Array.from({ length: totalSquares }).map((_, i) => (
         <div
-          key={i}
+          key={`up-${i}`}
           className={cn(
             size,
             "rounded-sm border transition-all",
-            i < current
+            i < filledSquares
               ? cn(accentClass, "border-transparent")
               : "bg-white/5 border-white/20"
           )}
         />
       ))}
-      {maxLabel && (
-        <span className="text-xs text-white/40 font-mono">
-          {maxLabel}
-        </span>
+    </div>
+  )
+}
+
+// Bonus squares row - founder and hire bonuses with values
+function BonusRow({
+  founderBonus,
+  hireBonus,
+  isPercent,
+  isMultiplier,
+  accentBg,
+  accentText,
+}: {
+  founderBonus: number
+  hireBonus: number
+  isPercent?: boolean
+  isMultiplier?: boolean
+  accentBg: string
+  accentText: string
+}) {
+  const formatBonus = (val: number) => {
+    if (isMultiplier) return val > 0 ? `+${(val / 100).toFixed(1)}x` : "0x"
+    if (isPercent) return val > 0 ? `+${val}%` : "0%"
+    return val > 0 ? `+${val}` : "0"
+  }
+
+  const size = "w-5 h-5"
+  const hasFounder = founderBonus > 0
+  const hasHire = hireBonus > 0
+
+  return (
+    <div className="flex items-center justify-center gap-6 min-h-[44px]">
+      {/* Founder bonus - only show if this stat has a founder bonus */}
+      {hasFounder && (
+        <div className="flex flex-col items-center gap-1">
+          <div
+            className={cn(
+              size,
+              "rounded-sm border border-transparent flex items-center justify-center",
+              accentBg
+            )}
+          >
+            <span className="text-[10px] font-black text-white leading-none">F</span>
+          </div>
+          <span className={cn("text-xs font-mono font-medium", accentText)}>
+            {formatBonus(founderBonus)}
+          </span>
+        </div>
       )}
+      
+      {/* Hire bonus - always show, muted when 0 */}
+      <div className="flex flex-col items-center gap-1">
+        <div
+          className={cn(
+            size,
+            "rounded-sm border flex items-center justify-center transition-all",
+            hasHire
+              ? cn(accentBg, "border-transparent")
+              : "bg-transparent border-white/20"
+          )}
+        >
+          <User 
+            className={cn("w-3 h-3", hasHire ? "text-white" : "text-white/20")} 
+            weight="bold" 
+          />
+        </div>
+        <span className={cn(
+          "text-xs font-mono font-medium",
+          hasHire ? accentText : "text-white/20"
+        )}>
+          {formatBonus(hireBonus)}
+        </span>
+      </div>
     </div>
   )
 }
@@ -114,6 +189,17 @@ export function UpgradesView() {
     }
   }
 
+  // Format display value based on type
+  const formatValue = (val: number, isPercent?: boolean, isMultiplier?: boolean) => {
+    if (isMultiplier) {
+      return `${(val / 100).toFixed(1)}x`
+    }
+    if (isPercent) {
+      return `${val}%`
+    }
+    return val
+  }
+
   return (
     <div className="py-4 flex flex-col h-[calc(100vh-180px)]">
       {/* Upgrade Cards - 5 columns on large screens */}
@@ -127,48 +213,37 @@ export function UpgradesView() {
           
           const Icon = getIcon(upgrade.id)
           const accent = UPGRADE_ACCENTS[upgrade.id as keyof typeof UPGRADE_ACCENTS]
-          
-          // Format display value based on type
-          const formatValue = (val: number) => {
-            if (upgrade.isMultiplier) {
-              return `${(val / 100).toFixed(1)}x`
-            }
-            if (upgrade.isPercent) {
-              return `${val}%`
-            }
-            return val
-          }
-          
-          // For percent/multiplier, use rank for squares instead of value
-          const squaresCurrent = (upgrade.isPercent || upgrade.isMultiplier) 
-            ? upgrade.currentRank + (upgrade.founderBonus > 0 ? 1 : 0)  // +1 if has founder bonus
-            : upgrade.currentValue
-          const squaresMax = (upgrade.isPercent || upgrade.isMultiplier)
-            ? upgrade.maxRank + (upgrade.founderBonus > 0 ? 1 : 0)  // +1 if has founder bonus
-            : upgrade.maxValue
 
           return (
             <Card key={upgrade.id} className="bg-black/40 border-border overflow-hidden flex flex-col pt-0 pb-0 gap-0">
               <CardContent className="p-0 flex-1 flex flex-col">
-                {/* Main visual display */}
-                <div className="px-4 py-6 flex-1 flex flex-col items-center justify-center gap-4">
+                {/* Main visual display - fixed height structure */}
+                <div className="px-4 py-6 flex-1 flex flex-col items-center justify-between gap-4">
                   {/* Icon + Large number row */}
                   <div className="flex items-center justify-center gap-4 w-full">
                     <Icon className={cn("w-12 h-12", accent.text)} weight="duotone" />
                     <span className={cn("text-6xl font-black font-mono leading-none", accent.text)}>
-                      {formatValue(upgrade.currentValue)}
+                      {formatValue(upgrade.currentValue, upgrade.isPercent, upgrade.isMultiplier)}
                     </span>
                   </div>
                   
-                  {/* Capacity squares with max value */}
-                  <div className="flex items-center justify-center">
-                    <CapacitySquares 
-                      current={squaresCurrent} 
-                      max={squaresMax} 
-                      accentClass={accent.bg}
-                      maxLabel={formatValue(upgrade.maxValue)}
-                    />
-                  </div>
+                  {/* Row 1: UP upgrade squares */}
+                  <UpgradeSquares
+                    upgradeType={upgrade.id as UpgradeType}
+                    currentRank={upgrade.currentRank}
+                    maxRank={upgrade.maxRank}
+                    accentClass={accent.bg}
+                  />
+                  
+                  {/* Row 2: Bonus squares with values */}
+                  <BonusRow
+                    founderBonus={upgrade.founderBonus}
+                    hireBonus={upgrade.hireBonus}
+                    isPercent={upgrade.isPercent}
+                    isMultiplier={upgrade.isMultiplier}
+                    accentBg={accent.bg}
+                    accentText={accent.text}
+                  />
                   
                   {/* Name with accent styling */}
                   <div className={cn(
@@ -252,4 +327,3 @@ export function UpgradesView() {
     </div>
   )
 }
-

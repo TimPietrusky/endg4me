@@ -80,6 +80,9 @@ export interface JobOutput {
   trainsBlueprintId?: string;
   usesBlueprintType?: ModelType;
   hiresRole?: string;
+  // For hire jobs: which lab stat is boosted and by how much
+  hireStat?: "queue" | "compute" | "speed" | "moneyMultiplier" | "staff";
+  hireBonus?: number; // +1 for capacity stats, +X% for percentage stats
 }
 
 export interface JobDefinition {
@@ -258,6 +261,7 @@ export const JOB_DEFS: JobDefinition[] = [
   },
 
   // === HIRE JOBS (temporary boosts, cost money) ===
+  // Each hire boosts one of the 5 lab stats while active
   {
     jobId: "job_hire_junior_researcher",
     name: "Hire Junior Researcher",
@@ -270,28 +274,43 @@ export const JOB_DEFS: JobDefinition[] = [
       minLevel: 2,
       requiredResearchNodeIds: ["rn_hire_junior_researcher"],
     },
-    output: { hiresRole: "junior_researcher" },
+    output: { hiresRole: "junior_researcher", hireStat: "queue", hireBonus: 1 },
     category: "hire",
   },
   {
-    jobId: "job_hire_efficiency_expert",
-    name: "Hire Efficiency Expert",
-    description: "Bring in an expert. +25% XP for 12 minutes.",
-    durationMs: 12 * 60 * 1000, // 12 minutes
-    moneyCost: 600,
+    jobId: "job_hire_optimization_specialist",
+    name: "Hire Optimization Specialist",
+    description: "Speed expert joins. +15% speed for 10 minutes.",
+    durationMs: 10 * 60 * 1000, // 10 minutes
+    moneyCost: 1000,
     computeRequiredCU: 0,
     rewards: { money: 0, xp: 0, rp: 0 },
     requirements: {
-      minLevel: 4,
-      requiredResearchNodeIds: ["rn_hire_efficiency_expert"],
+      minLevel: 3,
+      requiredResearchNodeIds: ["rn_hire_optimization_specialist"],
     },
-    output: { hiresRole: "efficiency_expert" },
+    output: { hiresRole: "optimization_specialist", hireStat: "speed", hireBonus: 15 },
+    category: "hire",
+  },
+  {
+    jobId: "job_hire_hr_manager",
+    name: "Hire HR Manager",
+    description: "Talent scout joins. +1 team size for 15 minutes.",
+    durationMs: 15 * 60 * 1000, // 15 minutes
+    moneyCost: 500,
+    computeRequiredCU: 0,
+    rewards: { money: 0, xp: 0, rp: 0 },
+    requirements: {
+      minLevel: 5,
+      requiredResearchNodeIds: ["rn_hire_hr_manager"],
+    },
+    output: { hiresRole: "hr_manager", hireStat: "staff", hireBonus: 1 },
     category: "hire",
   },
   {
     jobId: "job_hire_business_partner",
     name: "Hire Business Partner",
-    description: "Partner up for deals. +30% money for 15 minutes.",
+    description: "Partner up for deals. +25% money multiplier for 15 minutes.",
     durationMs: 15 * 60 * 1000, // 15 minutes
     moneyCost: 900,
     computeRequiredCU: 0,
@@ -300,14 +319,13 @@ export const JOB_DEFS: JobDefinition[] = [
       minLevel: 6,
       requiredResearchNodeIds: ["rn_hire_business_partner"],
     },
-    output: { hiresRole: "business_partner" },
+    output: { hiresRole: "business_partner", hireStat: "moneyMultiplier", hireBonus: 25 },
     category: "hire",
   },
   {
     jobId: "job_hire_senior_engineer",
     name: "Hire Senior Engineer",
-    description:
-      "Top talent joins temporarily. +1 compute unit for 20 minutes.",
+    description: "Top talent joins. +1 compute for 20 minutes.",
     durationMs: 20 * 60 * 1000, // 20 minutes
     moneyCost: 1500,
     computeRequiredCU: 0,
@@ -316,7 +334,7 @@ export const JOB_DEFS: JobDefinition[] = [
       minLevel: 10,
       requiredResearchNodeIds: ["rn_hire_senior_engineer"],
     },
-    output: { hiresRole: "senior_engineer" },
+    output: { hiresRole: "senior_engineer", hireStat: "compute", hireBonus: 1 },
     category: "hire",
   },
 ];
@@ -533,11 +551,12 @@ export const RESEARCH_NODES: ResearchNode[] = [
   },
 
   // === HIRING (unlock hire types) ===
+  // Each hire unlocks temporary boosts to one of the 5 lab stats
   {
     nodeId: "rn_hire_junior_researcher",
     category: "hiring",
     name: "Junior Researcher",
-    description: "Unlock hiring junior researchers for +1 queue slot.",
+    description: "Unlock hiring junior researchers for +1 queue.",
     costRP: 150,
     durationMs: 1.5 * 60 * 1000, // 1.5m
     minLevel: 2,
@@ -547,27 +566,40 @@ export const RESEARCH_NODES: ResearchNode[] = [
     },
   },
   {
-    nodeId: "rn_hire_efficiency_expert",
+    nodeId: "rn_hire_optimization_specialist",
     category: "hiring",
-    name: "Efficiency Expert",
-    description: "Unlock hiring efficiency experts for +25% XP.",
+    name: "Optimization Specialist",
+    description: "Unlock hiring optimization specialists for +15% speed.",
     costRP: 300,
-    durationMs: 4 * 60 * 1000, // 4m
-    minLevel: 4,
+    durationMs: 3 * 60 * 1000, // 3m
+    minLevel: 3,
     prerequisiteNodes: ["rn_hire_junior_researcher"],
     unlocks: {
-      unlocksJobIds: ["job_hire_efficiency_expert"],
+      unlocksJobIds: ["job_hire_optimization_specialist"],
+    },
+  },
+  {
+    nodeId: "rn_hire_hr_manager",
+    category: "hiring",
+    name: "HR Manager",
+    description: "Unlock hiring HR managers for +1 team size.",
+    costRP: 250,
+    durationMs: 3 * 60 * 1000, // 3m
+    minLevel: 5,
+    prerequisiteNodes: ["rn_hire_optimization_specialist"],
+    unlocks: {
+      unlocksJobIds: ["job_hire_hr_manager"],
     },
   },
   {
     nodeId: "rn_hire_business_partner",
     category: "hiring",
     name: "Business Partner",
-    description: "Unlock hiring business partners for +30% money.",
+    description: "Unlock hiring business partners for +25% money multiplier.",
     costRP: 450,
     durationMs: 5 * 60 * 1000, // 5m
     minLevel: 6,
-    prerequisiteNodes: ["rn_hire_efficiency_expert"],
+    prerequisiteNodes: ["rn_hire_hr_manager"],
     unlocks: {
       unlocksJobIds: ["job_hire_business_partner"],
     },

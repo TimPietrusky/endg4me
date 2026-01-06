@@ -2,13 +2,16 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import {
   LAB_UPGRADES,
-  FOUNDER_UPGRADE_BONUSES,
+  FOUNDER_BONUSES,
   getUpgradeValue,
   getRequiredLevelForRank,
   isRankUnlocked,
   type UpgradeType,
+  type FounderType,
 } from "./lib/gameConfig";
+import { getJobById } from "./lib/contentCatalog";
 import { syncLeaderboardForLab } from "./leaderboard";
+import { getEffectiveNow } from "./dev";
 
 // Helper to get rank for any upgrade type
 function getRankForType(playerState: {
@@ -26,6 +29,59 @@ function getRankForType(playerState: {
     case "moneyMultiplier": return playerState.moneyMultiplierRank ?? 0;
   }
 }
+
+// Get active hires and their stat contributions
+export const getActiveHires = query({
+  args: { labId: v.id("labs") },
+  handler: async (ctx, args) => {
+    const lab = await ctx.db.get(args.labId);
+    if (!lab) return { hires: [], bonuses: {} };
+
+    const effectiveNow = await getEffectiveNow(ctx, lab.userId);
+
+    // Get all in-progress hire tasks
+    const activeTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_lab_status", (q) =>
+        q.eq("labId", args.labId).eq("status", "in_progress")
+      )
+      .collect();
+
+    const hires: {
+      jobId: string;
+      name: string;
+      hireStat: UpgradeType;
+      hireBonus: number;
+      completesAt: number;
+      remainingMs: number;
+    }[] = [];
+
+    const bonuses: Partial<Record<UpgradeType, number>> = {};
+
+    for (const task of activeTasks) {
+      const jobDef = getJobById(task.type);
+      if (jobDef?.category === "hire" && jobDef.output.hireStat && jobDef.output.hireBonus) {
+        const remainingMs = (task.completesAt ?? 0) - effectiveNow;
+        if (remainingMs > 0) {
+          hires.push({
+            jobId: task.type,
+            name: jobDef.name,
+            hireStat: jobDef.output.hireStat,
+            hireBonus: jobDef.output.hireBonus,
+            completesAt: task.completesAt ?? 0,
+            remainingMs,
+          });
+
+          // Accumulate bonuses by stat
+          const stat = jobDef.output.hireStat;
+          bonuses[stat] = (bonuses[stat] ?? 0) + jobDef.output.hireBonus;
+        }
+      }
+    }
+
+    return { hires, bonuses };
+  },
+});
 
 // Get player's upgrade state (UP balance + all ranks)
 export const getUpgradeState = query({
@@ -59,7 +115,7 @@ export const getUpgradeState = query({
   },
 });
 
-// Get detailed upgrade info for UI (includes lock reasons, next values, founder bonuses)
+// Get detailed upgrade info for UI (includes breakdown: UP rank, founder, active hires)
 export const getUpgradeDetails = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -70,14 +126,45 @@ export const getUpgradeDetails = query({
 
     if (!playerState) return null;
 
-    // Get lab for founder type
+    // Get lab for founder type and active hires
     const lab = await ctx.db
       .query("labs")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
 
-    const founderType = (lab?.founderType ?? "technical") as keyof typeof FOUNDER_UPGRADE_BONUSES;
-    const founderBonuses = FOUNDER_UPGRADE_BONUSES[founderType];
+    if (!lab) return null;
+
+    const founderType = lab.founderType as FounderType;
+    const founderBonuses = FOUNDER_BONUSES[founderType];
+
+    // Get active hire bonuses
+    const effectiveNow = await getEffectiveNow(ctx, args.userId);
+    const activeTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_lab_status", (q) =>
+        q.eq("labId", lab._id).eq("status", "in_progress")
+      )
+      .collect();
+
+    const hireBonuses: Partial<Record<UpgradeType, number>> = {};
+    const activeHires: { name: string; stat: UpgradeType; bonus: number; remainingMs: number }[] = [];
+
+    for (const task of activeTasks) {
+      const jobDef = getJobById(task.type);
+      if (jobDef?.category === "hire" && jobDef.output.hireStat && jobDef.output.hireBonus) {
+        const remainingMs = (task.completesAt ?? 0) - effectiveNow;
+        if (remainingMs > 0) {
+          const stat = jobDef.output.hireStat;
+          hireBonuses[stat] = (hireBonuses[stat] ?? 0) + jobDef.output.hireBonus;
+          activeHires.push({
+            name: jobDef.name.replace("Hire ", ""),
+            stat,
+            bonus: jobDef.output.hireBonus,
+            remainingMs,
+          });
+        }
+      }
+    }
 
     const playerLevel = playerState.level;
     const upgradePoints = playerState.upgradePoints ?? 0;
@@ -100,16 +187,19 @@ export const getUpgradeDetails = query({
         lockReason = "Not enough UP";
       }
 
-      // Calculate founder bonus for this upgrade type
-      const founderBonus = type === "speed" 
-        ? founderBonuses.speed 
-        : type === "moneyMultiplier"
-          ? founderBonuses.moneyMultiplier
-          : 0;
+      // Calculate bonuses from each source
+      const upValue = getUpgradeValue(type, currentRank);
+      const founderBonus = founderBonuses[type] ?? 0;
+      const hireBonus = hireBonuses[type] ?? 0;
 
-      const baseValue = getUpgradeValue(type, currentRank);
-      const maxBaseValue = getUpgradeValue(type, def.maxRank);
-      const nextBaseValue = isMaxRank ? null : getUpgradeValue(type, nextRank);
+      // Total value combines all sources
+      const totalValue = upValue + founderBonus + hireBonus;
+
+      // Max values for progress display
+      const maxUpValue = getUpgradeValue(type, def.maxRank);
+      const maxTotalValue = maxUpValue + founderBonus; // Hires are temporary, don't count in max
+
+      const nextUpValue = isMaxRank ? null : getUpgradeValue(type, nextRank);
 
       return {
         id: type,
@@ -118,11 +208,14 @@ export const getUpgradeDetails = query({
         unit: def.unit,
         currentRank,
         maxRank: def.maxRank,
-        // For speed/moneyMultiplier, add founder bonus to display values
-        currentValue: baseValue + founderBonus,
-        maxValue: maxBaseValue + founderBonus,
-        nextValue: nextBaseValue !== null ? nextBaseValue + founderBonus : null,
-        founderBonus,  // So UI can show "25% from lab type"
+        // Breakdown of values
+        upValue,
+        founderBonus,
+        hireBonus,
+        // Combined totals
+        currentValue: totalValue,
+        maxValue: maxTotalValue,
+        nextValue: nextUpValue !== null ? nextUpValue + founderBonus + hireBonus : null,
         canUpgrade: !isMaxRank && nextRankUnlocked && upgradePoints >= 1,
         isMaxRank,
         lockReason,
@@ -137,6 +230,7 @@ export const getUpgradeDetails = query({
       level: playerLevel,
       founderType,
       upgrades,
+      activeHires,
     };
   },
 });
@@ -262,4 +356,3 @@ export const getComputedStats = query({
     };
   },
 });
-
