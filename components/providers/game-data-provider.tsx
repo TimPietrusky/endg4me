@@ -87,15 +87,37 @@ interface GameDataProviderProps {
 
 export function GameDataProvider({ children, workosUserId }: GameDataProviderProps) {
   const { toast } = useToast()
-
-  // First get the Convex user from WorkOS ID
-  const convexUser = useQuery(
-    api.users.getCurrentUser,
-    workosUserId ? { workosUserId } : "skip"
-  )
   
-  // Extract Convex user ID
-  const userId = convexUser?._id ?? null
+  // Track Convex user ID after ensuring user exists
+  const [convexUserId, setConvexUserId] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
+  
+  // Ensure Convex user exists on mount (creates if missing)
+  useEffect(() => {
+    if (!workosUserId) {
+      setIsInitializing(false)
+      return
+    }
+    
+    async function ensureUser() {
+      try {
+        const res = await fetch("/api/user")
+        if (res.ok) {
+          const data = await res.json()
+          setConvexUserId(data.convexUserId)
+        }
+      } catch (error) {
+        console.error("Failed to ensure user:", error)
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+    
+    ensureUser()
+  }, [workosUserId])
+  
+  // Use the ensured Convex user ID
+  const userId = convexUserId as Id<"users"> | null
 
   // Core queries - using Convex user ID
   const labData = useQuery(
@@ -455,8 +477,8 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
     privateModelCount,
     handleStartAction,
     handleMarkAsRead,
-    isLoading: !labData,
-    needsFounderSelection: !!labData && !labData.lab,
+    isLoading: isInitializing || !labData,
+    needsFounderSelection: !isInitializing && !!labData && !labData.lab,
   }
 
   return (
