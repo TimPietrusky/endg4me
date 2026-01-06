@@ -1,10 +1,27 @@
 "use client";
 
-import { Suspense, useState, useEffect, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, RoundedBox, useTexture, Html, useCursor } from "@react-three/drei";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { RoundedBox, useTexture, Html } from "@react-three/drei";
 import { FallbackHero } from "./fallback-hero";
 import * as THREE from "three";
+
+// Hook to track mouse position normalized to -1 to 1
+function useMousePosition() {
+  const mouse = useRef({ x: 0, y: 0 });
+  
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mouse.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+  
+  return mouse;
+}
 
 // Screen component with glitch effect and background images
 function GlitchScreen({ 
@@ -153,17 +170,28 @@ function GlitchScreen({
 function CyberMonitor({ 
   isLoggedIn, 
   signInUrl,
+  mouse,
 }: { 
   isLoggedIn: boolean; 
   signInUrl: string;
+  mouse: React.MutableRefObject<{ x: number; y: number }>;
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const targetRotation = useRef({ x: 0, y: 0 });
   
-  // Subtle floating animation
+  // Subtle floating animation + mouse tracking
   useFrame((state) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.05;
-      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.02;
+      // Target rotation based on mouse position
+      targetRotation.current.y = mouse.current.x * 0.15;
+      targetRotation.current.x = -mouse.current.y * 0.08;
+      
+      // Smooth interpolation (lerp)
+      groupRef.current.rotation.y += (targetRotation.current.y - groupRef.current.rotation.y) * 0.05;
+      groupRef.current.rotation.x += (targetRotation.current.x - groupRef.current.rotation.x) * 0.05;
+      
+      // Subtle floating animation
+      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.03;
     }
   });
 
@@ -259,19 +287,56 @@ function CyberMonitor({
   );
 }
 
-// Atmospheric particles
+// Atmospheric particles with slow movement
 function Particles() {
-  const count = 30;
-  const positions = new Float32Array(count * 3);
+  const count = 50;
+  const pointsRef = useRef<THREE.Points>(null);
   
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 6;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 4;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 3;
-  }
+  // Create initial positions and store velocities
+  const { positions, velocities } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const vel = new Float32Array(count * 3);
+    
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 8;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 6;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 4 - 1;
+      
+      // Random slow velocities
+      vel[i * 3] = (Math.random() - 0.5) * 0.002;
+      vel[i * 3 + 1] = (Math.random() - 0.5) * 0.002;
+      vel[i * 3 + 2] = (Math.random() - 0.5) * 0.001;
+    }
+    
+    return { positions: pos, velocities: vel };
+  }, []);
+  
+  // Animate particles
+  useFrame(() => {
+    if (pointsRef.current) {
+      const posArray = pointsRef.current.geometry.attributes.position.array as Float32Array;
+      
+      for (let i = 0; i < count; i++) {
+        // Update positions
+        posArray[i * 3] += velocities[i * 3];
+        posArray[i * 3 + 1] += velocities[i * 3 + 1];
+        posArray[i * 3 + 2] += velocities[i * 3 + 2];
+        
+        // Wrap around bounds
+        if (posArray[i * 3] > 4) posArray[i * 3] = -4;
+        if (posArray[i * 3] < -4) posArray[i * 3] = 4;
+        if (posArray[i * 3 + 1] > 3) posArray[i * 3 + 1] = -3;
+        if (posArray[i * 3 + 1] < -3) posArray[i * 3 + 1] = 3;
+        if (posArray[i * 3 + 2] > 2) posArray[i * 3 + 2] = -3;
+        if (posArray[i * 3 + 2] < -3) posArray[i * 3 + 2] = 2;
+      }
+      
+      pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
   
   return (
-    <points>
+    <points ref={pointsRef}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
@@ -280,7 +345,7 @@ function Particles() {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial size={0.015} color="#ffffff" transparent opacity={0.3} />
+      <pointsMaterial size={0.02} color="#ffffff" transparent opacity={0.4} sizeAttenuation />
     </points>
   );
 }
@@ -292,6 +357,47 @@ interface TerminalHeroProps {
   errorMessage?: string;
 }
 
+// Scene content component that uses mouse tracking
+function SceneContent({ 
+  isLoggedIn, 
+  signInUrl,
+  mouse,
+}: { 
+  isLoggedIn: boolean; 
+  signInUrl: string;
+  mouse: React.MutableRefObject<{ x: number; y: number }>;
+}) {
+  return (
+    <>
+      <color attach="background" args={["#05050a"]} />
+      
+      {/* Subtle ambient */}
+      <ambientLight intensity={0.4} />
+      
+      {/* Main key light */}
+      <directionalLight position={[3, 4, 5]} intensity={0.8} color="#ffffff" />
+      
+      {/* Fill light from opposite side */}
+      <directionalLight position={[-2, 2, 3]} intensity={0.3} color="#8888ff" />
+      
+      {/* Rim light to show edges */}
+      <pointLight position={[0, 3, -2]} intensity={0.5} color="#ffffff" distance={8} />
+      
+      {/* Screen glow */}
+      <pointLight position={[0, 0, 2]} intensity={0.8} color="#ffffff" distance={4} />
+      
+      <Suspense fallback={null}>
+        <CyberMonitor 
+          isLoggedIn={isLoggedIn} 
+          signInUrl={signInUrl}
+          mouse={mouse}
+        />
+        <Particles />
+      </Suspense>
+    </>
+  );
+}
+
 export function TerminalHero({
   isLoggedIn,
   signInUrl,
@@ -299,6 +405,7 @@ export function TerminalHero({
   errorMessage,
 }: TerminalHeroProps) {
   const [webglSupported, setWebglSupported] = useState(true);
+  const mouse = useMousePosition();
 
   useEffect(() => {
     try {
@@ -347,36 +454,11 @@ export function TerminalHero({
           fov: 50,
         }}
       >
-        <color attach="background" args={["#05050a"]} />
-        
-        {/* Subtle ambient */}
-        <ambientLight intensity={0.4} />
-        
-        {/* Main key light */}
-        <directionalLight position={[3, 4, 5]} intensity={0.8} color="#ffffff" />
-        
-        {/* Fill light from opposite side */}
-        <directionalLight position={[-2, 2, 3]} intensity={0.3} color="#8888ff" />
-        
-        {/* Rim light to show edges */}
-        <pointLight position={[0, 3, -2]} intensity={0.5} color="#ffffff" distance={8} />
-        
-        {/* Screen glow */}
-        <pointLight position={[0, 0, 2]} intensity={0.8} color="#ffffff" distance={4} />
-        
-        <OrbitControls 
-          enablePan={true}
-          enableZoom={true}
-          enableRotate={true}
+        <SceneContent 
+          isLoggedIn={isLoggedIn} 
+          signInUrl={signInUrl}
+          mouse={mouse}
         />
-        
-        <Suspense fallback={null}>
-          <CyberMonitor 
-            isLoggedIn={isLoggedIn} 
-            signInUrl={signInUrl} 
-          />
-          <Particles />
-        </Suspense>
       </Canvas>
 
       {/* Error overlay */}
