@@ -222,9 +222,10 @@ function GlitchScreen({
   
   return (
     <group>
-      {/* === BACKGROUND with glitch transition shader - deep inside the glass === */}
-      <mesh position={[0, 0, -SCREEN_DEPTH - 0.1]}>
-        <planeGeometry args={[SCREEN_WIDTH - 0.05, SCREEN_HEIGHT - 0.05]} />
+      {/* === BACKGROUND with glitch transition shader - INSIDE the glass case === */}
+      {/* Sized smaller than glass case to prevent glitch overflow */}
+      <mesh position={[0, 0, -SCREEN_DEPTH/2 + 0.02]}>
+        <planeGeometry args={[SCREEN_WIDTH - 0.3, SCREEN_HEIGHT - 0.25]} />
         <shaderMaterial
           ref={shaderRef}
           uniforms={{
@@ -239,8 +240,8 @@ function GlitchScreen({
       </mesh>
       
       {/* Dark overlay for readability */}
-      <mesh position={[0, 0, -SCREEN_DEPTH - 0.08]}>
-        <planeGeometry args={[SCREEN_WIDTH - 0.05, SCREEN_HEIGHT - 0.05]} />
+      <mesh position={[0, 0, -SCREEN_DEPTH/2 + 0.03]}>
+        <planeGeometry args={[SCREEN_WIDTH - 0.3, SCREEN_HEIGHT - 0.25]} />
         <meshBasicMaterial 
           color="#000000" 
           transparent 
@@ -249,8 +250,9 @@ function GlitchScreen({
         />
       </mesh>
       
-      {/* === INNER GLASS LAYER - between background and outer case === */}
-      <RoundedBox args={[SCREEN_WIDTH - 0.02, SCREEN_HEIGHT - 0.02, SCREEN_DEPTH * 0.8]} radius={0.05} smoothness={4} position={[0, 0, -SCREEN_DEPTH * 0.3]}>
+      {/* === INNER GLASS LAYER - in front of background, inside outer case === */}
+      {/* Sized to frame the background image */}
+      <RoundedBox args={[SCREEN_WIDTH - 0.25, SCREEN_HEIGHT - 0.2, SCREEN_DEPTH * 0.5]} radius={0.04} smoothness={4} position={[0, 0, 0]}>
         <meshPhysicalMaterial 
           color="#ffffff"
           metalness={0.05}
@@ -321,9 +323,9 @@ function CyberMonitor({
   // Subtle floating animation + mouse tracking
   useFrame((state) => {
     if (groupRef.current) {
-      // Target rotation based on mouse position
-      targetRotation.current.y = mouse.current.x * 0.12;
-      targetRotation.current.x = -mouse.current.y * 0.06;
+      // Target rotation based on mouse position - increased for more dramatic effect
+      targetRotation.current.y = mouse.current.x * 0.3;
+      targetRotation.current.x = -mouse.current.y * 0.15;
       
       // Smooth interpolation (lerp)
       groupRef.current.rotation.y += (targetRotation.current.y - groupRef.current.rotation.y) * 0.05;
