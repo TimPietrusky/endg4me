@@ -85,8 +85,9 @@ export function formatTimeCompact(seconds: number): string {
   }
   
   const minutes = Math.floor(seconds / 60);
+  const remainingSecs = Math.floor(seconds % 60);
   if (minutes < 60) {
-    return `${minutes}m`;
+    return remainingSecs > 0 ? `${minutes}m ${remainingSecs}s` : `${minutes}m`;
   }
   
   const hours = Math.floor(minutes / 60);

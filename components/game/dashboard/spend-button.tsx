@@ -293,18 +293,20 @@ export function SpendButton({
     const hasShortfall = shortfalls.length > 0
 
     return (
-      <div className="w-full bg-muted/30 border-b border-border">
-        <div className="flex items-center justify-center h-[72px] border-b border-white/10 gap-2">
+      <div className="w-full border-b border-border">
+        <div className="flex items-center justify-center h-[72px] border-b border-white/10 gap-3">
           {hasShortfall ? (
-            shortfalls.map((shortfall, i) => {
-              const ShortfallIcon = SHORTFALL_ICONS[shortfall.type]
-              return (
-                <div key={i} className="flex items-center gap-1.5 bg-red-700 text-white px-4 py-1.5 rounded">
-                  <ShortfallIcon weight="bold" className="w-5 h-5" />
-                  <span className="text-xl font-black">{formatCompact(shortfall.amount)}</span>
-                </div>
-              )
-            })
+            <div className="flex items-center border border-red-500/50 rounded-md divide-x divide-red-500/50">
+              {shortfalls.map((shortfall, i) => {
+                const ShortfallIcon = SHORTFALL_ICONS[shortfall.type]
+                return (
+                  <div key={i} className="flex items-center gap-1.5 text-red-400 px-4 py-1.5">
+                    <ShortfallIcon weight="bold" className="w-5 h-5" />
+                    <span className="text-xl font-black">{formatCompact(shortfall.amount)}</span>
+                  </div>
+                )
+              })}
+            </div>
           ) : (
             <span className="text-xl font-bold text-muted-foreground lowercase">
               {disabledReason || "unavailable"}
