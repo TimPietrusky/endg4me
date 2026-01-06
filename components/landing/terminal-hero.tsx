@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef, useMemo } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { RoundedBox, useTexture, Html } from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useTexture, Html, RoundedBox } from "@react-three/drei";
 import { FallbackHero } from "./fallback-hero";
 import * as THREE from "three";
 
@@ -23,7 +23,12 @@ function useMousePosition() {
   return mouse;
 }
 
-// Screen component with glitch effect and background images
+// Floating sci-fi screen dimensions
+const SCREEN_WIDTH = 4.5;
+const SCREEN_HEIGHT = 2.8;
+const SCREEN_DEPTH = 0.25; // Thicker for visible depth
+
+// Screen component with smooth blend transition between background images
 function GlitchScreen({ 
   isLoggedIn
 }: { 
@@ -31,91 +36,104 @@ function GlitchScreen({
 }) {
   const texture1 = useTexture("/background-1.jpg");
   const texture2 = useTexture("/background-2.jpg");
-  const [currentTexture, setCurrentTexture] = useState(0);
-  const [isGlitching, setIsGlitching] = useState(false);
-  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
-  const screenRef = useRef<THREE.Mesh>(null);
+  const blendRef = useRef({ progress: 0, transitioning: false, current: 0 });
+  const material1Ref = useRef<THREE.MeshBasicMaterial>(null);
+  const material2Ref = useRef<THREE.MeshBasicMaterial>(null);
   
-  // Random glitch interval
+  // Random transition interval - smooth blend between images
   useEffect(() => {
-    const triggerGlitch = () => {
-      setIsGlitching(true);
-      setTimeout(() => {
-        setCurrentTexture((prev) => (prev + 1) % 2);
-      }, 200);
-      setTimeout(() => {
-        setIsGlitching(false);
-      }, 400);
+    const triggerTransition = () => {
+      blendRef.current.transitioning = true;
+      blendRef.current.progress = 0;
     };
     
-    const scheduleGlitch = () => {
-      const interval = Math.random() * 4000 + 1000;
+    const scheduleTransition = () => {
+      const interval = Math.random() * 5000 + 3000; // 3-8 seconds
       return setTimeout(() => {
-        triggerGlitch();
-        timeoutId = scheduleGlitch();
+        triggerTransition();
+        timeoutId = scheduleTransition();
       }, interval);
     };
     
-    let timeoutId = scheduleGlitch();
+    let timeoutId = scheduleTransition();
     return () => clearTimeout(timeoutId);
   }, []);
   
-  // Glitch animation
-  useFrame(() => {
-    if (screenRef.current && materialRef.current) {
-      if (isGlitching) {
-        screenRef.current.position.x = (Math.random() - 0.5) * 0.03;
-        screenRef.current.position.y = (Math.random() - 0.5) * 0.03;
-        materialRef.current.opacity = 0.8 + Math.random() * 0.2;
+  // Smooth blend animation - texture2 fades in/out over texture1
+  useFrame((_, delta) => {
+    const blend = blendRef.current;
+    
+    if (blend.transitioning) {
+      blend.progress += delta * 0.5; // Blend speed
+      if (blend.progress >= 1) {
+        blend.transitioning = false;
+        // Swap textures by toggling which one is "on top"
+        blend.current = (blend.current + 1) % 2;
+        blend.progress = 0;
+      }
+    }
+    
+    // Simple crossfade - texture2 layer fades in/out
+    if (material2Ref.current) {
+      // When current=0, we're showing texture1 (so texture2 should be 0)
+      // When transitioning from 0->1, texture2 fades in
+      // When current=1, texture2 is fully visible
+      // When transitioning from 1->0, texture2 fades out
+      if (blend.current === 0) {
+        material2Ref.current.opacity = blend.transitioning ? blend.progress : 0;
       } else {
-        screenRef.current.position.x = 0;
-        screenRef.current.position.y = 0;
-        materialRef.current.opacity = 1;
+        material2Ref.current.opacity = blend.transitioning ? 1 - blend.progress : 1;
       }
     }
   });
   
-  const textures = [texture1, texture2];
-  
   return (
     <group>
-      {/* Main background with texture - recessed into monitor */}
-      <mesh position={[0, 0, 0.10]} ref={screenRef}>
-        <planeGeometry args={[2.8, 2.0]} />
+      {/* === BACKGROUND IMAGES - INSIDE the glass case (at the back) === */}
+      {/* Background image layer 1 */}
+      <mesh position={[0, 0, -SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[SCREEN_WIDTH - 0.1, SCREEN_HEIGHT - 0.1]} />
         <meshBasicMaterial 
-          ref={materialRef}
-          map={textures[currentTexture]} 
+          ref={material1Ref}
+          map={texture1} 
           toneMapped={false}
           side={THREE.FrontSide}
         />
       </mesh>
       
-      {/* Dark overlay for readability */}
-      <mesh position={[0, 0, 0.11]}>
-        <planeGeometry args={[2.8, 2.0]} />
+      {/* Background image layer 2 - for crossfade */}
+      <mesh position={[0, 0, -SCREEN_DEPTH/2 + 0.015]}>
+        <planeGeometry args={[SCREEN_WIDTH - 0.1, SCREEN_HEIGHT - 0.1]} />
         <meshBasicMaterial 
-          color="#000000" 
-          transparent 
-          opacity={isGlitching ? 0.6 : 0.4}
+          ref={material2Ref}
+          map={texture2} 
+          toneMapped={false}
+          transparent
           side={THREE.FrontSide}
         />
       </mesh>
       
-      {/* Opaque backing plane - blocks view from behind */}
-      <mesh position={[0, 0, 0.11]}>
-        <planeGeometry args={[2.8, 2.0]} />
-        <meshBasicMaterial color="#000000" side={THREE.BackSide} />
+      {/* Dark overlay for readability - still inside glass */}
+      <mesh position={[0, 0, -SCREEN_DEPTH/2 + 0.02]}>
+        <planeGeometry args={[SCREEN_WIDTH - 0.1, SCREEN_HEIGHT - 0.1]} />
+        <meshBasicMaterial 
+          color="#000000" 
+          transparent 
+          opacity={0.25}
+          side={THREE.FrontSide}
+        />
       </mesh>
       
-      {/* UI Content */}
+      
+      {/* UI Content - ON TOP of the glass case */}
       <Html
         transform
-        position={[0, 0, 0.12]}
-        distanceFactor={2.0}
+        position={[0, 0, SCREEN_DEPTH/2 + 0.15]}
+        distanceFactor={1.8}
         zIndexRange={[100, 0]}
         style={{
-          width: "600px",
-          height: "400px",
+          width: "800px",
+          height: "500px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -124,11 +142,11 @@ function GlitchScreen({
         }}
       >
         <div className="flex flex-col items-center justify-center text-center w-full h-full">
-          {/* Logo using SVG - larger */}
+          {/* Logo using SVG - MUCH larger */}
           <svg
             viewBox="0 0 1500 185"
             fill="white"
-            className="w-96 h-auto"
+            className="w-[550px] h-auto"
             aria-label="endg4me"
           >
             {/* E */}
@@ -149,13 +167,13 @@ function GlitchScreen({
           </svg>
           
           {/* Tagline - larger */}
-          <p className="text-white/60 text-base tracking-[0.3em] font-mono mt-6">
+          <p className="text-white/60 text-xl tracking-[0.3em] font-mono mt-8">
             RACE TO SINGULARITY
           </p>
           
-          {/* Button - no hover effect, just static */}
-          <div className="mt-8 px-12 py-4 border-2 border-white/80 bg-transparent">
-            <span className="font-bold tracking-wider text-lg text-white">
+          {/* Button - larger */}
+          <div className="mt-10 px-16 py-5 border-2 border-white/80 bg-transparent">
+            <span className="font-bold tracking-wider text-xl text-white">
               {isLoggedIn ? "CONTINUE" : "START"}
             </span>
           </div>
@@ -166,7 +184,7 @@ function GlitchScreen({
   );
 }
 
-// Cyberpunk Monitor built from primitives
+// Floating glass display with transparent rounded case
 function CyberMonitor({ 
   isLoggedIn, 
   signInUrl,
@@ -183,105 +201,112 @@ function CyberMonitor({
   useFrame((state) => {
     if (groupRef.current) {
       // Target rotation based on mouse position
-      targetRotation.current.y = mouse.current.x * 0.15;
-      targetRotation.current.x = -mouse.current.y * 0.08;
+      targetRotation.current.y = mouse.current.x * 0.12;
+      targetRotation.current.x = -mouse.current.y * 0.06;
       
       // Smooth interpolation (lerp)
       groupRef.current.rotation.y += (targetRotation.current.y - groupRef.current.rotation.y) * 0.05;
       groupRef.current.rotation.x += (targetRotation.current.x - groupRef.current.rotation.x) * 0.05;
       
       // Subtle floating animation
-      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.03;
+      groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.04;
     }
   });
 
   return (
     <group ref={groupRef}>
-      {/* === MONITOR BODY - Larger floating monitor === */}
-      {/* Main frame - dark metal */}
-      <RoundedBox args={[3.5, 2.6, 0.4]} radius={0.1} position={[0, 0, 0]}>
-        <meshStandardMaterial 
-          color="#1a1a1f" 
-          metalness={0.7} 
-          roughness={0.4}
-        />
-      </RoundedBox>
-      
-      {/* Outer bezel - slightly lighter to show edge */}
-      <RoundedBox args={[3.3, 2.4, 0.25]} radius={0.06} position={[0, 0, 0.08]}>
-        <meshStandardMaterial 
-          color="#252530" 
-          metalness={0.6} 
-          roughness={0.3}
-        />
-      </RoundedBox>
-      
-      {/* Inner bezel - darkest, frames the screen */}
-      <RoundedBox args={[3.0, 2.15, 0.1]} radius={0.03} position={[0, 0, 0.13]}>
-        <meshStandardMaterial 
-          color="#0a0a0f" 
-          metalness={0.8} 
-          roughness={0.2}
-        />
-      </RoundedBox>
-      
-      
-      {/* === GLOW LIGHTS - Neon effect, recessed into screen === */}
-      {/* Colored point lights */}
+      {/* === LIGHTING for reflections === */}
+      {/* Cyan light from upper left */}
       <pointLight 
-        position={[-1, 0.5, 1]} 
+        position={[-2, 1, 2]} 
         intensity={4} 
         color="#00ffff" 
-        distance={4}
+        distance={6}
       />
+      {/* Magenta light from lower right */}
       <pointLight 
-        position={[1, -0.5, 1]} 
+        position={[2, -1, 2]} 
         intensity={4} 
         color="#ff00ff" 
-        distance={4}
+        distance={6}
       />
       
-      {/* Soft glow orbs - recessed into screen */}
-      {/* Cyan glow - upper left */}
-      <mesh position={[-0.7, 0.4, 0.15]}>
-        <circleGeometry args={[0.5, 32]} />
-        <meshBasicMaterial 
-          color="#00ffff" 
-          transparent 
-          opacity={0.3}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.FrontSide}
+      {/* === TRANSPARENT GLASS CASE - rounded edges === */}
+      {/* Main outer frame - clear transparent glass */}
+      <RoundedBox args={[SCREEN_WIDTH + 0.15, SCREEN_HEIGHT + 0.15, SCREEN_DEPTH]} radius={0.08} smoothness={4}>
+        <meshPhysicalMaterial 
+          color="#ffffff"
+          metalness={0.1}
+          roughness={0.05}
+          transmission={0.95}
+          thickness={0.8}
+          transparent
+          opacity={0.15}
+          envMapIntensity={1.5}
+          clearcoat={1}
+          clearcoatRoughness={0.05}
+          ior={1.5}
         />
-      </mesh>
+      </RoundedBox>
       
-      {/* Magenta glow - lower right */}
-      <mesh position={[0.7, -0.3, 0.15]}>
-        <circleGeometry args={[0.5, 32]} />
-        <meshBasicMaterial 
-          color="#ff00ff" 
-          transparent 
-          opacity={0.3}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.FrontSide}
-        />
-      </mesh>
-      
-      {/* Subtle center glow */}
-      <mesh position={[0, 0.1, 0.14]}>
-        <circleGeometry args={[0.8, 32]} />
-        <meshBasicMaterial 
-          color="#0066ff" 
-          transparent 
+      {/* Inner bezel - slightly visible glass frame */}
+      <RoundedBox args={[SCREEN_WIDTH + 0.05, SCREEN_HEIGHT + 0.05, SCREEN_DEPTH + 0.02]} radius={0.05} smoothness={4} position={[0, 0, 0.01]}>
+        <meshPhysicalMaterial 
+          color="#aaccff"
+          metalness={0.1}
+          roughness={0.1}
+          transmission={0.9}
+          thickness={0.5}
+          transparent
           opacity={0.2}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.FrontSide}
+          clearcoat={1}
+          clearcoatRoughness={0.1}
+          ior={1.4}
         />
+      </RoundedBox>
+      
+      {/* Technical measurement marks on the glass */}
+      {/* Top left corner mark */}
+      <mesh position={[-SCREEN_WIDTH/2 - 0.02, SCREEN_HEIGHT/2 + 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.15, 0.01]} />
+        <meshBasicMaterial color="#00ffff" transparent opacity={0.4} />
+      </mesh>
+      <mesh position={[-SCREEN_WIDTH/2 - 0.02, SCREEN_HEIGHT/2 + 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.01, 0.15]} />
+        <meshBasicMaterial color="#00ffff" transparent opacity={0.4} />
       </mesh>
       
-      {/* === THE SCREEN with glitch background === */}
+      {/* Top right corner mark */}
+      <mesh position={[SCREEN_WIDTH/2 + 0.02, SCREEN_HEIGHT/2 + 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.15, 0.01]} />
+        <meshBasicMaterial color="#00ffff" transparent opacity={0.4} />
+      </mesh>
+      <mesh position={[SCREEN_WIDTH/2 + 0.02, SCREEN_HEIGHT/2 + 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.01, 0.15]} />
+        <meshBasicMaterial color="#00ffff" transparent opacity={0.4} />
+      </mesh>
+      
+      {/* Bottom left corner mark */}
+      <mesh position={[-SCREEN_WIDTH/2 - 0.02, -SCREEN_HEIGHT/2 - 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.15, 0.01]} />
+        <meshBasicMaterial color="#ff00ff" transparent opacity={0.4} />
+      </mesh>
+      <mesh position={[-SCREEN_WIDTH/2 - 0.02, -SCREEN_HEIGHT/2 - 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.01, 0.15]} />
+        <meshBasicMaterial color="#ff00ff" transparent opacity={0.4} />
+      </mesh>
+      
+      {/* Bottom right corner mark */}
+      <mesh position={[SCREEN_WIDTH/2 + 0.02, -SCREEN_HEIGHT/2 - 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.15, 0.01]} />
+        <meshBasicMaterial color="#ff00ff" transparent opacity={0.4} />
+      </mesh>
+      <mesh position={[SCREEN_WIDTH/2 + 0.02, -SCREEN_HEIGHT/2 - 0.02, SCREEN_DEPTH/2 + 0.01]}>
+        <planeGeometry args={[0.01, 0.15]} />
+        <meshBasicMaterial color="#ff00ff" transparent opacity={0.4} />
+      </mesh>
+      
+      {/* === THE SCREEN CONTENT === */}
       <GlitchScreen isLoggedIn={isLoggedIn} />
     </group>
   );
