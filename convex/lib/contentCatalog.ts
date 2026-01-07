@@ -1,703 +1,595 @@
 // =============================================================================
-// CONTENT CATALOG - Single source of truth for all game content
-// Location: convex/lib/ so both Convex functions and frontend can import
+// UNIFIED CONTENT CATALOG
+// =============================================================================
+//
+// Single source of truth for ALL game content. One entry = one thing in the game.
+//
+// ADDING NEW CONTENT:
+// 1. Add an entry to CONTENT_CATALOG below
+// 2. Fill in the required fields based on contentType
+// 3. Done.
+//
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// MODEL BLUEPRINTS
+// TYPES
 // -----------------------------------------------------------------------------
 
+/** Model type for trainable AI models. Used in leaderboards and contracts. */
 export type ModelType = "llm" | "tts" | "vlm";
 
-export interface ModelBlueprint {
+/**
+ * Content type determines which fields are required/used.
+ * 
+ * - "model": Trainable AI model (has training job, research unlock)
+ * - "contract": Job that uses a trained model to earn money
+ * - "income": Freelance job that earns money without models
+ * - "hire": Temporary staff boost
+ * - "research": Always-available research job (Literature Sweep)
+ */
+export type ContentType = "model" | "contract" | "income" | "hire" | "research";
+
+/**
+ * UI category for grouping in views.
+ * 
+ * Operate view (uppercase): TRAINING, CONTRACTS, INCOME, HIRING, RESEARCH
+ * Research view (lowercase): model, revenue, hiring
+ */
+export type UICategory = 
+  | "TRAINING" | "CONTRACTS" | "INCOME" | "HIRING" | "RESEARCH"
+  | "model" | "revenue" | "hiring";
+
+/** Hire stat type for temporary boosts. Maps to the 5 lab stats. */
+export type HireStatType = "queue" | "compute" | "speed" | "moneyMultiplier" | "staff";
+
+// -----------------------------------------------------------------------------
+// CONTENT ENTRY
+// -----------------------------------------------------------------------------
+
+export interface ContentEntry {
+  // =========================================================================
+  // IDENTITY (required for all)
+  // =========================================================================
+  
+  /** Unique identifier. Used as primary key everywhere. */
   id: string;
+
+  /** Human-readable name shown in UI. */
   name: string;
-  type: ModelType;
+
+  /** Short description shown on cards. Keep under 100 characters. */
   description: string;
-  minLevelToTrain: number;
-  trainingJobId: string;
-  scoreRange: { min: number; max: number };
-  tags?: string[];
-  assetSlug?: string; // Links to ENTITY_ASSETS by slug
+
+  /** What type of content this is. Determines which fields are used. */
+  contentType: ContentType;
+
+  /** UI category for grouping in views. */
+  uiCategory: UICategory;
+
+  // =========================================================================
+  // UNLOCK REQUIREMENTS (how to make this available)
+  // =========================================================================
+
+  /** Minimum player level required. Default: 1 */
+  minLevel?: number;
+
+  /** RP cost to unlock via research. 0 = free starter (auto-unlocked). undefined = always available. */
+  unlockCostRP?: number;
+
+  /** Time to complete research unlock (milliseconds). */
+  unlockDurationMs?: number;
+
+  /** ID of prerequisite content that must be unlocked first. */
+  prerequisite?: string;
+
+  // =========================================================================
+  // JOB PROPERTIES (for content that can be run as a job)
+  // =========================================================================
+
+  /** Time to complete the job (milliseconds). */
+  jobDurationMs?: number;
+
+  /** Money cost to start the job. Default: 0 */
+  jobMoneyCost?: number;
+
+  /** Compute units required. Default: 0 */
+  jobComputeCost?: number;
+
+  /** Money reward on completion. */
+  rewardMoney?: number;
+
+  /** XP reward on completion. */
+  rewardXP?: number;
+
+  /** RP reward on completion. */
+  rewardRP?: number;
+
+  // =========================================================================
+  // MODEL PROPERTIES (for contentType: "model")
+  // =========================================================================
+
+  /** Model type for leaderboards and contracts. */
+  modelType?: ModelType;
+
+  /** Score range for trained models (random within range). */
+  scoreRange?: { min: number; max: number };
+
+  // =========================================================================
+  // CONTRACT PROPERTIES (for contentType: "contract")
+  // =========================================================================
+
+  /** Model type required to run this contract. */
+  requiresModelType?: ModelType;
+
+  // =========================================================================
+  // HIRE PROPERTIES (for contentType: "hire")
+  // =========================================================================
+
+  /** Which lab stat this hire boosts. */
+  hireStat?: HireStatType;
+
+  /** Bonus amount for the stat. */
+  hireBonus?: number;
+
+  // =========================================================================
+  // ASSET PROPERTIES
+  // =========================================================================
+
+  /** Slug for entity assets. Maps to /public/assets/entities/{slug}/ */
+  assetSlug?: string;
 }
 
-export const MODEL_BLUEPRINTS: ModelBlueprint[] = [
+// -----------------------------------------------------------------------------
+// CONTENT CATALOG
+// -----------------------------------------------------------------------------
+
+export const CONTENT_CATALOG: ContentEntry[] = [
+  // ===========================================================================
+  // TTS MODELS
+  // ===========================================================================
   {
-    id: "bp_tts_3b",
+    id: "tts_3b",
     name: "3B TTS",
-    type: "tts",
     description: "A small voice model for audio gigs.",
-    minLevelToTrain: 1,
-    trainingJobId: "job_train_tts_3b",
+    contentType: "model",
+    uiCategory: "TRAINING",
+    minLevel: 1,
+    unlockCostRP: 0,
+    unlockDurationMs: 30 * 1000,
+    jobDurationMs: 2 * 60 * 1000,
+    jobMoneyCost: 500,
+    jobComputeCost: 1,
+    rewardXP: 50,
+    rewardRP: 125,
+    modelType: "tts",
     scoreRange: { min: 40, max: 70 },
     assetSlug: "3b-tts",
   },
   {
-    id: "bp_tts_7b",
+    id: "tts_7b",
     name: "7B TTS",
-    type: "tts",
     description: "A mid-range voice model with better clarity.",
-    minLevelToTrain: 3,
-    trainingJobId: "job_train_tts_7b",
+    contentType: "model",
+    uiCategory: "TRAINING",
+    minLevel: 3,
+    unlockCostRP: 200,
+    unlockDurationMs: 2 * 60 * 1000,
+    prerequisite: "tts_3b",
+    jobDurationMs: 6 * 60 * 1000,
+    jobMoneyCost: 1000,
+    jobComputeCost: 1,
+    rewardXP: 100,
+    rewardRP: 200,
+    modelType: "tts",
     scoreRange: { min: 55, max: 82 },
     assetSlug: "7b-tts",
   },
   {
-    id: "bp_tts_30b",
+    id: "tts_30b",
     name: "30B TTS",
-    type: "tts",
     description: "A large voice model with rich intonation.",
-    minLevelToTrain: 5,
-    trainingJobId: "job_train_tts_30b",
+    contentType: "model",
+    uiCategory: "TRAINING",
+    minLevel: 5,
+    unlockCostRP: 400,
+    unlockDurationMs: 4 * 60 * 1000,
+    prerequisite: "tts_7b",
+    jobDurationMs: 15 * 60 * 1000,
+    jobMoneyCost: 2500,
+    jobComputeCost: 2,
+    rewardXP: 200,
+    rewardRP: 400,
+    modelType: "tts",
     scoreRange: { min: 70, max: 92 },
     assetSlug: "30b-tts",
   },
   {
-    id: "bp_tts_70b",
+    id: "tts_70b",
     name: "70B TTS",
-    type: "tts",
     description: "A massive voice model with studio-quality output.",
-    minLevelToTrain: 7,
-    trainingJobId: "job_train_tts_70b",
+    contentType: "model",
+    uiCategory: "TRAINING",
+    minLevel: 7,
+    unlockCostRP: 700,
+    unlockDurationMs: 6 * 60 * 1000,
+    prerequisite: "tts_30b",
+    jobDurationMs: 25 * 60 * 1000,
+    jobMoneyCost: 5000,
+    jobComputeCost: 3,
+    rewardXP: 350,
+    rewardRP: 600,
+    modelType: "tts",
     scoreRange: { min: 85, max: 99 },
     assetSlug: "70b-tts",
   },
+
+  // ===========================================================================
+  // VLM MODELS
+  // ===========================================================================
   {
-    id: "bp_vlm_7b",
+    id: "vlm_7b",
     name: "7B VLM",
-    type: "vlm",
     description: "A vision-language model for image understanding contracts.",
-    minLevelToTrain: 2,
-    trainingJobId: "job_train_vlm_7b",
+    contentType: "model",
+    uiCategory: "TRAINING",
+    minLevel: 2,
+    unlockCostRP: 250,
+    unlockDurationMs: 3 * 60 * 1000,
+    jobDurationMs: 12 * 60 * 1000,
+    jobMoneyCost: 1200,
+    jobComputeCost: 1,
+    rewardXP: 140,
+    rewardRP: 260,
+    modelType: "vlm",
     scoreRange: { min: 55, max: 85 },
   },
+
+  // ===========================================================================
+  // LLM MODELS
+  // ===========================================================================
   {
-    id: "bp_llm_3b",
+    id: "llm_3b",
     name: "3B LLM",
-    type: "llm",
     description: "A small text model for basic writing work.",
-    minLevelToTrain: 3,
-    trainingJobId: "job_train_llm_3b",
+    contentType: "model",
+    uiCategory: "TRAINING",
+    minLevel: 3,
+    unlockCostRP: 350,
+    unlockDurationMs: 4 * 60 * 1000,
+    jobDurationMs: 8 * 60 * 1000,
+    jobMoneyCost: 900,
+    jobComputeCost: 1,
+    rewardXP: 120,
+    rewardRP: 200,
+    modelType: "llm",
     scoreRange: { min: 45, max: 75 },
   },
   {
-    id: "bp_llm_17b",
+    id: "llm_17b",
     name: "17B LLM",
-    type: "llm",
     description: "A stronger text model that wins premium contracts.",
-    minLevelToTrain: 7,
-    trainingJobId: "job_train_llm_17b",
+    contentType: "model",
+    uiCategory: "TRAINING",
+    minLevel: 7,
+    unlockCostRP: 900,
+    unlockDurationMs: 12 * 60 * 1000,
+    prerequisite: "llm_3b",
+    jobDurationMs: 20 * 60 * 1000,
+    jobMoneyCost: 3000,
+    jobComputeCost: 2,
+    rewardXP: 260,
+    rewardRP: 480,
+    modelType: "llm",
     scoreRange: { min: 65, max: 95 },
   },
-];
 
-// -----------------------------------------------------------------------------
-// JOB DEFINITIONS
-// -----------------------------------------------------------------------------
-
-export interface JobRewards {
-  money: number;
-  xp: number;
-  rp: number;
-}
-
-export interface JobRequirements {
-  minLevel: number;
-  requiredResearchNodeIds?: string[];
-  requiredBlueprintIds?: string[];
-  requiredModelType?: ModelType; // For contracts that need a trained model
-}
-
-export interface JobOutput {
-  trainsBlueprintId?: string;
-  usesBlueprintType?: ModelType;
-  hiresRole?: string;
-  // For hire jobs: which lab stat is boosted and by how much
-  hireStat?: "queue" | "compute" | "speed" | "moneyMultiplier" | "staff";
-  hireBonus?: number; // +1 for capacity stats, +X% for percentage stats
-}
-
-export interface JobDefinition {
-  jobId: string;
-  name: string;
-  description: string;
-  durationMs: number;
-  moneyCost: number;
-  computeRequiredCU: number;
-  rewards: JobRewards;
-  requirements: JobRequirements;
-  output: JobOutput;
-  category: "training" | "contract" | "research" | "revenue" | "hire";
-}
-
-export const JOB_DEFS: JobDefinition[] = [
-  // === TRAINING JOBS ===
+  // ===========================================================================
+  // CONTRACTS
+  // ===========================================================================
   {
-    jobId: "job_train_tts_3b",
-    name: "Train 3B TTS",
-    description: "Train a new version of your 3B TTS model.",
-    durationMs: 2 * 60 * 1000, // 2 minutes
-    moneyCost: 500,
-    computeRequiredCU: 1,
-    rewards: { money: 0, xp: 50, rp: 125 },
-    requirements: {
-      minLevel: 1,
-      requiredBlueprintIds: ["bp_tts_3b"],
-    },
-    output: { trainsBlueprintId: "bp_tts_3b" },
-    category: "training",
-  },
-  {
-    jobId: "job_train_tts_7b",
-    name: "Train 7B TTS",
-    description: "Train a new version of your 7B TTS model.",
-    durationMs: 6 * 60 * 1000, // 6 minutes
-    moneyCost: 1000,
-    computeRequiredCU: 1,
-    rewards: { money: 0, xp: 100, rp: 200 },
-    requirements: {
-      minLevel: 3,
-      requiredBlueprintIds: ["bp_tts_7b"],
-    },
-    output: { trainsBlueprintId: "bp_tts_7b" },
-    category: "training",
-  },
-  {
-    jobId: "job_train_tts_30b",
-    name: "Train 30B TTS",
-    description: "Train a new version of your 30B TTS model.",
-    durationMs: 15 * 60 * 1000, // 15 minutes
-    moneyCost: 2500,
-    computeRequiredCU: 2,
-    rewards: { money: 0, xp: 200, rp: 400 },
-    requirements: {
-      minLevel: 5,
-      requiredBlueprintIds: ["bp_tts_30b"],
-    },
-    output: { trainsBlueprintId: "bp_tts_30b" },
-    category: "training",
-  },
-  {
-    jobId: "job_train_tts_70b",
-    name: "Train 70B TTS",
-    description: "Train a new version of your 70B TTS model.",
-    durationMs: 25 * 60 * 1000, // 25 minutes
-    moneyCost: 5000,
-    computeRequiredCU: 3,
-    rewards: { money: 0, xp: 350, rp: 600 },
-    requirements: {
-      minLevel: 7,
-      requiredBlueprintIds: ["bp_tts_70b"],
-    },
-    output: { trainsBlueprintId: "bp_tts_70b" },
-    category: "training",
-  },
-  {
-    jobId: "job_train_vlm_7b",
-    name: "Train 7B VLM",
-    description: "Train a new version of your 7B VLM model.",
-    durationMs: 12 * 60 * 1000, // 12 minutes
-    moneyCost: 1200,
-    computeRequiredCU: 1,
-    rewards: { money: 0, xp: 140, rp: 260 },
-    requirements: {
-      minLevel: 2,
-      requiredBlueprintIds: ["bp_vlm_7b"],
-    },
-    output: { trainsBlueprintId: "bp_vlm_7b" },
-    category: "training",
-  },
-  {
-    jobId: "job_train_llm_3b",
-    name: "Train 3B LLM",
-    description: "Train a new version of your 3B LLM model.",
-    durationMs: 8 * 60 * 1000, // 8 minutes
-    moneyCost: 900,
-    computeRequiredCU: 1,
-    rewards: { money: 0, xp: 120, rp: 200 },
-    requirements: {
-      minLevel: 3,
-      requiredBlueprintIds: ["bp_llm_3b"],
-    },
-    output: { trainsBlueprintId: "bp_llm_3b" },
-    category: "training",
-  },
-  {
-    jobId: "job_train_llm_17b",
-    name: "Train 17B LLM",
-    description: "Train a new version of your 17B LLM model.",
-    durationMs: 20 * 60 * 1000, // 20 minutes
-    moneyCost: 3000,
-    computeRequiredCU: 2,
-    rewards: { money: 0, xp: 260, rp: 480 },
-    requirements: {
-      minLevel: 7,
-      requiredBlueprintIds: ["bp_llm_17b"],
-    },
-    output: { trainsBlueprintId: "bp_llm_17b" },
-    category: "training",
-  },
-
-  // === CONTRACT JOBS ===
-  {
-    jobId: "job_contract_blog_basic",
+    id: "contract_blog",
     name: "Blog Post Batch",
     description: "Deliver basic blog posts using your best LLM.",
-    durationMs: 4 * 60 * 1000, // 4 minutes
-    moneyCost: 0,
-    computeRequiredCU: 1,
-    rewards: { money: 450, xp: 60, rp: 0 },
-    requirements: {
-      minLevel: 1,
-      requiredResearchNodeIds: ["rn_cap_contracts_basic"],
-      requiredModelType: "llm",
-    },
-    output: { usesBlueprintType: "llm" },
-    category: "contract",
+    contentType: "contract",
+    uiCategory: "CONTRACTS",
+    minLevel: 1,
+    unlockCostRP: 0,
+    unlockDurationMs: 30 * 1000,
+    jobDurationMs: 4 * 60 * 1000,
+    jobMoneyCost: 0,
+    jobComputeCost: 1,
+    rewardMoney: 450,
+    rewardXP: 60,
+    requiresModelType: "llm",
   },
   {
-    jobId: "job_contract_voice_pack",
+    id: "contract_voice",
     name: "Voiceover Pack",
     description: "Generate voiceovers using your best TTS.",
-    durationMs: 4 * 60 * 1000, // 4 minutes
-    moneyCost: 0,
-    computeRequiredCU: 1,
-    rewards: { money: 520, xp: 70, rp: 0 },
-    requirements: {
-      minLevel: 2,
-      requiredResearchNodeIds: ["rn_cap_contracts_voice"],
-      requiredModelType: "tts",
-    },
-    output: { usesBlueprintType: "tts" },
-    category: "contract",
+    contentType: "contract",
+    uiCategory: "CONTRACTS",
+    minLevel: 2,
+    unlockCostRP: 200,
+    unlockDurationMs: 2 * 60 * 1000,
+    jobDurationMs: 4 * 60 * 1000,
+    jobMoneyCost: 0,
+    jobComputeCost: 1,
+    rewardMoney: 520,
+    rewardXP: 70,
+    requiresModelType: "tts",
   },
   {
-    jobId: "job_contract_image_qa",
+    id: "contract_vision",
     name: "Image QA Contract",
     description: "Answer image questions using your best VLM.",
-    durationMs: 6 * 60 * 1000, // 6 minutes
-    moneyCost: 0,
-    computeRequiredCU: 1,
-    rewards: { money: 700, xp: 90, rp: 0 },
-    requirements: {
-      minLevel: 3,
-      requiredResearchNodeIds: ["rn_cap_contracts_vision"],
-      requiredModelType: "vlm",
-    },
-    output: { usesBlueprintType: "vlm" },
-    category: "contract",
+    contentType: "contract",
+    uiCategory: "CONTRACTS",
+    minLevel: 3,
+    unlockCostRP: 220,
+    unlockDurationMs: 2.5 * 60 * 1000,
+    jobDurationMs: 6 * 60 * 1000,
+    jobMoneyCost: 0,
+    jobComputeCost: 1,
+    rewardMoney: 700,
+    rewardXP: 90,
+    requiresModelType: "vlm",
   },
 
-  // === RESEARCH JOB (always available RP trickle) ===
+  // ===========================================================================
+  // INCOME
+  // ===========================================================================
   {
-    jobId: "job_research_literature",
-    name: "Literature Sweep",
-    description: "Do foundational research to earn RP steadily.",
-    durationMs: 3 * 60 * 1000, // 3 minutes
-    moneyCost: 150,
-    computeRequiredCU: 0,
-    rewards: { money: 0, xp: 40, rp: 60 },
-    requirements: {
-      minLevel: 1,
-    },
-    output: {},
-    category: "research",
-  },
-
-  // === INCOME JOBS (freelance, no GPU needed) ===
-  {
-    jobId: "job_income_basic_website",
+    id: "income_website",
     name: "Basic Website",
     description: "Build a simple website for a client. Pure freelance work.",
-    durationMs: 3 * 60 * 1000, // 3 minutes
-    moneyCost: 0,
-    computeRequiredCU: 0,
-    rewards: { money: 200, xp: 30, rp: 0 },
-    requirements: {
-      minLevel: 1,
-      requiredResearchNodeIds: ["rn_income_basic_website"],
-    },
-    output: {},
-    category: "revenue",
+    contentType: "income",
+    uiCategory: "INCOME",
+    minLevel: 1,
+    unlockCostRP: 0,
+    unlockDurationMs: 30 * 1000,
+    jobDurationMs: 3 * 60 * 1000,
+    jobMoneyCost: 0,
+    jobComputeCost: 0,
+    rewardMoney: 200,
+    rewardXP: 30,
+    assetSlug: "basic-website",
   },
   {
-    jobId: "job_income_api_integration",
+    id: "income_website_advanced",
+    name: "Advanced Website",
+    description: "Build a polished website with modern features. Premium freelance.",
+    contentType: "income",
+    uiCategory: "INCOME",
+    minLevel: 4,
+    unlockCostRP: 280,
+    unlockDurationMs: 3 * 60 * 1000,
+    prerequisite: "income_website",
+    jobDurationMs: 6 * 60 * 1000,
+    jobMoneyCost: 0,
+    jobComputeCost: 0,
+    rewardMoney: 550,
+    rewardXP: 70,
+    assetSlug: "advanced-website",
+  },
+  {
+    id: "income_api",
     name: "API Integration Gig",
-    description:
-      "Integrate third-party APIs for a startup. More complex freelance.",
-    durationMs: 5 * 60 * 1000, // 5 minutes
-    moneyCost: 0,
-    computeRequiredCU: 0,
-    rewards: { money: 400, xp: 50, rp: 0 },
-    requirements: {
-      minLevel: 3,
-      requiredResearchNodeIds: ["rn_income_api_integration"],
-    },
-    output: {},
-    category: "revenue",
+    description: "Integrate third-party APIs for a startup.",
+    contentType: "income",
+    uiCategory: "INCOME",
+    minLevel: 3,
+    unlockCostRP: 180,
+    unlockDurationMs: 2 * 60 * 1000,
+    prerequisite: "income_website",
+    jobDurationMs: 5 * 60 * 1000,
+    jobMoneyCost: 0,
+    jobComputeCost: 0,
+    rewardMoney: 400,
+    rewardXP: 50,
   },
 
-  // === HIRE JOBS (temporary boosts, cost money) ===
-  // Each hire boosts one of the 5 lab stats while active
+  // ===========================================================================
+  // HIRES
+  // ===========================================================================
   {
-    jobId: "job_hire_junior_researcher",
-    name: "Hire Junior Researcher",
+    id: "hire_junior",
+    name: "Junior Researcher",
     description: "Hire a junior to help. +1 queue slot for 8 minutes.",
-    durationMs: 8 * 60 * 1000, // 8 minutes
-    moneyCost: 300,
-    computeRequiredCU: 0,
-    rewards: { money: 0, xp: 0, rp: 0 },
-    requirements: {
-      minLevel: 2,
-      requiredResearchNodeIds: ["rn_hire_junior_researcher"],
-    },
-    output: { hiresRole: "junior_researcher", hireStat: "queue", hireBonus: 1 },
-    category: "hire",
+    contentType: "hire",
+    uiCategory: "HIRING",
+    minLevel: 2,
+    unlockCostRP: 150,
+    unlockDurationMs: 1.5 * 60 * 1000,
+    jobDurationMs: 8 * 60 * 1000,
+    jobMoneyCost: 300,
+    jobComputeCost: 0,
+    hireStat: "queue",
+    hireBonus: 1,
   },
   {
-    jobId: "job_hire_optimization_specialist",
-    name: "Hire Optimization Specialist",
+    id: "hire_optimizer",
+    name: "Optimization Specialist",
     description: "Speed expert joins. +15% speed for 10 minutes.",
-    durationMs: 10 * 60 * 1000, // 10 minutes
-    moneyCost: 1000,
-    computeRequiredCU: 0,
-    rewards: { money: 0, xp: 0, rp: 0 },
-    requirements: {
-      minLevel: 3,
-      requiredResearchNodeIds: ["rn_hire_optimization_specialist"],
-    },
-    output: { hiresRole: "optimization_specialist", hireStat: "speed", hireBonus: 15 },
-    category: "hire",
+    contentType: "hire",
+    uiCategory: "HIRING",
+    minLevel: 3,
+    unlockCostRP: 300,
+    unlockDurationMs: 3 * 60 * 1000,
+    prerequisite: "hire_junior",
+    jobDurationMs: 10 * 60 * 1000,
+    jobMoneyCost: 1000,
+    jobComputeCost: 0,
+    hireStat: "speed",
+    hireBonus: 15,
   },
   {
-    jobId: "job_hire_hr_manager",
-    name: "Hire HR Manager",
+    id: "hire_hr",
+    name: "HR Manager",
     description: "Talent scout joins. +1 team size for 15 minutes.",
-    durationMs: 15 * 60 * 1000, // 15 minutes
-    moneyCost: 500,
-    computeRequiredCU: 0,
-    rewards: { money: 0, xp: 0, rp: 0 },
-    requirements: {
-      minLevel: 5,
-      requiredResearchNodeIds: ["rn_hire_hr_manager"],
-    },
-    output: { hiresRole: "hr_manager", hireStat: "staff", hireBonus: 1 },
-    category: "hire",
+    contentType: "hire",
+    uiCategory: "HIRING",
+    minLevel: 5,
+    unlockCostRP: 250,
+    unlockDurationMs: 3 * 60 * 1000,
+    prerequisite: "hire_optimizer",
+    jobDurationMs: 15 * 60 * 1000,
+    jobMoneyCost: 500,
+    jobComputeCost: 0,
+    hireStat: "staff",
+    hireBonus: 1,
   },
   {
-    jobId: "job_hire_business_partner",
-    name: "Hire Business Partner",
+    id: "hire_partner",
+    name: "Business Partner",
     description: "Partner up for deals. +25% money multiplier for 15 minutes.",
-    durationMs: 15 * 60 * 1000, // 15 minutes
-    moneyCost: 900,
-    computeRequiredCU: 0,
-    rewards: { money: 0, xp: 0, rp: 0 },
-    requirements: {
-      minLevel: 6,
-      requiredResearchNodeIds: ["rn_hire_business_partner"],
-    },
-    output: { hiresRole: "business_partner", hireStat: "moneyMultiplier", hireBonus: 25 },
-    category: "hire",
+    contentType: "hire",
+    uiCategory: "HIRING",
+    minLevel: 6,
+    unlockCostRP: 450,
+    unlockDurationMs: 5 * 60 * 1000,
+    prerequisite: "hire_hr",
+    jobDurationMs: 15 * 60 * 1000,
+    jobMoneyCost: 900,
+    jobComputeCost: 0,
+    hireStat: "moneyMultiplier",
+    hireBonus: 25,
   },
   {
-    jobId: "job_hire_senior_engineer",
-    name: "Hire Senior Engineer",
+    id: "hire_senior",
+    name: "Senior Engineer",
     description: "Top talent joins. +1 compute for 20 minutes.",
-    durationMs: 20 * 60 * 1000, // 20 minutes
-    moneyCost: 1500,
-    computeRequiredCU: 0,
-    rewards: { money: 0, xp: 0, rp: 0 },
-    requirements: {
-      minLevel: 10,
-      requiredResearchNodeIds: ["rn_hire_senior_engineer"],
-    },
-    output: { hiresRole: "senior_engineer", hireStat: "compute", hireBonus: 1 },
-    category: "hire",
-  },
-];
-
-// -----------------------------------------------------------------------------
-// RESEARCH NODES
-// -----------------------------------------------------------------------------
-
-export type ResearchCategory = "model" | "revenue" | "perk" | "hiring";
-export type PerkType = "speed" | "money_multiplier";
-
-export interface ResearchNodeUnlocks {
-  unlocksBlueprintIds?: string[];
-  unlocksJobIds?: string[];
-  enablesSystemFlags?: string[];
-  perkType?: PerkType;
-  perkValue?: number;
-}
-
-export interface ResearchNode {
-  nodeId: string;
-  category: ResearchCategory;
-  name: string;
-  description: string;
-  costRP: number;
-  durationMs: number; // Time to complete research (same task system as jobs)
-  minLevel: number;
-  prerequisiteNodes: string[];
-  unlocks: ResearchNodeUnlocks;
-}
-
-export const RESEARCH_NODES: ResearchNode[] = [
-  // === INCOME (freelance work, no models needed) ===
-  {
-    nodeId: "rn_income_basic_website",
-    category: "revenue",
-    name: "Basic Website Gigs",
-    description: "Unlock freelance website work to earn money.",
-    costRP: 0,
-    durationMs: 30 * 1000, // 30s (free starter)
-    minLevel: 1,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksJobIds: ["job_income_basic_website"],
-    },
-  },
-  {
-    nodeId: "rn_income_api_integration",
-    category: "revenue",
-    name: "API Integration Gigs",
-    description: "Unlock more complex freelance integration work.",
-    costRP: 180,
-    durationMs: 2 * 60 * 1000, // 2m
-    minLevel: 3,
-    prerequisiteNodes: ["rn_income_basic_website"],
-    unlocks: {
-      unlocksJobIds: ["job_income_api_integration"],
-    },
+    contentType: "hire",
+    uiCategory: "HIRING",
+    minLevel: 10,
+    unlockCostRP: 700,
+    unlockDurationMs: 8 * 60 * 1000,
+    prerequisite: "hire_partner",
+    jobDurationMs: 20 * 60 * 1000,
+    jobMoneyCost: 1500,
+    jobComputeCost: 0,
+    hireStat: "compute",
+    hireBonus: 1,
   },
 
-  // === MONETIZATION (ways to make money with models) ===
+  // ===========================================================================
+  // REVENUE FEATURES
+  // ===========================================================================
   {
-    nodeId: "rn_cap_contracts_basic",
-    category: "revenue",
-    name: "Basic Contracts",
-    description: "Unlock simple paid contracts in Operate.",
-    costRP: 0,
-    durationMs: 30 * 1000, // 30s (free starter)
-    minLevel: 1,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksJobIds: ["job_contract_blog_basic"],
-    },
-  },
-  {
-    nodeId: "rn_bp_unlock_tts_3b",
-    category: "model",
-    name: "3B TTS",
-    description: "Unlock training for 3B TTS.",
-    costRP: 0,
-    durationMs: 30 * 1000, // 30s (free starter)
-    minLevel: 1,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksBlueprintIds: ["bp_tts_3b"],
-      unlocksJobIds: ["job_train_tts_3b"],
-    },
-  },
-  {
-    nodeId: "rn_perk_speed_1",
-    category: "perk",
-    name: "Speed I",
-    description: "Complete all tasks a bit faster.",
-    costRP: 120,
-    durationMs: 1 * 60 * 1000, // 1m
-    minLevel: 1,
-    prerequisiteNodes: [],
-    unlocks: {
-      perkType: "speed",
-      perkValue: 10, // +10%
-    },
-  },
-
-  // === EARLY PROGRESSION ===
-  {
-    nodeId: "rn_bp_unlock_vlm_7b",
-    category: "model",
-    name: "7B VLM",
-    description: "Unlock training for 7B VLM.",
-    costRP: 250,
-    durationMs: 3 * 60 * 1000, // 3m
-    minLevel: 2,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksBlueprintIds: ["bp_vlm_7b"],
-      unlocksJobIds: ["job_train_vlm_7b"],
-    },
-  },
-  {
-    nodeId: "rn_cap_contracts_voice",
-    category: "revenue",
-    name: "Voice Gigs",
-    description: "Unlock audio contracts that use your TTS models.",
-    costRP: 200,
-    durationMs: 2 * 60 * 1000, // 2m
-    minLevel: 2,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksJobIds: ["job_contract_voice_pack"],
-    },
-  },
-  {
-    nodeId: "rn_cap_contracts_vision",
-    category: "revenue",
-    name: "Vision Contracts",
-    description: "Unlock image QA contracts that use your VLM models.",
-    costRP: 220,
-    durationMs: 2.5 * 60 * 1000, // 2.5m
-    minLevel: 3,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksJobIds: ["job_contract_image_qa"],
-    },
-  },
-  {
-    nodeId: "rn_bp_unlock_llm_3b",
-    category: "model",
-    name: "3B LLM",
-    description: "Unlock training for 3B LLM.",
-    costRP: 350,
-    durationMs: 4 * 60 * 1000, // 4m
-    minLevel: 3,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksBlueprintIds: ["bp_llm_3b"],
-      unlocksJobIds: ["job_train_llm_3b"],
-    },
-  },
-  {
-    nodeId: "rn_perk_money_multiplier_1",
-    category: "perk",
-    name: "Payout Booster I",
-    description: "Earn a bit more money from contracts.",
-    costRP: 180,
-    durationMs: 2 * 60 * 1000, // 2m
-    minLevel: 3,
-    prerequisiteNodes: [],
-    unlocks: {
-      perkType: "money_multiplier",
-      perkValue: 0.1, // +10%
-    },
-  },
-
-  // === MID-GAME HOOKS ===
-  {
-    nodeId: "rn_bp_unlock_llm_17b",
-    category: "model",
-    name: "17B LLM",
-    description: "Unlock training for 17B LLM.",
-    costRP: 900,
-    durationMs: 12 * 60 * 1000, // 12m
-    minLevel: 7,
-    prerequisiteNodes: ["rn_bp_unlock_llm_3b"],
-    unlocks: {
-      unlocksBlueprintIds: ["bp_llm_17b"],
-      unlocksJobIds: ["job_train_llm_17b"],
-    },
-  },
-  {
-    nodeId: "rn_cap_model_api_income",
-    category: "revenue",
+    id: "revenue_api",
     name: "Model API Income",
     description: "Earn passive money from hosted model APIs.",
-    costRP: 350,
-    durationMs: 4 * 60 * 1000, // 4m
+    contentType: "income",
+    uiCategory: "revenue",
     minLevel: 5,
-    prerequisiteNodes: [],
-    unlocks: {
-      enablesSystemFlags: ["model_api_income"],
-    },
+    unlockCostRP: 350,
+    unlockDurationMs: 4 * 60 * 1000,
   },
   {
-    nodeId: "rn_cap_model_licensing",
-    category: "revenue",
+    id: "revenue_licensing",
     name: "Model Licensing",
     description: "License your models to enterprises for big payouts.",
-    costRP: 500,
-    durationMs: 6 * 60 * 1000, // 6m
+    contentType: "income",
+    uiCategory: "revenue",
     minLevel: 8,
-    prerequisiteNodes: ["rn_cap_model_api_income"],
-    unlocks: {
-      enablesSystemFlags: ["model_licensing"],
-    },
+    unlockCostRP: 500,
+    unlockDurationMs: 6 * 60 * 1000,
+    prerequisite: "revenue_api",
   },
 
-  // === HIRING (unlock hire types) ===
-  // Each hire unlocks temporary boosts to one of the 5 lab stats
+  // ===========================================================================
+  // ALWAYS AVAILABLE
+  // ===========================================================================
   {
-    nodeId: "rn_hire_junior_researcher",
-    category: "hiring",
-    name: "Junior Researcher",
-    description: "Unlock hiring junior researchers for +1 queue.",
-    costRP: 150,
-    durationMs: 1.5 * 60 * 1000, // 1.5m
-    minLevel: 2,
-    prerequisiteNodes: [],
-    unlocks: {
-      unlocksJobIds: ["job_hire_junior_researcher"],
-    },
-  },
-  {
-    nodeId: "rn_hire_optimization_specialist",
-    category: "hiring",
-    name: "Optimization Specialist",
-    description: "Unlock hiring optimization specialists for +15% speed.",
-    costRP: 300,
-    durationMs: 3 * 60 * 1000, // 3m
-    minLevel: 3,
-    prerequisiteNodes: ["rn_hire_junior_researcher"],
-    unlocks: {
-      unlocksJobIds: ["job_hire_optimization_specialist"],
-    },
-  },
-  {
-    nodeId: "rn_hire_hr_manager",
-    category: "hiring",
-    name: "HR Manager",
-    description: "Unlock hiring HR managers for +1 team size.",
-    costRP: 250,
-    durationMs: 3 * 60 * 1000, // 3m
-    minLevel: 5,
-    prerequisiteNodes: ["rn_hire_optimization_specialist"],
-    unlocks: {
-      unlocksJobIds: ["job_hire_hr_manager"],
-    },
-  },
-  {
-    nodeId: "rn_hire_business_partner",
-    category: "hiring",
-    name: "Business Partner",
-    description: "Unlock hiring business partners for +25% money multiplier.",
-    costRP: 450,
-    durationMs: 5 * 60 * 1000, // 5m
-    minLevel: 6,
-    prerequisiteNodes: ["rn_hire_hr_manager"],
-    unlocks: {
-      unlocksJobIds: ["job_hire_business_partner"],
-    },
-  },
-  {
-    nodeId: "rn_hire_senior_engineer",
-    category: "hiring",
-    name: "Senior Engineer",
-    description: "Unlock hiring senior engineers for +1 compute.",
-    costRP: 700,
-    durationMs: 8 * 60 * 1000, // 8m
-    minLevel: 10,
-    prerequisiteNodes: ["rn_hire_business_partner"],
-    unlocks: {
-      unlocksJobIds: ["job_hire_senior_engineer"],
-    },
+    id: "research_literature",
+    name: "Literature Sweep",
+    description: "Do foundational research to earn RP steadily.",
+    contentType: "research",
+    uiCategory: "RESEARCH",
+    minLevel: 1,
+    jobDurationMs: 3 * 60 * 1000,
+    jobMoneyCost: 150,
+    jobComputeCost: 0,
+    rewardXP: 40,
+    rewardRP: 60,
   },
 ];
 
 // -----------------------------------------------------------------------------
-// INBOX EVENTS (MVP milestone notifications)
+// HELPER FUNCTIONS
+// -----------------------------------------------------------------------------
+
+/** Get content entry by ID. */
+export function getContentById(id: string): ContentEntry | undefined {
+  return CONTENT_CATALOG.find((c) => c.id === id);
+}
+
+/** Get all content of a specific type. */
+export function getContentByType(contentType: ContentType): ContentEntry[] {
+  return CONTENT_CATALOG.filter((c) => c.contentType === contentType);
+}
+
+/** Get all content in a UI category. */
+export function getContentByUICategory(uiCategory: UICategory): ContentEntry[] {
+  return CONTENT_CATALOG.filter((c) => c.uiCategory === uiCategory);
+}
+
+/** Get all trainable models. */
+export function getAllModels(): ContentEntry[] {
+  return getContentByType("model");
+}
+
+/** Get all content that has a job (can be started as a task). */
+export function getAllJobs(): ContentEntry[] {
+  return CONTENT_CATALOG.filter((c) => c.jobDurationMs !== undefined);
+}
+
+/** Get all content that needs research unlock. */
+export function getAllUnlockables(): ContentEntry[] {
+  return CONTENT_CATALOG.filter((c) => c.unlockCostRP !== undefined);
+}
+
+/** Get research category for an entry. */
+export function getResearchCategory(entry: ContentEntry): "model" | "revenue" | "hiring" | null {
+  switch (entry.contentType) {
+    case "model": return "model";
+    case "contract":
+    case "income": return "revenue";
+    case "hire": return "hiring";
+    default: return null;
+  }
+}
+
+/** Calculate model score from entry + randomness. */
+export function calculateModelScore(entry: ContentEntry, bonusPercent: number = 0): number {
+  if (!entry.scoreRange) return 0;
+  const { min, max } = entry.scoreRange;
+  const baseScore = min + Math.random() * (max - min);
+  const bonusMultiplier = 1 + bonusPercent / 100;
+  return Math.round(baseScore * bonusMultiplier);
+}
+
+/** Get free starters (auto-unlocked at game start). */
+export function getFreeStarters(): ContentEntry[] {
+  return CONTENT_CATALOG.filter(
+    (c) => c.unlockCostRP === 0 && (c.minLevel ?? 1) === 1 && !c.prerequisite
+  );
+}
+
+/** Get starter unlock IDs for new players. */
+export function getStarterUnlockIds(): string[] {
+  const ids = getFreeStarters().map((c) => c.id);
+  // Always include research_literature
+  if (!ids.includes("research_literature")) {
+    ids.push("research_literature");
+  }
+  return ids;
+}
+
+/** Get all content IDs. */
+export const ALL_CONTENT_IDS = CONTENT_CATALOG.map((c) => c.id);
+
+// -----------------------------------------------------------------------------
+// INBOX EVENTS
 // -----------------------------------------------------------------------------
 
 export interface InboxEventDef {
@@ -716,216 +608,97 @@ export const INBOX_EVENTS: InboxEventDef[] = [
     eventId: "evt_first_level_up",
     trigger: "first_level_up",
     title: "Level Up! Upgrade Points Unlocked",
-    message:
-      "You earned UP from leveling. Spend them in Lab > Upgrades to increase your queue, staff, or compute capacity.",
+    message: "You earned UP from leveling. Spend them in Lab > Upgrades.",
     deepLink: { view: "lab", target: "upgrades" },
   },
   {
     eventId: "evt_first_research",
     trigger: "first_research",
     title: "Research Unlocked!",
-    message:
-      "Use Research Points to unlock new models, capabilities, and perks. Check out the Models and Capabilities tabs.",
+    message: "Use Research Points to unlock new models, revenue streams, and hires.",
     deepLink: { view: "research" },
   },
   {
     eventId: "evt_first_model",
     trigger: "first_model",
     title: "First Model Trained!",
-    message:
-      "Your model is now in Lab > Models. Train more versions to improve scores, or publish to compete on leaderboards.",
+    message: "Your model is in Lab > Models. Publish to compete on leaderboards.",
     deepLink: { view: "lab", target: "models" },
   },
   {
     eventId: "evt_level_5",
     trigger: "level_5",
     title: "Passive Income Available",
-    message:
-      "At level 5 you can unlock Model API Income in Research. Published models will earn passive money.",
+    message: "Unlock Model API Income in Research for passive money.",
     deepLink: { view: "research" },
   },
 ];
 
 // -----------------------------------------------------------------------------
-// HELPER FUNCTIONS
+// ENTITY ASSETS
 // -----------------------------------------------------------------------------
-
-export function getBlueprintById(id: string): ModelBlueprint | undefined {
-  return MODEL_BLUEPRINTS.find((bp) => bp.id === id);
-}
-
-export function getJobById(id: string): JobDefinition | undefined {
-  return JOB_DEFS.find((job) => job.jobId === id);
-}
-
-export function getResearchNodeById(id: string): ResearchNode | undefined {
-  return RESEARCH_NODES.find((node) => node.nodeId === id);
-}
-
-export function getJobsForBlueprint(blueprintId: string): JobDefinition[] {
-  return JOB_DEFS.filter((job) => job.output.trainsBlueprintId === blueprintId);
-}
-
-export function getContractJobsForModelType(
-  modelType: ModelType
-): JobDefinition[] {
-  return JOB_DEFS.filter((job) => job.output.usesBlueprintType === modelType);
-}
-
-// Calculate model score from blueprint range + randomness
-export function calculateModelScore(
-  blueprint: ModelBlueprint,
-  bonusPercent: number = 0
-): number {
-  const { min, max } = blueprint.scoreRange;
-  const baseScore = min + Math.random() * (max - min);
-  const bonusMultiplier = 1 + bonusPercent / 100;
-  return Math.round(baseScore * bonusMultiplier);
-}
-
-// Get all job IDs (for schema validation)
-export const ALL_JOB_IDS = JOB_DEFS.map((j) => j.jobId);
-
-// Get all blueprint IDs
-export const ALL_BLUEPRINT_IDS = MODEL_BLUEPRINTS.map((bp) => bp.id);
-
-// Get all research node IDs
-export const ALL_RESEARCH_NODE_IDS = RESEARCH_NODES.map((n) => n.nodeId);
-
-// -----------------------------------------------------------------------------
-// ENTITY ASSETS (manga-cyberpunk icons for entities)
-// -----------------------------------------------------------------------------
-
-export type AssetCategory = "model" | "revenue" | "compute" | "research" | "hiring";
 
 export interface EntityAsset {
   id: string;
   title: string;
-  category: AssetCategory;
   slug: string;
   version: string;
-  files: {
-    image: string;
-    depth?: string;
-    model?: string; // GLB 3D model
-  };
+  files: { image: string; depth?: string; model?: string };
   notes?: string;
 }
 
-// Asset registry - populated as assets are generated via /asset command
 export const ENTITY_ASSETS: EntityAsset[] = [
   {
-    id: "model_3b_tts",
+    id: "tts_3b",
     title: "3B TTS",
-    category: "model",
     slug: "3b-tts",
     version: "v007",
-    files: {
-      image: "/assets/entities/3b-tts/3b-tts_v007.png",
-    },
-    notes: "compact audio synthesis module with single speaker, entry-level device",
+    files: { image: "/assets/entities/3b-tts/3b-tts_v007_transparent.png" },
   },
   {
-    id: "model_7b_tts",
+    id: "income_website",
+    title: "Basic Website",
+    slug: "basic-website",
+    version: "v001",
+    files: { image: "/assets/entities/basic-website/basic-website_v001_transparent.png" },
+    notes: "Compact browser cartridge with HTML brackets and webpage wireframe layout",
+  },
+  {
+    id: "tts_7b",
     title: "7B TTS",
-    category: "model",
     slug: "7b-tts",
     version: "v002",
-    files: {
-      image: "/assets/entities/7b-tts/7b-tts_v002.png",
-    },
-    notes: "dual-speaker audio synthesis module",
+    files: { image: "/assets/entities/7b-tts/7b-tts_v002_transparent.png" },
   },
   {
-    id: "model_30b_tts",
+    id: "tts_30b",
     title: "30B TTS",
-    category: "model",
     slug: "30b-tts",
     version: "v003",
-    files: {
-      image: "/assets/entities/30b-tts/30b-tts_v003.png",
-    },
-    notes: "stacked dual-rack audio synthesis system",
+    files: { image: "/assets/entities/30b-tts/30b-tts_v003_transparent.png" },
   },
   {
-    id: "model_70b_tts",
+    id: "tts_70b",
     title: "70B TTS",
-    category: "model",
     slug: "70b-tts",
     version: "v002",
-    files: {
-      image: "/assets/entities/70b-tts/70b-tts_v002.png",
-    },
-    notes: "massive industrial-scale audio synthesis system",
+    files: { image: "/assets/entities/70b-tts/70b-tts_v002_transparent.png" },
   },
 ];
 
-// -----------------------------------------------------------------------------
-// ASSET HELPER FUNCTIONS
-// -----------------------------------------------------------------------------
-
-/**
- * Get asset by entity slug (e.g. "3b-tts")
- */
+/** Get asset by slug. */
 export function getAssetBySlug(slug: string): EntityAsset | undefined {
   return ENTITY_ASSETS.find((a) => a.slug === slug);
 }
 
-/**
- * Get asset by entity ID (e.g. "model_3b_tts")
- */
-export function getAssetById(id: string): EntityAsset | undefined {
-  return ENTITY_ASSETS.find((a) => a.id === id);
-}
-
-/**
- * Get image URL for an entity by slug
- * Returns undefined if no asset exists
- */
-export function getEntityImageUrl(slug: string): string | undefined {
-  const asset = getAssetBySlug(slug);
+/** Get image URL for a content entry. */
+export function getContentImageUrl(entry: ContentEntry): string | undefined {
+  if (!entry.assetSlug) return undefined;
+  const asset = getAssetBySlug(entry.assetSlug);
   return asset?.files.image;
 }
 
-/**
- * Get depth map URL for an entity by slug
- * Returns undefined if no asset exists
- */
-export function getEntityDepthUrl(slug: string): string | undefined {
-  const asset = getAssetBySlug(slug);
-  return asset?.files.depth;
-}
-
-/**
- * Get 3D model URL for an entity by slug
- * Returns undefined if no asset exists
- */
-export function getEntityModelUrl(slug: string): string | undefined {
-  const asset = getAssetBySlug(slug);
-  return asset?.files.model;
-}
-
-/**
- * Convert entity name to slug (lowercase kebab-case)
- * "3B TTS" -> "3b-tts"
- * "Basic Website" -> "basic-website"
- */
+/** Convert name to slug. */
 export function toEntitySlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
-
-/**
- * Generate file paths for a new asset
- */
-export function generateAssetPaths(
-  slug: string,
-  version: string = "v001"
-): { image: string; depth: string } {
-  return {
-    image: `/assets/entities/${slug}/${slug}_${version}.png`,
-    depth: `/assets/entities/${slug}/${slug}_${version}_depth.png`,
-  };
+  return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 }

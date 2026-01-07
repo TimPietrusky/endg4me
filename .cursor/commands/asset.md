@@ -55,8 +55,10 @@ manga cyberpunk object illustration, clean inked linework, subtle halftone shadi
 ### COMPOSITION_LOCK (always include)
 
 ```
-single centered object, wide horizontal form factor, object is wider than it is tall, low-profile shape, landscape orientation device, isolated, transparent background png (alpha), if transparency is not supported then flat neutral gray background, no environment, no city, no room, no clutter, readable at small size
+single centered object, wide horizontal form factor, object is wider than it is tall, low-profile shape, landscape orientation device, isolated, flat neutral gray background, no environment, no city, no room, no clutter, readable at small size
 ```
+
+Note: Template mode (`-t`) handles positioning automatically via the composition guide. The prompt focuses on the object description; positioning instructions are added by the script.
 
 ### SIZE_GUIDE (for parameter-scaled models)
 
@@ -82,10 +84,10 @@ Always generate the smallest variant first as baseline. Larger variants can refe
 - No baked accent colors (no category coloring in the art)
 - Single object only (or very compact vignette with attached parts)
 - No environment backgrounds (no city, no room)
-- Transparent background preferred; flat neutral gray if not possible
+- Flat neutral gray background (template mode crops to safe zone)
 - No text, no logos, no watermarks inside the art
 - Composition must be readable at small sizes
-- Deliverables: 16:9 PNG
+- Deliverables: 1344x756 PNG (16:9 ratio, auto-cropped from template)
 
 ---
 
@@ -98,17 +100,37 @@ Generate `entity_slug` (lowercase kebab-case):
 
 File paths:
 
-- `public/assets/entities/<entity_slug>/<entity_slug>_v001.png`
+- `public/assets/entities/<entity_slug>/<entity_slug>_v001.png` (original with gray background)
+- `public/assets/entities/<entity_slug>/<entity_slug>_v001_transparent.png` (transparent background)
 
 ---
 
 ## Generation Commands
 
-**Main PNG:**
+**Main PNG (with composition template):**
 
 ```bash
-node scripts/generate-image.mjs -p "<MAIN_PROMPT>" -a 16:9 -o assets/entities/<slug>/<slug>_v001.png
+node scripts/generate-image.mjs -p "<MAIN_PROMPT>" -t -o assets/entities/<slug>/<slug>_v001.png
 ```
+
+The `-t` flag enables template mode:
+
+- Uses `public/assets/templates/composition-template.png` as reference
+- Adds composition instructions to place object within marked boundary
+- Auto-crops output to safe zone (1344x756, 16:9 ratio)
+- Removes the magenta guide border from final image
+
+**Transparent PNG (background removal):**
+
+```bash
+node scripts/remove-background.mjs -i public/assets/entities/<slug>/<slug>_v001.png
+```
+
+This creates `<slug>_v001_transparent.png` alongside the original:
+
+- Uses fal-ai/birefnet/v2 for high-quality background removal
+- Preserves the original with background
+- Transparent version can be composited on any background later
 
 ---
 
@@ -125,6 +147,7 @@ Add to `ENTITY_ASSETS` in `convex/lib/contentCatalog.ts`:
   version: "v001",
   files: {
     image: "/assets/entities/<entity_slug>/<entity_slug>_v001.png",
+    imageTransparent: "/assets/entities/<entity_slug>/<entity_slug>_v001_transparent.png",
   },
   notes: "<object metaphor description>",
 },
@@ -139,5 +162,6 @@ If entity is a model blueprint, also add `assetSlug: "<entity_slug>"` to the blu
 1. Brainstorm options (2-4)
 2. User picks one (or auto-select best)
 3. Generate PNG via generate-image.mjs
-4. Add metadata to contentCatalog.ts
-5. Link to blueprint if applicable
+4. Remove background via remove-background.mjs (creates transparent version)
+5. Add metadata to contentCatalog.ts
+6. Link to blueprint if applicable
