@@ -13,6 +13,7 @@
     "reset:all": "node scripts/reset-game.mjs --all"
   },
   "dependencies": {
+    "@ai-sdk/fal": "^2.0.4",
     "@base-ui/react": "^1.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-progress": "^1.1.8",

@@ -418,28 +418,41 @@ Configured in `tsconfig.json` (and shadcn `components.json`):
 
 ## Asset Generation (CLI utility)
 
-Use `scripts/generate-image.mjs` to generate game assets (action card backgrounds, UI elements, etc.) via RunPod AI.
+Use `scripts/generate-image.mjs` to generate game assets (action card backgrounds, UI elements, etc.) via multiple AI providers.
 
 ```bash
 # Show help
 node scripts/generate-image.mjs --help
 
-# Generate an image
-node scripts/generate-image.mjs --prompt "cyberpunk AI datacenter with neon lights"
+# Generate with Flux 2 (default)
+node scripts/generate-image.mjs --prompt "cyberpunk AI datacenter"
 
-# With options
-node scripts/generate-image.mjs -p "futuristic lab interior" -a 16:9 -o lab-background.jpg
+# Generate with RunPod p-image
+node scripts/generate-image.mjs -p "cyberpunk AI datacenter" -m p-image
+
+# Compare both models with same prompt
+node scripts/generate-image.mjs -p "futuristic lab" -m flux2 -o lab-flux2.jpg
+node scripts/generate-image.mjs -p "futuristic lab" -m p-image -o lab-p-image.jpg
+
+# Edit an existing image (flux2 only)
+node scripts/generate-image.mjs -p "add neon glow effects" -i source.jpg
 ```
 
 **Options:**
 - `--prompt, -p` — Image description (required)
+- `--model, -m` — Model: flux2, p-image (default: flux2)
+- `--input, -i` — Input image path for editing (both models support edit)
 - `--output, -o` — Output filename (default: auto-generated timestamp)
 - `--aspect, -a` — Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4 (default: 16:9)
 - `--seed, -s` — Seed for reproducibility
 
+**Models:**
+- `flux2` — fal.ai Flux 2 Turbo (t2i + edit)
+- `p-image` — RunPod p-image (t2i + edit)
+
 **Output:** Images are saved to `public/` folder.
 
-**Environment:** Requires `RUNPOD_API_KEY` in `.env.local` (or `.env` as fallback).
+**Environment:** `FAL_API_KEY` for flux2, `RUNPOD_API_KEY` for p-image.
 
 ---
 
