@@ -7,6 +7,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { CurrencyDollar, Clock } from "@phosphor-icons/react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ActionButton } from "@/components/game/dashboard/action-button";
 
 interface FounderSelectionProps {
   userId: string;
@@ -93,200 +95,198 @@ export function FounderSelection({ userId }: FounderSelectionProps) {
         </div>
 
         {/* name your lab */}
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-white mb-1 lowercase">
-            name your lab
-          </h2>
-          <p className="text-zinc-500 text-sm mb-4 lowercase">
-            this is how others will know you
-          </p>
-          <div className="max-w-md mx-auto">
-            <input
-              type="text"
-              value={labName}
-              onChange={(e) => setLabName(e.target.value)}
-              placeholder="enter your lab name..."
-              maxLength={32}
-              className="w-full px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-700 transition-all lowercase text-center"
-            />
-          </div>
-        </div>
+        <Card className="bg-card/50 border-border">
+          <CardContent className="p-3 text-center">
+            <h2 className="text-xl font-bold text-white mb-1 lowercase">
+              name your lab
+            </h2>
+            <p className="text-zinc-500 text-sm mb-4 lowercase">
+              this is how others will know you
+            </p>
+            <div className="w-full md:max-w-[50%] mx-auto">
+              <input
+                type="text"
+                value={labName}
+                onChange={(e) => setLabName(e.target.value)}
+                placeholder="enter your lab name..."
+                maxLength={32}
+                className="w-full px-4 py-3 rounded-lg bg-black/30 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-700 transition-all lowercase text-center"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* choose your path */}
-        <div>
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-white mb-1 lowercase">
-              choose your path
-            </h2>
-            <p className="text-zinc-500 text-sm lowercase">
-              your founder type shapes your lab&apos;s strengths
-            </p>
-            <p className="text-zinc-600 text-xs lowercase mt-1">
-              this decision is permanent
-            </p>
-          </div>
+        <Card className="bg-card/50 border-border">
+          <CardContent className="p-3">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white mb-1 lowercase">
+                choose your path
+              </h2>
+              <p className="text-zinc-500 text-sm lowercase">
+                your founder type shapes your lab&apos;s strengths
+              </p>
+              <p className="text-zinc-600 text-xs lowercase mt-1">
+                this decision is permanent
+              </p>
+            </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {FOUNDER_OPTIONS.map((option) => {
-              const Icon = option.icon;
-              const isSelected = selectedType === option.type;
+            <div className="grid md:grid-cols-2 gap-6">
+              {FOUNDER_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const isSelected = selectedType === option.type;
 
-              return (
-                <button
-                  key={option.type}
-                  onClick={() => setSelectedType(option.type)}
-                  className={cn(
-                    "relative p-8 rounded-2xl border-2 transition-all duration-300 text-left group",
-                    option.bgColor,
-                    isSelected
-                      ? `${
-                          option.borderColor
-                        } ring-2 ring-offset-2 ring-offset-zinc-950 ${option.borderColor.replace(
-                          "border-",
-                          "ring-"
-                        )}`
-                      : `border-zinc-800 ${option.hoverBorder}`
-                  )}
-                >
-                  {/* glow effect */}
-                  <div
+                return (
+                  <button
+                    key={option.type}
+                    onClick={() => setSelectedType(option.type)}
                     className={cn(
-                      "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 transition-opacity",
-                      option.color,
-                      isSelected ? "opacity-10" : "group-hover:opacity-5"
+                      "relative p-8 rounded-2xl border-2 transition-all duration-300 text-left group",
+                      option.bgColor,
+                      isSelected
+                        ? `${
+                            option.borderColor
+                          } ring-2 ring-offset-2 ring-offset-zinc-950 ${option.borderColor.replace(
+                            "border-",
+                            "ring-"
+                          )}`
+                        : `border-zinc-800 ${option.hoverBorder}`
                     )}
-                  />
-
-                  <div className="relative z-10">
-                    {/* header */}
-                    <h3 className="text-xl font-bold mb-1">{option.name}</h3>
-                    <p className="text-zinc-500 text-sm mb-8">
-                      {option.description}
-                    </p>
-
-                    {/* stat name header */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div
-                        className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center",
-                          option.iconBgColor
-                        )}
-                      >
-                        <Icon
-                          className={cn("w-5 h-5", option.bonusColor)}
-                          weight="bold"
-                        />
-                      </div>
-                      <span
-                        className={cn("text-lg font-bold", option.bonusColor)}
-                      >
-                        {option.bonusLabel}
-                      </span>
-                    </div>
-
-                    {/* two-column base vs bonus display */}
+                  >
+                    {/* glow effect */}
                     <div
                       className={cn(
-                        "rounded-xl border-2 overflow-hidden",
-                        option.iconBgColor,
-                        option.borderColor
+                        "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 transition-opacity",
+                        option.color,
+                        isSelected ? "opacity-10" : "group-hover:opacity-5"
                       )}
-                    >
-                      <div className="grid grid-cols-2 gap-3 p-4">
-                        {/* base column */}
-                        <div className="text-center">
-                          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">
-                            base
-                          </div>
-                          <div className="text-2xl font-mono text-white/50">
-                            {option.baseValue}
-                          </div>
-                        </div>
-                        {/* bonus column */}
-                        <div className="text-center">
-                          <div
-                            className={cn(
-                              "text-[10px] uppercase tracking-wider mb-1",
-                              option.bonusColor
-                            )}
-                          >
-                            bonus
-                          </div>
-                          <div
-                            className={cn(
-                              "text-2xl font-black",
-                              option.bonusColor
-                            )}
-                          >
-                            {option.bonusValue}
-                          </div>
-                        </div>
-                      </div>
-                      {/* description */}
-                      <div className="px-4 py-2 bg-black/30 border-t border-white/10">
-                        <p className="text-xs text-white/60 text-center">
-                          {option.bonusDescription}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                    />
 
-                  {/* selected indicator */}
-                  {isSelected && (
-                    <div className="absolute top-4 right-4">
+                    <div className="relative z-10">
+                      {/* header */}
+                      <h3 className="text-xl font-bold mb-1">{option.name}</h3>
+                      <p className="text-zinc-500 text-sm mb-8">
+                        {option.description}
+                      </p>
+
+                      {/* stat name header */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className={cn(
+                            "w-10 h-10 rounded-lg flex items-center justify-center",
+                            option.iconBgColor
+                          )}
+                        >
+                          <Icon
+                            className={cn("w-5 h-5", option.bonusColor)}
+                            weight="bold"
+                          />
+                        </div>
+                        <span
+                          className={cn("text-lg font-bold", option.bonusColor)}
+                        >
+                          {option.bonusLabel}
+                        </span>
+                      </div>
+
+                      {/* two-column base vs bonus display */}
                       <div
                         className={cn(
-                          "w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center",
-                          option.color
+                          "rounded-xl border-2 overflow-hidden",
+                          option.iconBgColor,
+                          option.borderColor
                         )}
                       >
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
+                        <div className="grid grid-cols-2 gap-3 p-4">
+                          {/* base column */}
+                          <div className="text-center">
+                            <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">
+                              base
+                            </div>
+                            <div className="text-2xl font-mono text-white/50">
+                              {option.baseValue}
+                            </div>
+                          </div>
+                          {/* bonus column */}
+                          <div className="text-center">
+                            <div
+                              className={cn(
+                                "text-[10px] uppercase tracking-wider mb-1",
+                                option.bonusColor
+                              )}
+                            >
+                              bonus
+                            </div>
+                            <div
+                              className={cn(
+                                "text-2xl font-black",
+                                option.bonusColor
+                              )}
+                            >
+                              {option.bonusValue}
+                            </div>
+                          </div>
+                        </div>
+                        {/* description */}
+                        <div className="px-4 py-2 bg-black/30 border-t border-white/10">
+                          <p className="text-xs text-white/60 text-center">
+                            {option.bonusDescription}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+
+                    {/* selected indicator */}
+                    {isSelected && (
+                      <div className="absolute top-4 right-4">
+                        <div
+                          className={cn(
+                            "w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center",
+                            option.color
+                          )}
+                        >
+                          <svg
+                            className="w-4 h-4 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={3}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* initialize button */}
-        <div className="text-center">
+        <div>
           {error && (
-            <p className="mb-2 text-sm text-red-400 lowercase">{error}</p>
+            <p className="mb-2 text-sm text-red-400 lowercase text-center">
+              {error}
+            </p>
           )}
-
-          <button
+          <ActionButton
+            label="initialize lab"
             onClick={handleCreate}
-            disabled={!selectedType || !labName.trim() || isCreating}
-            className={cn(
-              "px-12 py-4 rounded-xl font-semibold text-lg transition-all duration-300 lowercase",
-              selectedType && labName.trim() && !isCreating
-                ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white hover:from-emerald-400 hover:to-cyan-400 shadow-lg shadow-emerald-500/25"
-                : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-            )}
-          >
-            {isCreating ? (
-              <span className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                initializing lab...
-              </span>
-            ) : (
-              "initialize lab"
-            )}
-          </button>
+            disabled={!selectedType || !labName.trim()}
+            missingItems={[
+              ...(!labName.trim() ? ["lab name"] : []),
+              ...(!selectedType ? ["founder type"] : []),
+            ]}
+            isLoading={isCreating}
+            loadingLabel="initializing lab..."
+            size="large"
+          />
         </div>
       </div>
     </div>
