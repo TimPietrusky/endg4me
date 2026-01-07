@@ -21,18 +21,25 @@ export async function isDevAdmin(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">
 ): Promise<boolean> {
-  // Get user email
-  const user = await ctx.db.get(userId);
-  if (!user?.email) return false;
+  try {
+    // Get user email
+    const user = await ctx.db.get(userId);
+    if (!user?.email) return false;
 
-  // Check allowlist from env
-  const allowlist = process.env.DEV_ADMIN_USER_EMAILS || "";
-  const allowedEmails = allowlist
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+    // Check allowlist from env (gracefully handle missing env var)
+    const allowlist = process.env.DEV_ADMIN_USER_EMAILS;
+    if (!allowlist) return false;
+    
+    const allowedEmails = allowlist
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
 
-  return allowedEmails.includes(user.email.toLowerCase());
+    return allowedEmails.includes(user.email.toLowerCase());
+  } catch {
+    // If anything fails (e.g., env not set), return false
+    return false;
+  }
 }
 
 // Get user's time scale (returns 1 for non-dev users)
@@ -118,7 +125,12 @@ export async function getRealTimeForEffective(
 export const checkIsAdmin = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    return await isDevAdmin(ctx, args.userId);
+    try {
+      return await isDevAdmin(ctx, args.userId);
+    } catch {
+      // Gracefully return false if anything fails
+      return false;
+    }
   },
 });
 
