@@ -9,7 +9,7 @@ import {
   type UpgradeType,
   type FounderType,
 } from "./lib/gameConfig";
-import { getJobById } from "./lib/contentCatalog";
+import { getContentById } from "./lib/contentCatalog";
 import { syncLeaderboardForLab } from "./leaderboard";
 import { getEffectiveNow } from "./dev";
 
@@ -59,22 +59,22 @@ export const getActiveHires = query({
     const bonuses: Partial<Record<UpgradeType, number>> = {};
 
     for (const task of activeTasks) {
-      const jobDef = getJobById(task.type);
-      if (jobDef?.category === "hire" && jobDef.output.hireStat && jobDef.output.hireBonus) {
+      const content = getContentById(task.type);
+      if (content?.contentType === "hire" && content.hireStat && content.hireBonus) {
         const remainingMs = (task.completesAt ?? 0) - effectiveNow;
         if (remainingMs > 0) {
           hires.push({
             jobId: task.type,
-            name: jobDef.name,
-            hireStat: jobDef.output.hireStat,
-            hireBonus: jobDef.output.hireBonus,
+            name: content.name,
+            hireStat: content.hireStat,
+            hireBonus: content.hireBonus,
             completesAt: task.completesAt ?? 0,
             remainingMs,
           });
 
           // Accumulate bonuses by stat
-          const stat = jobDef.output.hireStat;
-          bonuses[stat] = (bonuses[stat] ?? 0) + jobDef.output.hireBonus;
+          const stat = content.hireStat;
+          bonuses[stat] = (bonuses[stat] ?? 0) + content.hireBonus;
         }
       }
     }
@@ -150,16 +150,16 @@ export const getUpgradeDetails = query({
     const activeHires: { name: string; stat: UpgradeType; bonus: number; remainingMs: number }[] = [];
 
     for (const task of activeTasks) {
-      const jobDef = getJobById(task.type);
-      if (jobDef?.category === "hire" && jobDef.output.hireStat && jobDef.output.hireBonus) {
+      const content = getContentById(task.type);
+      if (content?.contentType === "hire" && content.hireStat && content.hireBonus) {
         const remainingMs = (task.completesAt ?? 0) - effectiveNow;
         if (remainingMs > 0) {
-          const stat = jobDef.output.hireStat;
-          hireBonuses[stat] = (hireBonuses[stat] ?? 0) + jobDef.output.hireBonus;
+          const stat = content.hireStat;
+          hireBonuses[stat] = (hireBonuses[stat] ?? 0) + content.hireBonus;
           activeHires.push({
-            name: jobDef.name.replace("Hire ", ""),
+            name: content.name.replace("Hire ", ""),
             stat,
-            bonus: jobDef.output.hireBonus,
+            bonus: content.hireBonus,
             remainingMs,
           });
         }

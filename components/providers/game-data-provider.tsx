@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id, Doc } from "@/convex/_generated/dataModel"
-import { getJobById, JOB_DEFS, getBlueprintById, getEntityImageUrl, getEntityDepthUrl, getEntityModelUrl } from "@/convex/lib/contentCatalog"
+import { getContentById, getContentImageUrl, getAssetBySlug, type ContentEntry } from "@/convex/lib/contentCatalog"
 import { getUpgradeValue, getXpForNextLevel, FOUNDER_BONUSES, type FounderType } from "@/convex/lib/gameConfig"
 import { useToast } from "@/hooks/use-toast"
 import type { Action, Notification } from "@/lib/game-types"
@@ -68,35 +68,34 @@ export function useGameData() {
   return context
 }
 
-// Job image mapping (fallback when no asset exists)
-const JOB_IMAGES: Record<string, string> = {
-  "job_train_tts_3b": "/ai-neural-network-training-blue-glow.jpg",
-  "job_train_vlm_7b": "/advanced-ai-training-purple-cyber.jpg",
-  "job_train_llm_3b": "/ai-neural-network-training-blue-glow.jpg",
-  "job_train_llm_17b": "/massive-ai-datacenter-training.jpg",
-  "job_contract_blog_basic": "/cyberpunk-freelance-coding-terminal.jpg",
-  "job_contract_voice_pack": "/cyberpunk-freelance-coding-terminal.jpg",
-  "job_contract_image_qa": "/cyberpunk-freelance-coding-terminal.jpg",
-  "job_research_literature": "/server-optimization-tech-infrastructure.jpg",
-}
-
-// Get job images - prefer blueprint asset, fallback to JOB_IMAGES
-function getJobImages(jobDef: ReturnType<typeof getJobById>): { image: string; depthImage?: string; modelUrl?: string } {
-  if (!jobDef) return { image: "/server-optimization-tech-infrastructure.jpg" }
+// Get content images - prefer entity asset, fallback to category defaults
+function getContentImages(content: ContentEntry | undefined): { image: string; depthImage?: string; modelUrl?: string } {
+  if (!content) return { image: "/server-optimization-tech-infrastructure.jpg" }
   
-  // For training jobs, check if blueprint has an asset
-  if (jobDef.output.trainsBlueprintId) {
-    const blueprint = getBlueprintById(jobDef.output.trainsBlueprintId)
-    if (blueprint?.assetSlug) {
-      const assetImage = getEntityImageUrl(blueprint.assetSlug)
-      const depthImage = getEntityDepthUrl(blueprint.assetSlug)
-      const modelUrl = getEntityModelUrl(blueprint.assetSlug)
-      if (assetImage) return { image: assetImage, depthImage, modelUrl }
+  // Check if content has an asset
+  if (content.assetSlug) {
+    const asset = getAssetBySlug(content.assetSlug)
+    if (asset?.files.image) {
+      return {
+        image: asset.files.image,
+        depthImage: asset.files.depth,
+        modelUrl: asset.files.model,
+      }
     }
   }
   
-  // Fallback to job-specific image or default
-  return { image: JOB_IMAGES[jobDef.jobId] || "/server-optimization-tech-infrastructure.jpg" }
+  // Fallback by content type
+  switch (content.contentType) {
+    case "model":
+      return { image: "/ai-neural-network-training-blue-glow.jpg" }
+    case "contract":
+    case "income":
+      return { image: "/cyberpunk-freelance-coding-terminal.jpg" }
+    case "hire":
+      return { image: "/cyberpunk-freelance-coding-terminal.jpg" }
+    default:
+      return { image: "/server-optimization-tech-infrastructure.jpg" }
+  }
 }
 
 interface GameDataProviderProps {
@@ -217,8 +216,8 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   
   // Calculate used compute from active tasks
   const usedCompute = inProgressTasks.reduce((sum, task) => {
-    const jobDef = getJobById(task.type)
-    return sum + (jobDef?.computeRequiredCU ?? 0)
+    const content = getContentById(task.type)
+    return sum + (content?.jobComputeCost ?? 0)
   }, 0)
   const availableGpus = computeCapacity - usedCompute
 
@@ -235,9 +234,9 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   // Helper to get speed factor for active jobs (original duration / actual duration)
   function getJobSpeedFactor(jobId: string): number {
     const task = inProgressTasks.find((t) => t.type === jobId)
-    const jobDef = getJobById(jobId)
-    if (task?.startedAt && task?.completesAt && jobDef) {
-      const originalDuration = jobDef.durationMs / 1000
+    const content = getContentById(jobId)
+    if (task?.startedAt && task?.completesAt && content?.jobDurationMs) {
+      const originalDuration = content.jobDurationMs / 1000
       const actualDuration = (task.completesAt - task.startedAt) / 1000
       if (actualDuration > 0) {
         return originalDuration / actualDuration
@@ -269,13 +268,12 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   let hireSpeedBonus = 0
   let hireMoneyBonus = 0
   for (const task of inProgressTasks) {
-    const jobDef = getJobById(task.type)
-    if (jobDef?.category === "hire" && jobDef.output) {
-      const output = jobDef.output as { hireStat?: string; hireBonus?: number }
-      if (output.hireStat === "speed") {
-        hireSpeedBonus += output.hireBonus ?? 0
-      } else if (output.hireStat === "moneyMultiplier") {
-        hireMoneyBonus += output.hireBonus ?? 0
+    const content = getContentById(task.type)
+    if (content?.contentType === "hire" && content.hireStat && content.hireBonus) {
+      if (content.hireStat === "speed") {
+        hireSpeedBonus += content.hireBonus
+      } else if (content.hireStat === "moneyMultiplier") {
+        hireMoneyBonus += content.hireBonus
       }
     }
   }
@@ -286,13 +284,13 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   
   // Helper to adjust duration based on all speed modifiers (must match backend calculation)
   // NOTE: Hire jobs have fixed duration - speed bonuses don't affect contract length
-  function getAdjustedDuration(jobDef: { durationMs: number; category: string }): number {
-    if (jobDef.category === "hire") {
+  function getAdjustedDuration(content: { durationMs: number; category: string }): number {
+    if (content.category === "hire") {
       // Hire jobs have fixed duration
-      return Math.floor(jobDef.durationMs / 1000)
+      return Math.floor(content.durationMs / 1000)
     }
     
-    let adjustedMs = jobDef.durationMs
+    let adjustedMs = content.durationMs
     
     // Apply speed bonus (founder + UP ranks + RP perks + hires)
     if (totalSpeedBonus > 0) {
@@ -306,8 +304,8 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
       adjustedMs = adjustedMs / levelBonus
     }
     
-    // Apply staff bonus for training jobs (10% per junior researcher)
-    if (jobDef.category === "training" && labState?.juniorResearchers && labState.juniorResearchers > 0) {
+    // Apply staff bonus for model training (10% per junior researcher)
+    if (content.category === "model" && labState?.juniorResearchers && labState.juniorResearchers > 0) {
       const staffBonus = 1 + labState.juniorResearchers * 0.1
       adjustedMs = adjustedMs / staffBonus
     }
@@ -329,13 +327,13 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
 
   // Helper to check job disabled status (uses adjusted costs)
   function getJobDisabledInfo(jobId: string) {
-    const jobDef = getJobById(jobId)
-    if (!jobDef || !labState) {
+    const content = getContentById(jobId)
+    if (!content || !labState) {
       return { disabled: true, reason: "loading" }
     }
 
     // Calculate adjusted cost
-    const adjustedCost = getAdjustedCost(jobDef.moneyCost)
+    const adjustedCost = getAdjustedCost(content.jobMoneyCost ?? 0)
 
     // Check all conditions and collect all shortfalls
     let fundsShortfall = 0
@@ -349,8 +347,9 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
     }
 
     // Check compute
-    if (jobDef.computeRequiredCU > 0 && availableGpus < jobDef.computeRequiredCU) {
-      gpuShortfall = jobDef.computeRequiredCU - availableGpus
+    const computeCost = content.jobComputeCost ?? 0
+    if (computeCost > 0 && availableGpus < computeCost) {
+      gpuShortfall = computeCost - availableGpus
       reasons.push("not enough CU")
     }
 
@@ -373,72 +372,77 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   }
 
   // Build actions from available jobs
-  // Only show training and contract jobs in Operate (no research jobs)
+  // Only show jobs in Operate (no pure research unlocks)
   const actions: Action[] = (availableJobs || [])
     .filter((job) => {
       if (!job.isUnlocked) return false
-      const jobDef = getJobById(job.jobId)
-      // Filter out research jobs - those belong in the Research tab
-      return jobDef && jobDef.category !== "research"
+      const content = getContentById(job.id)
+      // Filter out content without jobs and pure research unlocks
+      return content && content.jobDurationMs !== undefined && content.contentType !== "research"
     })
     .map((job) => {
-      const jobDef = getJobById(job.jobId)
-      if (!jobDef) return null
+      const content = getContentById(job.id)
+      if (!content) return null
 
-      const disabledInfo = getJobDisabledInfo(job.jobId)
-      const isActive = inProgressTasks.some((t) => t.type === job.jobId)
-      const isQueued = queuedTasks.some((t) => t.type === job.jobId)
+      const disabledInfo = getJobDisabledInfo(job.id)
+      const isActive = inProgressTasks.some((t) => t.type === job.id)
+      const isQueued = queuedTasks.some((t) => t.type === job.id)
 
       // Determine display category for Operate
-      let category: "TRAINING" | "REVENUE" | "HIRING" = "TRAINING"
-      if (jobDef.category === "contract" || jobDef.category === "revenue") category = "REVENUE"
-      if (jobDef.category === "hire") category = "HIRING"
+      let category: "TRAINING" | "INCOME" | "HIRING" | "CONTRACTS" | "RESEARCH" = "TRAINING"
+      if (content.contentType === "contract") category = "CONTRACTS"
+      if (content.contentType === "income") category = "INCOME"
+      if (content.contentType === "hire") category = "HIRING"
 
       // Get model size from name if training job
       let size: string | undefined
-      if (jobDef.category === "training") {
-        const match = jobDef.name.match(/(\d+B)/)
+      if (content.contentType === "model") {
+        const match = content.name.match(/(\d+B)/)
         size = match ? match[1] : undefined
       }
 
       // Short name for display
-      let displayName = jobDef.name
-      if (jobDef.category === "training") {
+      let displayName = content.name
+      if (content.contentType === "model") {
         // Extract model type (TTS, VLM, LLM) from name
-        if (jobDef.name.includes("TTS")) displayName = "TTS"
-        else if (jobDef.name.includes("VLM")) displayName = "VLM"
-        else if (jobDef.name.includes("LLM")) displayName = jobDef.name.includes("17B") ? "LLM 17B" : "LLM 3B"
+        if (content.name.includes("TTS")) displayName = "TTS"
+        else if (content.name.includes("VLM")) displayName = "VLM"
+        else if (content.name.includes("LLM")) displayName = content.name
       }
 
-      // Get training history for this job's blueprint (if training job)
-      const blueprintId = jobDef.output.trainsBlueprintId
-      const history = blueprintId && trainingHistory ? trainingHistory[blueprintId] : undefined
+      // Get training history for this content (if model)
+      const history = content.contentType === "model" && trainingHistory 
+        ? trainingHistory[content.id] 
+        : undefined
 
       // Calculate adjusted values based on current bonuses
-      const adjustedDuration = getAdjustedDuration(jobDef)
-      const adjustedCashReward = getAdjustedCashReward(jobDef.rewards.money || 0)
-      const adjustedCost = getAdjustedCost(jobDef.moneyCost)
+      const adjustedDuration = getAdjustedDuration({ 
+        durationMs: content.jobDurationMs ?? 0, 
+        category: content.contentType 
+      })
+      const adjustedCashReward = getAdjustedCashReward(content.rewardMoney || 0)
+      const adjustedCost = getAdjustedCost(content.jobMoneyCost ?? 0)
 
       return {
-        id: job.jobId,
+        id: job.id,
         category,
         name: displayName,
-        description: jobDef.description,
+        description: content.description,
         size,
         cost: adjustedCost,
-        gpuCost: jobDef.computeRequiredCU,
+        gpuCost: content.jobComputeCost ?? 0,
         duration: adjustedDuration,
-        rpReward: jobDef.rewards.rp || undefined,
-        xpReward: jobDef.rewards.xp || undefined,
+        rpReward: content.rewardRP || undefined,
+        xpReward: content.rewardXP || undefined,
         cashReward: adjustedCashReward || undefined,
         disabled: disabledInfo.disabled,
         disabledReason: disabledInfo.reason,
         fundsShortfall: disabledInfo.fundsShortfall || 0,
         gpuShortfall: disabledInfo.gpuShortfall || 0,
-        ...getJobImages(jobDef),
+        ...getContentImages(content),
         isActive,
-        remainingTime: getJobRemainingTime(job.jobId),
-        speedFactor: isActive ? getJobSpeedFactor(job.jobId) : 1,
+        remainingTime: getJobRemainingTime(job.id),
+        speedFactor: isActive ? getJobSpeedFactor(job.id) : 1,
         isQueued,
         locked: false,
         // Training history

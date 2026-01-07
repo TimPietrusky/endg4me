@@ -45,12 +45,10 @@ export default defineSchema({
     moneyMultiplierRank: v.optional(v.number()), // Money multiplier rank (0 = base)
   }).index("by_user", ["userId"]),
 
-  // Player Unlocks - tracks what blueprints, jobs, and system flags are unlocked
+  // Player Unlocks - tracks what content is unlocked via research
   playerUnlocks: defineTable({
     userId: v.id("users"),
-    unlockedBlueprintIds: v.array(v.string()),
-    unlockedJobIds: v.array(v.string()),
-    enabledSystemFlags: v.array(v.string()),
+    unlockedContentIds: v.array(v.string()), // Content IDs from CONTENT_CATALOG
   }).index("by_user", ["userId"]),
 
   // Tasks - queued actions (supports both legacy and new job IDs)
@@ -83,7 +81,7 @@ export default defineSchema({
   trainedModels: defineTable({
     labId: v.id("labs"),
     taskId: v.id("tasks"),
-    blueprintId: v.string(),                     // e.g., "bp_tts_3b"
+    blueprintId: v.string(),                     // Content ID, e.g., "tts_3b"
     modelType: v.union(                          // Model category
       v.literal("llm"),
       v.literal("tts"),

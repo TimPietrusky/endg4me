@@ -2,33 +2,44 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { SpendButton, type SpendAttribute } from "./spend-button"
+import { Brain, CurrencyDollar, Users } from "@phosphor-icons/react"
 import type { Action } from "@/lib/game-types"
+import { cn } from "@/lib/utils"
 
 interface ActionCardProps {
   action: Action
   onStartAction: (action: Action) => void
 }
 
-export function ActionCard({ action, onStartAction }: ActionCardProps) {
-  const getParameterColor = (size: string | undefined) => {
-    if (!size) return "cyan"
-    const value = Number.parseInt(size)
-    if (value >= 13) return "red"
-    if (value >= 7) return "purple"
-    return "cyan"
-  }
+// Category-based styling for cards without images
+const CATEGORY_STYLES: Record<string, { icon: typeof Brain; gradient: string; iconColor: string }> = {
+  RESEARCH_MODEL: {
+    icon: Brain,
+    gradient: "from-purple-500/30 to-purple-500/10",
+    iconColor: "text-purple-400",
+  },
+  RESEARCH_REVENUE: {
+    icon: CurrencyDollar,
+    gradient: "from-green-500/30 to-green-500/10",
+    iconColor: "text-green-400",
+  },
+  RESEARCH_HIRING: {
+    icon: Users,
+    gradient: "from-blue-500/30 to-blue-500/10",
+    iconColor: "text-blue-400",
+  },
+}
 
-  const paramColor = getParameterColor(action.size)
-  const colorClasses = {
-    cyan: "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30 text-cyan-400",
-    purple: "from-purple-500/20 to-purple-500/5 border-purple-500/30 text-purple-400",
-    red: "from-red-500/20 to-red-500/5 border-red-500/30 text-red-400",
-  }
+export function ActionCard({ action, onStartAction }: ActionCardProps) {
+  const isResearch = action.category.startsWith("RESEARCH_")
+  const categoryStyle = CATEGORY_STYLES[action.category]
 
   const getButtonLabel = (action: Action): string => {
+    if (action.category.startsWith("RESEARCH_")) {
+      return "research"
+    }
     switch (action.category) {
       case "TRAINING":
-        // Show "retrain" if this model has been trained before
         return action.latestVersion ? "retrain" : "train"
       case "INCOME":
         return "do job"
@@ -43,6 +54,24 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
   // Build attributes for SpendButton
   const buildAttributes = (): SpendAttribute[] => {
+    // For research actions, show RP cost and time
+    if (isResearch) {
+      return [
+        {
+          type: "time",
+          value: action.duration > 0 ? action.duration : undefined,
+          isGain: true,
+        },
+        {
+          type: "rp",
+          // Pass 0 for free items (shows "free"), undefined for no RP display
+          value: action.rpCost !== undefined ? action.rpCost : undefined,
+          isGain: false,
+        },
+      ]
+    }
+
+    // For regular actions
     const hasCashCost = action.cost > 0
     const hasCashReward = action.cashReward && action.cashReward > 0
     const cashValue = hasCashCost ? action.cost : (hasCashReward ? action.cashReward : undefined)
@@ -87,9 +116,100 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     if (action.gpuShortfall != null && action.gpuShortfall > 0) {
       shortfalls.push({ type: "gpu", amount: action.gpuShortfall })
     }
+    if (action.rpShortfall != null && action.rpShortfall > 0) {
+      shortfalls.push({ type: "rp", amount: action.rpShortfall })
+    }
     return shortfalls
   }
 
+  // Render research cards - use image if available, otherwise icon
+  if (isResearch) {
+    const Icon = categoryStyle?.icon || Brain
+    const hasImage = !!action.image
+    
+    // Completed/unlocked state - only checkmark is green, card uses normal styling
+    const isCompleted = action.completed
+    const cardGradient = categoryStyle?.gradient || "from-purple-500/30 to-purple-500/10"
+    const iconColor = categoryStyle?.iconColor || "text-purple-400"
+
+    return (
+      <Card className={cn(
+        "overflow-hidden pt-0 pb-0 gap-0",
+        action.locked && "opacity-60"
+      )}>
+        {/* Header - image if available, otherwise icon */}
+        <div className={cn(
+          "relative h-36 overflow-hidden border-b border-border",
+          hasImage ? "bg-black" : cn("bg-gradient-to-br flex items-center justify-center", cardGradient)
+        )}>
+          {hasImage ? (
+            <img
+              src={action.image}
+              alt={action.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Icon className={cn("w-16 h-16 opacity-50", iconColor)} weight="duotone" />
+          )}
+          <div className="absolute bottom-2 left-2 pointer-events-none">
+            <div className="flex items-baseline gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded">
+              {action.size && (
+                <span className="text-lg font-black text-white">{action.size}</span>
+              )}
+              <h3 className="font-bold text-lg text-white">{action.name}</h3>
+            </div>
+          </div>
+          {/* Requirements badges */}
+          {(action.minLevel && action.minLevel > 1) || (action.prerequisiteCount && action.prerequisiteCount > 0) ? (
+            <div className="absolute top-2 left-2 flex gap-1">
+              {action.minLevel && action.minLevel > 1 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/70 text-white/80 font-mono">
+                  LVL {action.minLevel}+
+                </span>
+              )}
+              {action.prerequisiteCount && action.prerequisiteCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/70 text-white/80">
+                  {action.prerequisiteCount} prereq
+                </span>
+              )}
+            </div>
+          ) : null}
+          {/* Status badges */}
+          {action.isActive && !isCompleted && (
+            <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
+              RESEARCHING
+            </div>
+          )}
+          {action.locked && !isCompleted && (
+            <div className="absolute top-2 right-2 bg-white/20 text-white/60 text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
+              LOCKED
+            </div>
+          )}
+        </div>
+
+        <CardContent className="p-0">
+          <SpendButton
+            label={getButtonLabel(action)}
+            disabled={action.disabled}
+            disabledReason={action.disabledReason}
+            onAction={() => onStartAction(action)}
+            isActive={action.isActive}
+            duration={action.duration}
+            remainingTime={action.remainingTime}
+            speedFactor={action.speedFactor || 1}
+            shortfalls={buildShortfalls()}
+            attributes={buildAttributes()}
+            showConfirmation={!isCompleted}
+            isMaxed={isCompleted}
+            maxedLabel="unlocked"
+            maxedSubLabel=""
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Regular action card with image
   return (
     <Card className="overflow-hidden pt-0 pb-0 gap-0">
       <div className="relative h-36 overflow-hidden border-b border-border bg-black">
@@ -132,10 +252,6 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
           shortfalls={buildShortfalls()}
           attributes={buildAttributes()}
         />
-
-{/* Description hidden for cleaner look
-        <p className="text-sm text-white line-clamp-5 leading-relaxed p-3 text-left flex-1">{action.description}</p>
-*/}
       </CardContent>
     </Card>
   )

@@ -1,14 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import {
-  JOB_DEFS,
-  RESEARCH_NODES,
-  getJobById,
-  getResearchNodeById,
-  getBlueprintById,
+  CONTENT_CATALOG,
+  getContentById,
+  getFreeStarters,
+  getStarterUnlockIds,
   calculateModelScore,
   INBOX_EVENTS,
-  type JobDefinition,
+  type ContentEntry,
 } from "./lib/contentCatalog";
 import {
   FOUNDER_BONUSES,
@@ -23,30 +22,11 @@ import { internal } from "./_generated/api";
 import { syncLeaderboardForLab } from "./leaderboard";
 import { getEffectiveNow, getRealTimeForEffective } from "./dev";
 
-// Dynamic starter unlocks - auto-unlock free research nodes (costRP=0, minLevel=1, no prereqs)
+// Get starter unlocks for new players
 function getStarterUnlocks() {
-  const starterBlueprintIds: string[] = [];
-  const starterJobIds: string[] = ["job_research_literature"]; // Always available
-  const starterFlags: string[] = [];
-
-  for (const node of RESEARCH_NODES) {
-    if (node.costRP === 0 && node.minLevel === 1 && node.prerequisiteNodes.length === 0) {
-      if (node.unlocks.unlocksBlueprintIds) {
-        starterBlueprintIds.push(...node.unlocks.unlocksBlueprintIds);
-      }
-      if (node.unlocks.unlocksJobIds) {
-        starterJobIds.push(...node.unlocks.unlocksJobIds);
-      }
-      if (node.unlocks.enablesSystemFlags) {
-        starterFlags.push(...node.unlocks.enablesSystemFlags);
-      }
-    }
-  }
-
+  const starterIds = getStarterUnlockIds();
   return {
-    unlockedBlueprintIds: starterBlueprintIds,
-    unlockedJobIds: starterJobIds,
-    enabledSystemFlags: starterFlags,
+    unlockedContentIds: starterIds,
   };
 }
 
@@ -64,13 +44,24 @@ async function getPlayerUnlocksOrDefaults(ctx: any, userId: any) {
   return unlocks;
 }
 
+// Check if content is unlocked for a player
+function isContentUnlocked(contentId: string, unlockedIds: string[]): boolean {
+  const content = getContentById(contentId);
+  if (!content) return false;
+  
+  // Always available content (no unlockCostRP defined)
+  if (content.unlockCostRP === undefined) return true;
+  
+  // Check if explicitly unlocked
+  return unlockedIds.includes(contentId);
+}
 
-// Check if a job is available to the player (read-only)
+// Check if a job is available to the player
 async function checkJobAvailability(
   ctx: any,
   userId: any,
   labId: any,
-  jobDef: JobDefinition
+  content: ContentEntry
 ): Promise<{ available: boolean; reason?: string }> {
   const playerState = await ctx.db
     .query("playerState")
@@ -80,45 +71,33 @@ async function checkJobAvailability(
   const playerLevel = playerState?.level || 1;
 
   // Check level requirement
-  if (playerLevel < jobDef.requirements.minLevel) {
-    return { available: false, reason: `Requires level ${jobDef.requirements.minLevel}` };
+  if (playerLevel < (content.minLevel ?? 1)) {
+    return { available: false, reason: `Requires level ${content.minLevel}` };
   }
 
   const unlocks = await getPlayerUnlocksOrDefaults(ctx, userId);
+  const unlockedIds = unlocks.unlockedContentIds || [];
 
-  // Check if job is unlocked via research
-  if (!unlocks.unlockedJobIds?.includes(jobDef.jobId)) {
-    // Check if required research nodes are purchased
-    if (jobDef.requirements.requiredResearchNodeIds?.length) {
-      return { available: false, reason: `Unlock via Research` };
-    }
-  }
-
-  // Check blueprint requirement (for training jobs)
-  if (jobDef.requirements.requiredBlueprintIds?.length) {
-    const hasAllBlueprints = jobDef.requirements.requiredBlueprintIds.every(
-      (bpId) => unlocks.unlockedBlueprintIds?.includes(bpId)
-    );
-    if (!hasAllBlueprints) {
-      return { available: false, reason: `Blueprint not unlocked` };
-    }
+  // Check if content is unlocked
+  if (!isContentUnlocked(content.id, unlockedIds)) {
+    return { available: false, reason: `Unlock via Research` };
   }
 
   // Check if player has required model type (for contracts)
-  if (jobDef.requirements.requiredModelType) {
+  if (content.requiresModelType) {
     const models = await ctx.db
       .query("trainedModels")
       .withIndex("by_lab", (q: any) => q.eq("labId", labId))
       .collect();
 
     const hasModelType = models.some(
-      (m: any) => m.modelType === jobDef.requirements.requiredModelType
+      (m: any) => m.modelType === content.requiresModelType
     );
 
     if (!hasModelType) {
       return {
         available: false,
-        reason: `Need a trained ${jobDef.requirements.requiredModelType.toUpperCase()} model`,
+        reason: `Need a trained ${content.requiresModelType.toUpperCase()} model`,
       };
     }
   }
@@ -148,23 +127,26 @@ export const getAvailableJobs = query({
     const playerLevel = playerState?.level || 1;
     const cash = labState?.cash || 0;
 
+    // Filter to content that has jobs (jobDurationMs defined)
+    const jobContent = CONTENT_CATALOG.filter((c) => c.jobDurationMs !== undefined);
+
     const jobs = await Promise.all(
-      JOB_DEFS.map(async (jobDef) => {
+      jobContent.map(async (content) => {
         const availability = await checkJobAvailability(
           ctx,
           args.userId,
           args.labId,
-          jobDef
+          content
         );
 
         // Check if can afford
-        const canAfford = cash >= jobDef.moneyCost;
+        const canAfford = cash >= (content.jobMoneyCost ?? 0);
 
         // For contracts, find the best model to use
         let bestModel = null;
-        if (jobDef.output.usesBlueprintType) {
+        if (content.requiresModelType) {
           const typeModels = models.filter(
-            (m) => m.modelType === jobDef.output.usesBlueprintType
+            (m) => m.modelType === content.requiresModelType
           );
           if (typeModels.length > 0) {
             bestModel = typeModels.reduce((best, m) =>
@@ -174,11 +156,11 @@ export const getAvailableJobs = query({
         }
 
         return {
-          ...jobDef,
+          ...content,
           isUnlocked: availability.available,
           lockReason: availability.reason,
           canAfford,
-          meetsLevel: playerLevel >= jobDef.requirements.minLevel,
+          meetsLevel: playerLevel >= (content.minLevel ?? 1),
           bestModelForContract: bestModel
             ? { name: bestModel.name, score: bestModel.score }
             : null,
@@ -190,15 +172,15 @@ export const getAvailableJobs = query({
   },
 });
 
-// Start a job (new blueprint-driven system)
+// Start a job
 export const startJob = mutation({
   args: {
     labId: v.id("labs"),
     jobId: v.string(),
   },
   handler: async (ctx, args) => {
-    const jobDef = getJobById(args.jobId);
-    if (!jobDef) {
+    const content = getContentById(args.jobId);
+    if (!content || !content.jobDurationMs) {
       throw new Error("Job not found");
     }
 
@@ -217,14 +199,13 @@ export const startJob = mutation({
       ctx,
       lab.userId,
       args.labId,
-      jobDef
+      content
     );
     if (!availability.available) {
       throw new Error(availability.reason || "Job not available");
     }
 
     // Calculate total money multiplier from all sources
-    // Base: 100%, Founder bonus (business: +50%), UP ranks, RP perks, active hires
     const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
     const playerStateForMoney = await ctx.db
       .query("playerState")
@@ -233,7 +214,7 @@ export const startJob = mutation({
     
     // Get UP rank bonus for money multiplier
     const moneyMultiplierRank = playerStateForMoney?.moneyMultiplierRank ?? 0;
-    const upMoneyBonus = getUpgradeValue("moneyMultiplier", moneyMultiplierRank) - 100; // subtract base
+    const upMoneyBonus = getUpgradeValue("moneyMultiplier", moneyMultiplierRank) - 100;
     
     // Get active hire bonuses for money multiplier
     const activeTasksForHires = await ctx.db
@@ -245,28 +226,28 @@ export const startJob = mutation({
     
     let hireMoneyBonus = 0;
     for (const task of activeTasksForHires) {
-      const hireJobDef = getJobById(task.type);
-      if (hireJobDef?.category === "hire" && hireJobDef.output.hireStat === "moneyMultiplier") {
-        hireMoneyBonus += hireJobDef.output.hireBonus ?? 0;
+      const hireContent = getContentById(task.type);
+      if (hireContent?.contentType === "hire" && hireContent.hireStat === "moneyMultiplier") {
+        hireMoneyBonus += hireContent.hireBonus ?? 0;
       }
     }
     
-    // Total multiplier: base 100% + founder + UP + RP perks + hires
+    // Total multiplier
     const baseMultiplier = 100;
     const founderMoneyBonus = founderBonuses.moneyMultiplier ?? 0;
     const rpMoneyBonus = (labState.moneyMultiplier ?? 1.0) > 1 ? ((labState.moneyMultiplier ?? 1.0) - 1) * 100 : 0;
     const totalMoneyMultiplier = (baseMultiplier + founderMoneyBonus + upMoneyBonus + rpMoneyBonus + hireMoneyBonus) / 100;
     
-    // Calculate effective cost (higher multiplier = lower cost)
-    const effectiveCost = Math.floor(jobDef.moneyCost / totalMoneyMultiplier);
+    // Calculate effective cost
+    const effectiveCost = Math.floor((content.jobMoneyCost ?? 0) / totalMoneyMultiplier);
 
     // Check cost
     if (labState.cash < effectiveCost) {
       throw new Error("Not enough cash");
     }
 
-    // Check compute (for jobs that need it)
-    if (jobDef.computeRequiredCU > 0) {
+    // Check compute
+    if ((content.jobComputeCost ?? 0) > 0) {
       const activeTasks = await ctx.db
         .query("tasks")
         .withIndex("by_lab_status", (q) =>
@@ -274,7 +255,6 @@ export const startJob = mutation({
         )
         .collect();
 
-      // Get compute capacity from UP rank
       const playerStateForCompute = await ctx.db
         .query("playerState")
         .withIndex("by_user", (q) => q.eq("userId", lab.userId))
@@ -282,16 +262,15 @@ export const startJob = mutation({
       const computeRank = playerStateForCompute?.computeRank ?? 0;
       const computeCapacity = getUpgradeValue("compute", computeRank);
 
-      // Sum compute used by active tasks
       let usedCompute = 0;
       for (const task of activeTasks) {
-        const taskJob = getJobById(task.type);
-        if (taskJob) {
-          usedCompute += taskJob.computeRequiredCU;
+        const taskContent = getContentById(task.type);
+        if (taskContent) {
+          usedCompute += taskContent.jobComputeCost ?? 0;
         }
       }
 
-      if (usedCompute + jobDef.computeRequiredCU > computeCapacity) {
+      if (usedCompute + (content.jobComputeCost ?? 0) > computeCapacity) {
         throw new Error("Not enough compute units");
       }
     }
@@ -315,17 +294,15 @@ export const startJob = mutation({
 
     if (inProgressTasks.length >= maxParallelTasks) {
       throw new Error(
-        `All ${maxParallelTasks} task slot(s) in use. Wait for a task to complete or upgrade Queue Capacity.`
+        `All ${maxParallelTasks} task slot(s) in use. Wait or upgrade Queue Capacity.`
       );
     }
 
     // Calculate duration with modifiers
-    // NOTE: Hire jobs have fixed duration - speed bonuses don't affect contract length
-    // (reuse founderBonuses from money multiplier calculation above)
-    let duration = jobDef.durationMs;
+    let duration = content.jobDurationMs;
 
-    if (jobDef.category !== "hire") {
-      // Apply founder speed bonus (if any)
+    if (content.contentType !== "hire") {
+      // Apply founder speed bonus
       const founderSpeedBonus = founderBonuses.speed ?? 0;
       if (founderSpeedBonus > 0) {
         duration = duration / (1 + founderSpeedBonus / 100);
@@ -333,8 +310,7 @@ export const startJob = mutation({
 
       // Apply level bonus
       if (playerState) {
-        const levelBonus =
-          1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
+        const levelBonus = 1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
         duration = duration / levelBonus;
       }
 
@@ -345,7 +321,7 @@ export const startJob = mutation({
       }
 
       // Apply staff bonus for training
-      if (jobDef.category === "training" && labState.juniorResearchers > 0) {
+      if (content.contentType === "model" && labState.juniorResearchers > 0) {
         const staffBonus = 1 + labState.juniorResearchers * 0.1;
         duration = duration / staffBonus;
       }
@@ -355,22 +331,22 @@ export const startJob = mutation({
     const effectiveNow = await getEffectiveNow(ctx, lab.userId);
     const effectiveCompletesAt = effectiveNow + duration;
 
-    // Create task with effective times
+    // Create task
     const taskId = await ctx.db.insert("tasks", {
       labId: args.labId,
       type: args.jobId,
       status: "in_progress",
       startedAt: effectiveNow,
       completesAt: effectiveCompletesAt,
-      createdAt: Date.now(), // createdAt stays real time for audit
+      createdAt: Date.now(),
     });
 
-    // Deduct cost (with money multiplier applied)
+    // Deduct cost
     await ctx.db.patch(labState._id, {
       cash: labState.cash - effectiveCost,
     });
 
-    // Schedule completion at real time (accounting for Time Warp)
+    // Schedule completion
     const realCompletesAt = await getRealTimeForEffective(ctx, lab.userId, effectiveCompletesAt);
     await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
       taskId,
@@ -380,7 +356,7 @@ export const startJob = mutation({
   },
 });
 
-// Complete a task (internal, called by scheduler)
+// Complete a task
 export const completeTask = internalMutation({
   args: { taskId: v.id("tasks") },
   handler: async (ctx, args) => {
@@ -390,11 +366,9 @@ export const completeTask = internalMutation({
     const lab = await ctx.db.get(task.labId);
     if (!lab) return;
 
-    // Verify completion using effective time (for Time Warp support)
+    // Verify completion using effective time
     const effectiveNow = await getEffectiveNow(ctx, lab.userId);
     if (task.completesAt && effectiveNow < task.completesAt) {
-      // Not actually complete yet (Time Warp may have changed)
-      // Reschedule for the correct real time
       const realCompletesAt = await getRealTimeForEffective(ctx, lab.userId, task.completesAt);
       await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
         taskId: args.taskId,
@@ -402,22 +376,21 @@ export const completeTask = internalMutation({
       return;
     }
 
-    // Handle research node completion (task type starts with "rn_")
-    const researchNode = getResearchNodeById(task.type);
-    if (researchNode) {
-      // Complete research via internal mutation
+    const content = getContentById(task.type);
+    
+    // Handle research node completion (task type is a research unlock)
+    if (content && content.unlockCostRP !== undefined && !content.jobDurationMs) {
+      // This is a research-only unlock, complete via research module
       await ctx.runMutation(internal.research.completeResearchNode, {
         userId: lab.userId,
         nodeId: task.type,
       });
 
-      // Mark task complete
       await ctx.db.patch(args.taskId, {
         status: "completed",
         rewards: {},
       });
 
-      // Sync leaderboard (research may affect unlocks)
       await syncLeaderboardForLab(ctx, task.labId);
       return;
     }
@@ -434,8 +407,6 @@ export const completeTask = internalMutation({
       .first();
     if (!playerState) return;
 
-    // Get job definition (supports both new and legacy task types)
-    const jobDef = getJobById(task.type);
     const founderBonuses = FOUNDER_BONUSES[lab.founderType as FounderType];
 
     // Calculate rewards
@@ -445,12 +416,11 @@ export const completeTask = internalMutation({
       experience?: number;
     } = {};
 
-    if (jobDef) {
-      // Calculate total money multiplier from all sources (same as in startJob)
+    if (content) {
+      // Calculate money multiplier
       const moneyMultiplierRank = playerState?.moneyMultiplierRank ?? 0;
       const upMoneyBonus = getUpgradeValue("moneyMultiplier", moneyMultiplierRank) - 100;
       
-      // Get active hire bonuses for money multiplier
       const activeTasksForHires = await ctx.db
         .query("tasks")
         .withIndex("by_lab_status", (q) =>
@@ -460,93 +430,82 @@ export const completeTask = internalMutation({
       
       let hireMoneyBonus = 0;
       for (const hireTask of activeTasksForHires) {
-        const hireJobDef = getJobById(hireTask.type);
-        if (hireJobDef?.category === "hire" && hireJobDef.output.hireStat === "moneyMultiplier") {
-          hireMoneyBonus += hireJobDef.output.hireBonus ?? 0;
+        const hireContent = getContentById(hireTask.type);
+        if (hireContent?.contentType === "hire" && hireContent.hireStat === "moneyMultiplier") {
+          hireMoneyBonus += hireContent.hireBonus ?? 0;
         }
       }
       
-      // Total: base 100% + founder + UP + RP perks + hires
       const baseMultiplier = 100;
       const founderMoneyBonus = founderBonuses.moneyMultiplier ?? 0;
       const rpMoneyBonus = (labState.moneyMultiplier ?? 1.0) > 1 ? ((labState.moneyMultiplier ?? 1.0) - 1) * 100 : 0;
       const totalMoneyMultiplier = (baseMultiplier + founderMoneyBonus + upMoneyBonus + rpMoneyBonus + hireMoneyBonus) / 100;
 
-      if (jobDef.rewards.money > 0) {
-        // Money multiplier increases income
-        rewards.cash = Math.floor(jobDef.rewards.money * totalMoneyMultiplier);
+      if ((content.rewardMoney ?? 0) > 0) {
+        rewards.cash = Math.floor((content.rewardMoney ?? 0) * totalMoneyMultiplier);
       }
 
-      if (jobDef.rewards.rp > 0) {
-        rewards.researchPoints = jobDef.rewards.rp;
+      if ((content.rewardRP ?? 0) > 0) {
+        rewards.researchPoints = content.rewardRP;
       }
 
-      if (jobDef.rewards.xp > 0) {
-        rewards.experience = jobDef.rewards.xp;
+      if ((content.rewardXP ?? 0) > 0) {
+        rewards.experience = content.rewardXP;
       }
 
       // Handle training job output - create trained model
-      if (jobDef.output.trainsBlueprintId) {
-        const blueprint = getBlueprintById(jobDef.output.trainsBlueprintId);
-        if (blueprint) {
-          // Get existing models for this blueprint to determine version
-          const existingModels = await ctx.db
+      if (content.contentType === "model" && content.modelType && content.scoreRange) {
+        const existingModels = await ctx.db
+          .query("trainedModels")
+          .withIndex("by_lab_blueprint", (q) =>
+            q.eq("labId", task.labId).eq("blueprintId", content.id)
+          )
+          .collect();
+
+        const version = existingModels.length + 1;
+        const modelName = `${content.name} v${version}`;
+        const score = calculateModelScore(content, labState.speedBonus);
+
+        await ctx.db.insert("trainedModels", {
+          labId: task.labId,
+          taskId: args.taskId,
+          blueprintId: content.id,
+          modelType: content.modelType,
+          name: modelName,
+          version,
+          score,
+          trainedAt: effectiveNow,
+          visibility: "public",
+        });
+
+        // Check for first model milestone
+        if (existingModels.length === 0) {
+          const allModels = await ctx.db
             .query("trainedModels")
-            .withIndex("by_lab_blueprint", (q) =>
-              q.eq("labId", task.labId).eq("blueprintId", blueprint.id)
-            )
+            .withIndex("by_lab", (q) => q.eq("labId", task.labId))
             .collect();
 
-          const version = existingModels.length + 1;
-          const modelName = `${blueprint.name} v${version}`;
-          const score = calculateModelScore(blueprint, labState.speedBonus);
+          if (allModels.length === 0) {
+            const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "first_model");
+            if (milestoneEvent) {
+              const existingEvent = await ctx.db
+                .query("notifications")
+                .withIndex("by_user_event", (q) =>
+                  q.eq("userId", lab.userId).eq("eventId", milestoneEvent.eventId)
+                )
+                .first();
 
-          await ctx.db.insert("trainedModels", {
-            labId: task.labId,
-            taskId: args.taskId,
-            blueprintId: blueprint.id,
-            modelType: blueprint.type,
-            name: modelName,
-            version,
-            score,
-            trainedAt: effectiveNow,
-            visibility: "public", // All models are public for leaderboard competition
-          });
-
-          // Check for first model milestone
-          if (existingModels.length === 0) {
-            // Count all models to see if this is truly the first
-            const allModels = await ctx.db
-              .query("trainedModels")
-              .withIndex("by_lab", (q) => q.eq("labId", task.labId))
-              .collect();
-
-            if (allModels.length === 0) {
-              const milestoneEvent = INBOX_EVENTS.find(
-                (e) => e.trigger === "first_model"
-              );
-              if (milestoneEvent) {
-                const existingEvent = await ctx.db
-                  .query("notifications")
-                  .withIndex("by_user_event", (q) =>
-                    q
-                      .eq("userId", lab.userId)
-                      .eq("eventId", milestoneEvent.eventId)
-                  )
-                  .first();
-
-                if (!existingEvent) {
-                  await ctx.db.insert("notifications", {
-                    userId: lab.userId,
-                    type: "milestone",
-                    title: milestoneEvent.title,
-                    message: milestoneEvent.message,
-                    read: false,
-                    createdAt: Date.now(),
-                    eventId: milestoneEvent.eventId,
-                    deepLink: milestoneEvent.deepLink,
-                  });
-                }
+              if (!existingEvent) {
+                await ctx.db.insert("notifications", {
+                  userId: lab.userId,
+                  type: "milestone",
+                  title: milestoneEvent.title,
+                  message: milestoneEvent.message,
+                  read: false,
+                  createdAt: Date.now(),
+                  eventId: milestoneEvent.eventId,
+                  deepLink: milestoneEvent.deepLink,
+                });
               }
             }
           }
@@ -592,9 +551,7 @@ export const completeTask = internalMutation({
 
         // Check for first level up milestone
         if (playerState.level === 1 && currentLevel >= 2) {
-          const milestoneEvent = INBOX_EVENTS.find(
-            (e) => e.trigger === "first_level_up"
-          );
+          const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "first_level_up");
           if (milestoneEvent) {
             const existingEvent = await ctx.db
               .query("notifications")
@@ -620,9 +577,7 @@ export const completeTask = internalMutation({
 
         // Check for level 5 milestone
         if (playerState.level < 5 && currentLevel >= 5) {
-          const milestoneEvent = INBOX_EVENTS.find(
-            (e) => e.trigger === "level_5"
-          );
+          const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "level_5");
           if (milestoneEvent) {
             const existingEvent = await ctx.db
               .query("notifications")
@@ -656,7 +611,6 @@ export const completeTask = internalMutation({
           createdAt: Date.now(),
           deepLink: { view: "lab" as const, target: "upgrades" },
         });
-
       } else {
         await ctx.db.patch(playerState._id, {
           experience: currentXP,
@@ -671,10 +625,10 @@ export const completeTask = internalMutation({
     });
 
     // Create completion notification
-    const jobName = jobDef?.name || task.type.replace(/_/g, " ");
+    const jobName = content?.name || task.type;
     await ctx.db.insert("notifications", {
       userId: lab.userId,
-      type: task.type === "hire_junior_researcher" ? "hire_complete" : "task_complete",
+      type: content?.contentType === "hire" ? "hire_complete" : "task_complete",
       title: `${jobName} Complete`,
       message: formatRewards(rewards),
       read: false,
@@ -682,7 +636,7 @@ export const completeTask = internalMutation({
       taskId: args.taskId,
     });
 
-    // Sync leaderboard (level/model changes may affect Lab Score)
+    // Sync leaderboard
     await syncLeaderboardForLab(ctx, task.labId);
 
     // Start next queued task if any
@@ -725,25 +679,20 @@ async function startNextQueuedTask(
 
   if (!freshLabState || inProgressCount.length >= maxParallelTasks) return;
 
-  // Use effective time for Time Warp support
   const effectiveNow = await getEffectiveNow(ctx, userId);
-  const jobDef = getJobById(nextQueued.type);
-  let duration = jobDef?.durationMs || 5 * 60 * 1000;
+  const content = getContentById(nextQueued.type);
+  let duration = content?.jobDurationMs || 5 * 60 * 1000;
 
-  // Hire jobs have fixed duration - speed bonuses don't affect contract length
-  if (jobDef?.category !== "hire") {
-    const levelBonus =
-      1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
+  if (content?.contentType !== "hire") {
+    const levelBonus = 1 + (playerState.level - 1) * LEVEL_REWARDS.globalEfficiencyPerLevel;
     duration = duration / levelBonus;
 
-    // Apply founder speed bonus
     const founderSpeedBonus = founderBonuses.speed ?? 0;
     if (founderSpeedBonus > 0) {
       duration = duration / (1 + founderSpeedBonus / 100);
     }
 
-    // Apply staff bonus for training
-    if (jobDef?.category === "training" && freshLabState.juniorResearchers > 0) {
+    if (content?.contentType === "model" && freshLabState.juniorResearchers > 0) {
       duration = duration / (1 + freshLabState.juniorResearchers * 0.1);
     }
   }
@@ -756,7 +705,6 @@ async function startNextQueuedTask(
     completesAt: effectiveCompletesAt,
   });
 
-  // Schedule at real time
   const realCompletesAt = await getRealTimeForEffective(ctx, userId, effectiveCompletesAt);
   await ctx.scheduler.runAt(realCompletesAt, internal.tasks.completeTask, {
     taskId: nextQueued._id,
@@ -779,7 +727,7 @@ function formatRewards(rewards: {
 // QUERIES
 // ============================================================================
 
-// Get active tasks for a lab (includes effectiveNow for Time Warp)
+// Get active tasks for a lab
 export const getActiveTasks = query({
   args: { labId: v.id("labs") },
   handler: async (ctx, args) => {
@@ -850,7 +798,7 @@ export const getTrainedModels = query({
   },
 });
 
-// Get aggregated models grouped by blueprint (for Lab > Models view)
+// Get aggregated models grouped by blueprint
 export const getAggregatedModels = query({
   args: { labId: v.id("labs") },
   handler: async (ctx, args) => {
@@ -859,7 +807,6 @@ export const getAggregatedModels = query({
       .withIndex("by_lab", (q) => q.eq("labId", args.labId))
       .collect();
 
-    // Group by blueprintId
     const byBlueprint: Record<string, typeof models> = {};
     for (const model of models) {
       if (!byBlueprint[model.blueprintId]) {
@@ -868,9 +815,7 @@ export const getAggregatedModels = query({
       byBlueprint[model.blueprintId].push(model);
     }
 
-    // Build aggregated result
     const aggregated = Object.entries(byBlueprint).map(([blueprintId, versions]) => {
-      // Sort by version desc to get latest first
       const sorted = [...versions].sort((a, b) => b.version - a.version);
       const latest = sorted[0];
       const best = sorted.reduce((b, m) => (m.score > b.score ? m : b), sorted[0]);
@@ -888,14 +833,13 @@ export const getAggregatedModels = query({
       };
     });
 
-    // Sort by latest trained
     aggregated.sort((a, b) => b.latestModel.trainedAt - a.latestModel.trainedAt);
 
     return aggregated;
   },
 });
 
-// Get training history summary per blueprint (for Operate view)
+// Get training history summary per blueprint
 export const getTrainingHistory = query({
   args: { labId: v.id("labs") },
   handler: async (ctx, args) => {
@@ -904,7 +848,6 @@ export const getTrainingHistory = query({
       .withIndex("by_lab", (q) => q.eq("labId", args.labId))
       .collect();
 
-    // Group by blueprintId and extract summary
     const history: Record<string, { latestVersion: number; versionCount: number; bestScore: number }> = {};
     
     for (const model of models) {
@@ -981,8 +924,7 @@ export const getModelStats = query({
   },
 });
 
-// Toggle model visibility (public/private)
-// Publishing is available from day one (006_leaderboard_day1)
+// Toggle model visibility
 export const toggleModelVisibility = mutation({
   args: { modelId: v.id("trainedModels") },
   handler: async (ctx, args) => {
@@ -994,7 +936,6 @@ export const toggleModelVisibility = mutation({
     const newVisibility = model.visibility === "public" ? "private" : "public";
     await ctx.db.patch(args.modelId, { visibility: newVisibility });
 
-    // Sync leaderboard (visibility change affects Lab Score if model is best public)
     await syncLeaderboardForLab(ctx, model.labId);
 
     return { modelId: args.modelId, visibility: newVisibility };

@@ -11,6 +11,7 @@ import {
   CaretDoubleUp,
   ListChecks,
   Users,
+  CheckCircle,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react"
 import { XpIcon } from "./xp-icon"
@@ -90,32 +91,42 @@ function AttributeCell({
   const Icon = ATTRIBUTE_ICONS[type]
   const isXP = type === "xp"
   const isTime = type === "time"
+  const isRP = type === "rp"
   
-  const hasValue = value !== undefined && value !== null && value !== 0 && value !== ""
+  // Check if we have a meaningful value (not undefined/null/empty string)
+  // For RP, 0 is meaningful (means "free")
+  const hasValue = value !== undefined && value !== null && value !== ""
+  const isZero = value === 0
+  const isFree = isRP && isZero && !isGain // RP cost of 0 = free
   
   // Format value based on type
   let displayValue: string | number | undefined = value
-  if (hasValue) {
+  if (hasValue && !isZero) {
     if (isTime) {
       // Time value is in seconds, format to human readable
       displayValue = formatTimeCompact(Number(value))
     } else {
       displayValue = formatCompact(value)
     }
+  } else if (isFree) {
+    displayValue = "free"
   }
+
+  // Determine if icon should be active (white) or inactive (gray)
+  const iconActive = hasValue && (!isZero || isFree)
 
   if (isXP) {
     return (
       <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
         <span className="w-3 flex items-center justify-center flex-shrink-0">
-          <XpIcon className={hasValue ? "text-white" : "text-gray-500 opacity-50"} />
+          <XpIcon className={iconActive ? "text-white" : "text-gray-500 opacity-50"} />
         </span>
-        {hasValue && (
+        {iconActive && !isZero && (
           isGain 
             ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
             : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
         )}
-        {hasValue && <span className="text-white text-xs">{displayValue}</span>}
+        {iconActive && !isZero && <span className="text-white text-xs">{displayValue}</span>}
       </div>
     )
   }
@@ -127,14 +138,14 @@ function AttributeCell({
   return (
     <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
       <span className="w-3 flex items-center justify-center flex-shrink-0">
-        <Icon weight="regular" className={`w-3 h-3 ${hasValue ? "text-white" : "text-gray-500 opacity-50"}`} />
+        <Icon weight="regular" className={`w-3 h-3 ${iconActive ? "text-white" : "text-gray-500 opacity-50"}`} />
       </span>
-      {hasValue && !isTime && (
+      {iconActive && !isTime && !isFree && (
         isGain 
           ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
           : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
       )}
-      {hasValue && <span className="text-white text-xs">{displayValue}</span>}
+      {iconActive && <span className="text-white text-xs">{displayValue}</span>}
     </div>
   )
 }
@@ -217,14 +228,12 @@ export function SpendButton({
     )
   }
 
-  // Maxed/completed state - subtle and minimal
+  // Maxed/completed state - just checkmark icon, no text, normal colors
   if (isMaxed) {
     return (
       <div className="w-full border-t border-b border-white/10">
         <div className="flex items-center justify-center h-[72px] border-b border-white/10">
-          <span className="text-lg text-white lowercase tracking-wider">
-            {maxedLabel}
-          </span>
+          <CheckCircle weight="fill" className="w-8 h-8 text-emerald-400" />
         </div>
         <AttributeGrid solid />
       </div>

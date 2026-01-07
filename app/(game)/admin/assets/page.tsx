@@ -8,9 +8,9 @@ import { useGameData } from "@/components/providers/game-data-provider"
 import { SubNavContainer, SubNavButton } from "@/components/game/dashboard/sub-nav"
 import { ActionCard } from "@/components/game/dashboard/action-card"
 import {
-  MODEL_BLUEPRINTS,
-  JOB_DEFS,
-  getAssetBySlug,
+  getAllModels,
+  getAllJobs,
+  getContentImageUrl,
 } from "@/convex/lib/contentCatalog"
 import type { Action } from "@/lib/game-types"
 
@@ -40,47 +40,46 @@ export default function AdminAssetsPage() {
     )
   }
 
-  // Get training jobs (models)
-  const trainingJobs = JOB_DEFS.filter((j) => j.category === "training")
-  const revenueJobs = JOB_DEFS.filter((j) => j.category === "revenue")
+  // Get all models (training items) from the unified catalog
+  const allModels = getAllModels()
+  // Get all jobs for revenue items (INCOME and CONTRACTS)
+  const allJobs = getAllJobs()
+  const revenueJobs = allJobs.filter((j) => j.uiCategory === "INCOME" || j.uiCategory === "CONTRACTS")
 
-  // Convert jobs to Action format for ActionCard
+  // Convert models to Action format for ActionCard
   // Admin view: show all cards as enabled (preview mode)
-  const trainingActions: Action[] = trainingJobs.map((job) => {
-    const blueprint = MODEL_BLUEPRINTS.find((bp) => bp.trainingJobId === job.jobId)
-    const asset = blueprint?.assetSlug ? getAssetBySlug(blueprint.assetSlug) : undefined
-    
+  const trainingActions: Action[] = allModels.map((model) => {
     // Extract size from name (e.g., "3B TTS" -> "3B")
-    const sizeMatch = blueprint?.name.match(/^(\d+B)/)
+    const sizeMatch = model.name.match(/^(\d+B)/)
     const size = sizeMatch ? sizeMatch[1] : undefined
 
     return {
-      id: job.jobId,
+      id: model.id,
       category: "TRAINING",
-      name: blueprint?.name.replace(/^\d+B\s*/, "") || job.name, // Remove size prefix from name
-      description: job.description,
+      name: model.name.replace(/^\d+B\s*/, ""), // Remove size prefix from name
+      description: model.description,
       size,
-      cost: job.moneyCost,
-      duration: Math.floor(job.durationMs / 1000), // Convert ms to seconds
-      rpReward: job.rewards.rp,
-      xpReward: job.rewards.xp,
-      gpuCost: job.computeRequiredCU,
-      image: asset?.files.image || undefined,
+      cost: model.jobMoneyCost || 0,
+      duration: Math.floor((model.jobDurationMs || 0) / 1000), // Convert ms to seconds
+      rpReward: model.rewardRP || 0,
+      xpReward: model.rewardXP || 0,
+      gpuCost: model.jobComputeCost || 0,
+      image: getContentImageUrl(model),
       disabled: false, // Admin preview - show enabled
     }
   })
 
   const revenueActions: Action[] = revenueJobs.map((job) => {
     return {
-      id: job.jobId,
+      id: job.id,
       category: "INCOME",
       name: job.name,
       description: job.description,
-      cost: job.moneyCost,
-      duration: Math.floor(job.durationMs / 1000), // Convert ms to seconds
-      cashReward: job.rewards.money,
-      xpReward: job.rewards.xp,
-      gpuCost: job.computeRequiredCU,
+      cost: job.jobMoneyCost || 0,
+      duration: Math.floor((job.jobDurationMs || 0) / 1000), // Convert ms to seconds
+      cashReward: job.rewardMoney || 0,
+      xpReward: job.rewardXP || 0,
+      gpuCost: job.jobComputeCost || 0,
       disabled: false, // Admin preview - show enabled
     }
   })

@@ -510,6 +510,120 @@ export const resetGameStateByEmail = mutation({
   },
 });
 
+// Reset all player progress while keeping users and labs
+// - Keeps users and labs intact
+// - Resets playerState (level=1, xp=0)
+// - Clears all research/unlocks (back to starter defaults)
+// - Deletes tasks, trained models, notifications, etc.
+export const resetAllPlayerProgress = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const results = {
+      resetPlayerStates: 0,
+      clearedPlayerUnlocks: 0,
+      clearedPlayerResearch: 0,
+      deletedTasks: 0,
+      deletedModels: 0,
+      deletedNotifications: 0,
+      deletedCooldowns: 0,
+      deletedLeaderboardEntries: 0,
+      deletedBestModels: 0,
+      resetLabStates: 0,
+    };
+
+    // Reset all player states to level 1, 0 XP, clear upgrade ranks
+    const playerStates = await ctx.db.query("playerState").collect();
+    for (const ps of playerStates) {
+      await ctx.db.patch(ps._id, {
+        level: 1,
+        experience: 0,
+        upgradePoints: 0,
+        queueRank: 0,
+        staffRank: 0,
+        computeRank: 0,
+        speedRank: 0,
+        moneyMultiplierRank: 0,
+      });
+      results.resetPlayerStates++;
+    }
+
+    // Reset all lab states (cash back to 0, RP back to 0, clear bonuses)
+    const labStates = await ctx.db.query("labState").collect();
+    for (const ls of labStates) {
+      await ctx.db.patch(ls._id, {
+        cash: 0,
+        researchPoints: 0,
+        juniorResearchers: 0,
+        speedBonus: 0,
+        moneyMultiplier: 1,
+      });
+      results.resetLabStates++;
+    }
+
+    // Delete all player unlocks (will be recreated with starter defaults)
+    const playerUnlocks = await ctx.db.query("playerUnlocks").collect();
+    for (const pu of playerUnlocks) {
+      await ctx.db.delete(pu._id);
+      results.clearedPlayerUnlocks++;
+    }
+
+    // Delete all player research (will be recreated with starter defaults)
+    const playerResearch = await ctx.db.query("playerResearch").collect();
+    for (const pr of playerResearch) {
+      await ctx.db.delete(pr._id);
+      results.clearedPlayerResearch++;
+    }
+
+    // Delete all tasks
+    const tasks = await ctx.db.query("tasks").collect();
+    for (const task of tasks) {
+      await ctx.db.delete(task._id);
+      results.deletedTasks++;
+    }
+
+    // Delete all trained models
+    const models = await ctx.db.query("trainedModels").collect();
+    for (const model of models) {
+      await ctx.db.delete(model._id);
+      results.deletedModels++;
+    }
+
+    // Delete all notifications
+    const notifications = await ctx.db.query("notifications").collect();
+    for (const notif of notifications) {
+      await ctx.db.delete(notif._id);
+      results.deletedNotifications++;
+    }
+
+    // Delete all cooldowns
+    const cooldowns = await ctx.db.query("freelanceCooldowns").collect();
+    for (const cd of cooldowns) {
+      await ctx.db.delete(cd._id);
+      results.deletedCooldowns++;
+    }
+
+    // Delete all leaderboard entries
+    const leaderboardEntries = await ctx.db.query("worldLeaderboard").collect();
+    for (const entry of leaderboardEntries) {
+      await ctx.db.delete(entry._id);
+      results.deletedLeaderboardEntries++;
+    }
+
+    // Delete all best models entries
+    const bestModels = await ctx.db.query("worldBestModels").collect();
+    for (const entry of bestModels) {
+      await ctx.db.delete(entry._id);
+      results.deletedBestModels++;
+    }
+
+    return {
+      success: true,
+      message: "All player progress reset to level 1. Users and labs preserved. Starter unlocks will be recreated on next login.",
+      ...results,
+    };
+  },
+});
+
 // Nuclear option: Delete ALL game data (keeps users only)
 export const resetAllGameData = internalMutation({
   args: {},

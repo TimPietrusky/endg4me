@@ -664,6 +664,14 @@ export const ENTITY_ASSETS: EntityAsset[] = [
     notes: "Compact browser cartridge with HTML brackets and webpage wireframe layout",
   },
   {
+    id: "income_website_advanced",
+    title: "Advanced Website",
+    slug: "advanced-website",
+    version: "v001",
+    files: { image: "/assets/entities/advanced-website/advanced-website_v001_transparent.png" },
+    notes: "Large premium tablet with minimal elegant screen layout and refined housing",
+  },
+  {
     id: "tts_7b",
     title: "7B TTS",
     slug: "7b-tts",

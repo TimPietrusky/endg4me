@@ -38,6 +38,7 @@ export interface Action {
   disabledReason?: string
   fundsShortfall?: number
   gpuShortfall?: number
+  rpShortfall?: number // RP shortfall for research actions
   image?: string
   depthImage?: string
   modelUrl?: string
@@ -52,6 +53,11 @@ export interface Action {
   latestVersion?: number
   versionCount?: number
   bestScore?: number
+  // Research-specific fields
+  rpCost?: number // RP cost for research actions
+  completed?: boolean // Whether this research/action is completed/unlocked
+  minLevel?: number // Minimum level requirement
+  prerequisiteCount?: number // Number of prerequisites
 }
 
 export interface Notification {

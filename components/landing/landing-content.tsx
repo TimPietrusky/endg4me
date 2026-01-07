@@ -17,7 +17,10 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { ActionCard } from "@/components/game/dashboard/action-card";
 import type { Action } from "@/lib/game-types";
-import { MODEL_BLUEPRINTS } from "@/convex/lib/contentCatalog";
+import { CONTENT_CATALOG, type ContentEntry } from "@/convex/lib/contentCatalog";
+
+// Get all model content for display
+const MODEL_ENTRIES = CONTENT_CATALOG.filter((c) => c.contentType === "model");
 
 interface LandingContentProps {
   isLoggedIn: boolean;
@@ -236,33 +239,33 @@ export function LandingContent({ isLoggedIn, signInUrl }: LandingContentProps) {
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {MODEL_BLUEPRINTS.map((blueprint) => {
+            {MODEL_ENTRIES.map((model) => {
               const typeColors: Record<string, string> = {
                 tts: "from-cyan-500/30 to-cyan-600/10 border-cyan-500/40",
                 vlm: "from-emerald-500/30 to-teal-600/10 border-emerald-500/40",
                 llm: "from-purple-500/30 to-violet-600/10 border-purple-500/40",
               };
               return (
-                <Card key={blueprint.id} className={`overflow-hidden bg-gradient-to-br ${typeColors[blueprint.type]} border`}>
+                <Card key={model.id} className={`overflow-hidden bg-gradient-to-br ${typeColors[model.modelType!]} border`}>
                   <CardContent className="p-5">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
                         <Brain weight="bold" className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-white">{blueprint.name}</h4>
-                        <span className="text-xs font-mono text-white/50 uppercase">{blueprint.type}</span>
+                        <h4 className="font-bold text-white">{model.name}</h4>
+                        <span className="text-xs font-mono text-white/50 uppercase">{model.modelType}</span>
                       </div>
                     </div>
-                    <p className="text-sm text-white/60 mb-4">{blueprint.description}</p>
+                    <p className="text-sm text-white/60 mb-4">{model.description}</p>
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1 text-white/40">
                         <ChartLineUp weight="bold" className="w-4 h-4" />
-                        <span>Score: {blueprint.scoreRange.min}-{blueprint.scoreRange.max}</span>
+                        <span>Score: {model.scoreRange!.min}-{model.scoreRange!.max}</span>
                       </div>
                       <div className="flex items-center gap-1 text-white/40">
                         <Rocket weight="bold" className="w-4 h-4" />
-                        <span>Lvl {blueprint.minLevelToTrain}+</span>
+                        <span>Lvl {model.minLevel ?? 1}+</span>
                       </div>
                     </div>
                   </CardContent>

@@ -136,10 +136,10 @@ export function SubSubNavFilter({ label, count, isActive, onClick, className = "
   return (
     <button
       onClick={onClick}
-      className={`flex items-center text-xs lowercase transition-colors cursor-pointer ${
+      className={`flex items-center text-xs lowercase px-2 py-1 rounded transition-all cursor-pointer ${
         isActive
-          ? "text-white font-bold"
-          : "text-white hover:text-white/70"
+          ? "text-white font-bold bg-white/15"
+          : "text-white/60 hover:text-white hover:bg-white/5"
       } ${className}`}
     >
       <span>{label}</span>

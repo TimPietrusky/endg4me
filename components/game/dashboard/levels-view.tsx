@@ -1,7 +1,7 @@
 "use client"
 
 import { XP_PER_LEVEL, MAX_LEVEL, UP_PER_LEVEL, getXpForNextLevel } from "@/convex/lib/gameConfig"
-import { RESEARCH_NODES, JOB_DEFS } from "@/convex/lib/contentCatalog"
+import { CONTENT_CATALOG } from "@/convex/lib/contentCatalog"
 import { Check, ArrowRight, Star, CaretDoubleUp } from "@phosphor-icons/react"
 
 interface LevelsViewProps {
@@ -13,17 +13,10 @@ interface LevelsViewProps {
 function getUnlocksForLevel(level: number): string[] {
   const unlocks: string[] = []
   
-  // Research nodes that unlock at this level
-  RESEARCH_NODES.forEach((node) => {
-    if (node.minLevel === level && node.costRP > 0) {
-      unlocks.push(node.name)
-    }
-  })
-  
-  // Jobs that become available at this level (not via research)
-  JOB_DEFS.forEach((job) => {
-    if (job.requirements.minLevel === level && !job.requirements.requiredResearchNodeIds?.length) {
-      unlocks.push(job.name)
+  // Content that unlocks at this level (has RP cost = paid unlock)
+  CONTENT_CATALOG.forEach((content) => {
+    if ((content.minLevel ?? 1) === level && content.unlockCostRP !== undefined && content.unlockCostRP > 0) {
+      unlocks.push(content.name)
     }
   })
   
