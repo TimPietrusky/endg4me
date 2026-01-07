@@ -12,6 +12,7 @@
  *   --output, -o      Output filename (default: auto-generated timestamp)
  *   --aspect, -a      Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4 (default: 16:9)
  *   --seed, -s        Seed for reproducibility (default: random)
+ *   --template, -t    Use composition template (auto-crops to safe zone)
  *   --help, -h        Show this help message
  *
  * Models:
@@ -26,6 +27,7 @@
  *   node scripts/generate-image.mjs --prompt "cyberpunk AI datacenter"
  *   node scripts/generate-image.mjs -p "futuristic lab" -m p-image
  *   node scripts/generate-image.mjs -p "add neon glow" -i source.jpg
+ *   node scripts/generate-image.mjs -p "compact voice module" -t
  *
  * Environment:
  *   FAL_API_KEY (for flux2)
@@ -39,6 +41,7 @@ import { generateImage } from "ai";
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from "fs";
 import { dirname, join, resolve, extname } from "path";
 import { fileURLToPath } from "url";
+import sharp from "sharp";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "..");
@@ -54,6 +57,19 @@ if (existsSync(envLocalPath)) {
 
 const VALID_ASPECTS = ["1:1", "16:9", "9:16", "4:3", "3:4"];
 const VALID_MODELS = ["flux2", "p-image"];
+
+// Composition template configuration (must match create-composition-template.mjs)
+const TEMPLATE_CONFIG = {
+  path: "public/assets/templates/composition-template.png",
+  width: 1920,
+  height: 1080,
+  padding: 15, // percentage
+  // Computed safe zone bounds (15% padding on 1920x1080)
+  safeX: 288,
+  safeY: 162,
+  safeWidth: 1344,
+  safeHeight: 756,
+};
 
 const MODEL_CONFIG = {
   flux2: {
@@ -82,10 +98,11 @@ USAGE:
 OPTIONS:
   --prompt, -p      Image description (required)
   --model, -m       Model: ${VALID_MODELS.join(", ")} (default: flux2)
-  --input, -i       Input image for editing (flux2 only)
+  --input, -i       Input image for editing
   --output, -o      Output filename (default: auto-generated)
   --aspect, -a      Aspect ratio: ${VALID_ASPECTS.join(", ")} (default: 16:9)
   --seed, -s        Seed for reproducibility (default: random)
+  --template, -t    Use composition template (auto-crops to safe zone)
   --help, -h        Show this help message
 
 MODELS:
@@ -96,12 +113,18 @@ MODELS:
             - t2i: pruna/p-image-t2i
             - edit: pruna/p-image-edit
 
+TEMPLATE MODE:
+  When --template is used:
+  - Uses composition-template.png as input (edit mode)
+  - Prompt should describe object to place in marked zone
+  - Output is auto-cropped to the safe zone (removes border)
+  - Adds composition instructions to prompt automatically
+
 EXAMPLES:
   node scripts/generate-image.mjs --prompt "cyberpunk AI datacenter"
   node scripts/generate-image.mjs -p "futuristic lab" -m p-image
-  node scripts/generate-image.mjs -p "futuristic lab" -m flux2
+  node scripts/generate-image.mjs -p "compact voice synthesis module" -t
   node scripts/generate-image.mjs -p "add neon effects" -i source.jpg -m flux2
-  node scripts/generate-image.mjs -p "add neon effects" -i source.jpg -m p-image
 
 OUTPUT:
   Images are saved to public/ folder.
@@ -117,6 +140,7 @@ function parseArgs(args) {
     output: null,
     aspect: "16:9",
     seed: null,
+    template: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -158,6 +182,10 @@ function parseArgs(args) {
         result.seed = parseInt(next, 10);
         i++;
         break;
+      case "--template":
+      case "-t":
+        result.template = true;
+        break;
     }
   }
 
@@ -194,6 +222,21 @@ function validateArgs(args) {
   if (args.input && !existsSync(args.input)) {
     console.error(`ERROR: Input image not found: ${args.input}`);
     process.exit(1);
+  }
+
+  // Template mode validation
+  if (args.template) {
+    const templatePath = join(projectRoot, TEMPLATE_CONFIG.path);
+    if (!existsSync(templatePath)) {
+      console.error(`ERROR: Composition template not found: ${templatePath}`);
+      console.error("Run: node scripts/create-composition-template.mjs");
+      process.exit(1);
+    }
+    if (args.input) {
+      console.error("ERROR: Cannot use --template with --input");
+      console.error("Template mode uses the composition template as input");
+      process.exit(1);
+    }
   }
 }
 
@@ -237,6 +280,27 @@ function getModel(config, isEditMode) {
   throw new Error(`Unknown provider: ${config.provider}`);
 }
 
+// Composition guide text to prepend when using template mode
+const TEMPLATE_PROMPT_PREFIX =
+  "Place the object centered within the marked magenta rectangle boundary. " +
+  "The object must fit entirely inside the rectangle. " +
+  "Keep the neutral gray background outside the object. " +
+  "Do not render the magenta guide lines in the final image. ";
+
+async function cropToSafeZone(imageBuffer) {
+  const { safeX, safeY, safeWidth, safeHeight } = TEMPLATE_CONFIG;
+
+  return sharp(imageBuffer)
+    .extract({
+      left: safeX,
+      top: safeY,
+      width: safeWidth,
+      height: safeHeight,
+    })
+    .png()
+    .toBuffer();
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -247,7 +311,17 @@ async function main() {
   validateArgs(args);
 
   const config = MODEL_CONFIG[args.model];
-  const isEditMode = !!args.input && config.supportsEdit;
+
+  // Template mode uses the composition template as input
+  let inputPath = args.input;
+  let effectivePrompt = args.prompt;
+
+  if (args.template) {
+    inputPath = join(projectRoot, TEMPLATE_CONFIG.path);
+    effectivePrompt = TEMPLATE_PROMPT_PREFIX + args.prompt;
+  }
+
+  const isEditMode = !!inputPath && config.supportsEdit;
   const modelId = isEditMode ? config.edit : config.t2i;
 
   const filename = generateFilename(args.output, args.model);
@@ -261,7 +335,11 @@ async function main() {
   console.log("Generating image...");
   console.log(`  Provider: ${config.provider}`);
   console.log(`  Model: ${modelId}`);
-  console.log(`  Mode: ${isEditMode ? "edit" : "text-to-image"}`);
+  console.log(`  Mode: ${isEditMode ? "edit" : "text-to-image"}${args.template ? " (template)" : ""}`);
+  if (args.template) {
+    console.log(`  Template: ${TEMPLATE_CONFIG.path}`);
+    console.log(`  Safe zone: ${TEMPLATE_CONFIG.safeWidth}x${TEMPLATE_CONFIG.safeHeight}`);
+  }
   console.log(`  Prompt: "${args.prompt}"`);
   console.log(`  Aspect: ${args.aspect}`);
   if (args.input) {
@@ -274,7 +352,7 @@ async function main() {
   try {
     const options = {
       model: getModel(config, isEditMode),
-      prompt: args.prompt,
+      prompt: effectivePrompt,
       aspectRatio: args.aspect,
     };
 
@@ -283,7 +361,7 @@ async function main() {
     }
 
     if (isEditMode) {
-      const imageDataUrl = imageToDataUrl(args.input);
+      const imageDataUrl = imageToDataUrl(inputPath);
       options.images = [imageDataUrl];
       // fal.ai edit models need image_urls passed via providerOptions
       if (config.provider === "fal") {
@@ -297,11 +375,19 @@ async function main() {
 
     const { image } = await generateImage(options);
 
-    writeFileSync(outputPath, image.uint8Array);
+    let finalBuffer = Buffer.from(image.uint8Array);
+
+    // Crop to safe zone if template mode
+    if (args.template) {
+      console.log("\nCropping to safe zone...");
+      finalBuffer = await cropToSafeZone(finalBuffer);
+    }
+
+    writeFileSync(outputPath, finalBuffer);
 
     console.log(`\nSaved: ${filename}`);
     console.log(`Path: public/${filename}`);
-    console.log(`Size: ${(image.uint8Array.length / 1024).toFixed(1)}KB`);
+    console.log(`Size: ${(finalBuffer.length / 1024).toFixed(1)}KB`);
   } catch (err) {
     console.error("\nERROR:", err?.message || err);
     process.exit(1);
