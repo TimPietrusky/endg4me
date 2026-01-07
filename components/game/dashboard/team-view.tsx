@@ -24,26 +24,31 @@ export function TeamView({
   const founderBonus = FOUNDER_BONUSES[founderType]
 
   // Get the primary bonus for this founder type
-  // Speed: +25% displayed as "+25% speed"
-  // Money: +50% points means 1.5x multiplier
+  // Speed: base 0% + bonus (shows what founder adds)
+  // Money: base 1x + bonus (shows what founder adds on top of base)
+  const speedBonus = founderBonus.speed ?? 0
+  const moneyBonus = founderBonus.moneyMultiplier ?? 0
+  
   const primaryBonus = founderType === "technical" 
     ? { 
         label: "speed", 
-        displayValue: `+${founderBonus.speed ?? 0}%`, 
+        baseValue: "0%",
+        bonusValue: `+${speedBonus}%`, 
         icon: Clock, 
-        color: "text-cyan-400",
-        bgColor: "bg-cyan-500/20",
-        borderColor: "border-cyan-500/40",
-        description: "all jobs complete 25% faster"
+        color: "text-pink-400",
+        bgColor: "bg-pink-500/20",
+        borderColor: "border-pink-500/40",
+        description: "all jobs complete faster"
       }
     : { 
         label: "money multiplier", 
-        displayValue: "1.5x", 
+        baseValue: "1x",
+        bonusValue: `+${(moneyBonus / 100).toFixed(1)}x`, 
         icon: CurrencyDollar, 
-        color: "text-amber-400",
-        bgColor: "bg-amber-500/20",
-        borderColor: "border-amber-500/40",
-        description: "all money rewards multiplied by 1.5x"
+        color: "text-emerald-400",
+        bgColor: "bg-emerald-500/20",
+        borderColor: "border-emerald-500/40",
+        description: "earn more revenue, pay less for costs"
       }
 
   return (
@@ -91,18 +96,34 @@ export function TeamView({
             {/* founder bonus - prominent display */}
             <div className="mt-2">
               <p className="text-xs text-muted-foreground mb-2 lowercase">lab bonus</p>
-              <div className={`flex items-center gap-4 p-4 rounded-lg border-2 ${primaryBonus.bgColor} ${primaryBonus.borderColor}`}>
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${primaryBonus.bgColor}`}>
-                  <primaryBonus.icon className={`w-7 h-7 ${primaryBonus.color}`} weight="bold" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-2xl font-bold ${primaryBonus.color}`}>
-                      {primaryBonus.displayValue}
-                    </span>
-                    <span className="text-sm font-medium text-white/80 lowercase">{primaryBonus.label}</span>
+              <div className={`rounded-lg border-2 overflow-hidden ${primaryBonus.bgColor} ${primaryBonus.borderColor}`}>
+                {/* stat name header */}
+                <div className="flex items-center gap-3 p-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${primaryBonus.bgColor}`}>
+                    <primaryBonus.icon className={`w-5 h-5 ${primaryBonus.color}`} weight="bold" />
                   </div>
-                  <p className="text-xs text-white/60 mt-1 lowercase">{primaryBonus.description}</p>
+                  <span className={`text-base font-bold ${primaryBonus.color} lowercase`}>
+                    {primaryBonus.label}
+                  </span>
+                </div>
+                {/* two-column base vs bonus */}
+                <div className="grid grid-cols-2 gap-3 px-3 pb-3">
+                  <div className="text-center p-3 bg-black/20 rounded-lg">
+                    <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">base</div>
+                    <div className="text-xl font-mono text-white/50">
+                      {primaryBonus.baseValue}
+                    </div>
+                  </div>
+                  <div className="text-center p-3 bg-black/20 rounded-lg">
+                    <div className={`text-[10px] uppercase tracking-wider mb-1 ${primaryBonus.color}`}>bonus</div>
+                    <div className={`text-xl font-black ${primaryBonus.color}`}>
+                      {primaryBonus.bonusValue}
+                    </div>
+                  </div>
+                </div>
+                {/* description */}
+                <div className="px-4 py-2 bg-black/30 border-t border-white/10">
+                  <p className="text-xs text-white/60 text-center lowercase">{primaryBonus.description}</p>
                 </div>
               </div>
             </div>
