@@ -28,6 +28,7 @@ interface GameTopNavProps {
   activeTaskCount: number
   maxParallelTasks: number
   userId?: Id<"users">
+  isAdmin?: boolean
 }
 
 export function GameTopNav({
@@ -48,16 +49,18 @@ export function GameTopNav({
   activeTaskCount,
   maxParallelTasks,
   userId,
+  isAdmin,
 }: GameTopNavProps) {
   const pathname = usePathname()
   
   // Derive current view from pathname
-  const getCurrentView = (): ViewType | null => {
+  const getCurrentView = (): ViewType | "admin" | null => {
     if (pathname === "/operate") return "operate"
     if (pathname === "/research") return "research"
     if (pathname?.startsWith("/lab")) return "lab"
     if (pathname === "/inbox") return "inbox"
     if (pathname === "/leaderboard") return "leaderboard"
+    if (pathname?.startsWith("/admin")) return "admin"
     return null // No nav item active for unknown routes
   }
   
@@ -65,12 +68,13 @@ export function GameTopNav({
 
   // Navigation items
   // Operate shows active/max queue, Lab shows UP count when > 0
-  const navItems: { id: ViewType; label: string; href: string; badge?: number | string; badgeVariant?: "secondary" | "up" }[] = [
+  const navItems: { id: ViewType | "admin"; label: string; href: string; badge?: number | string; badgeVariant?: "secondary" | "up" | "admin"; adminOnly?: boolean }[] = [
     { id: "operate", label: "operate", href: "/operate", badge: `${activeTaskCount}/${maxParallelTasks}`, badgeVariant: "secondary" },
     { id: "research", label: "research", href: "/research" },
     { id: "lab", label: "lab", href: "/lab", badge: upgradePoints > 0 ? `${upgradePoints}` : undefined, badgeVariant: "up" },
     { id: "inbox", label: "inbox", href: "/inbox", badge: notificationCount > 0 ? `${notificationCount}` : undefined, badgeVariant: "secondary" },
     { id: "leaderboard", label: "leaderboard", href: "/leaderboard" },
+    { id: "admin", label: "admin", href: "/admin/assets", adminOnly: true },
   ]
 
   return (
@@ -84,7 +88,9 @@ export function GameTopNav({
             </Link>
 
             <nav className="flex items-center gap-1">
-              {navItems.map((item) => {
+              {navItems
+                .filter((item) => !item.adminOnly || isAdmin)
+                .map((item) => {
                 const isActive = currentView === item.id
                 return (
                   <Link
@@ -92,8 +98,12 @@ export function GameTopNav({
                     href={item.href}
                     className={`inline-flex items-center justify-center text-xs h-8 px-3 rounded-md lowercase transition-all ${
                       isActive
-                        ? "bg-white text-black font-bold hover:bg-white/80"
-                        : "hover:bg-white/20 hover:text-white text-white/70"
+                        ? item.adminOnly 
+                          ? "bg-amber-500 text-black font-bold hover:bg-amber-400"
+                          : "bg-white text-black font-bold hover:bg-white/80"
+                        : item.adminOnly
+                          ? "hover:bg-amber-500/20 hover:text-amber-400 text-amber-500/70"
+                          : "hover:bg-white/20 hover:text-white text-white/70"
                     }`}
                   >
                     {item.label}

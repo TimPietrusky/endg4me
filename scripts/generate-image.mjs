@@ -283,7 +283,16 @@ async function main() {
     }
 
     if (isEditMode) {
-      options.image = imageToDataUrl(args.input);
+      const imageDataUrl = imageToDataUrl(args.input);
+      options.images = [imageDataUrl];
+      // fal.ai edit models need image_urls passed via providerOptions
+      if (config.provider === "fal") {
+        options.providerOptions = {
+          fal: {
+            image_urls: [imageDataUrl],
+          },
+        };
+      }
     }
 
     const { image } = await generateImage(options);

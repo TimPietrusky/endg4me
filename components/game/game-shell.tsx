@@ -2,6 +2,8 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 import { useGameData } from "@/components/providers/game-data-provider"
 import { GameTopNav } from "./game-top-nav"
 import { TaskToastContainer } from "./task-toast"
@@ -32,6 +34,12 @@ export function GameShell({ children }: GameShellProps) {
     activeTaskCount,
     maxParallelTasks,
   } = useGameData()
+  
+  // Check if user is admin
+  const isAdmin = useQuery(
+    api.dev.checkIsAdmin, 
+    userId ? { userId: userId as Id<"users"> } : "skip"
+  )
 
   // Redirect to /new if user needs to create a lab
   useEffect(() => {
@@ -77,6 +85,7 @@ export function GameShell({ children }: GameShellProps) {
         activeTaskCount={activeTaskCount}
         maxParallelTasks={maxParallelTasks}
         userId={userId as Id<"users">}
+        isAdmin={isAdmin === true}
       />
       
       <div className="px-6 pb-6">

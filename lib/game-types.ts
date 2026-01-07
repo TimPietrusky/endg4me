@@ -39,6 +39,8 @@ export interface Action {
   fundsShortfall?: number
   gpuShortfall?: number
   image?: string
+  depthImage?: string
+  modelUrl?: string
   isActive?: boolean
   remainingTime?: number
   isQueued?: boolean

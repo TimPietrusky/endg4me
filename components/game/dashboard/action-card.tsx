@@ -92,26 +92,28 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
   return (
     <Card className="overflow-hidden pt-0 pb-0 gap-0">
-      <div className={`relative h-24 overflow-hidden bg-gradient-to-br border-b border-border ${colorClasses[paramColor]}`}>
+      <div className="relative h-36 overflow-hidden border-b border-border bg-black">
         <img
           src={action.image || "/placeholder.svg"}
           alt={action.name}
-          className="w-full h-full object-cover mix-blend-overlay opacity-60"
+          className="w-full h-full object-cover"
         />
-        <div className="absolute bottom-2 left-3 flex items-baseline gap-2">
-          {action.size && (
-            <span className={`text-xl font-black ${colorClasses[paramColor].split(" ").pop()}`}>{action.size}</span>
-          )}
-          <h3 className="font-bold text-xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{action.name}</h3>
+        <div className="absolute bottom-2 left-2 pointer-events-none">
+          <div className="flex items-baseline gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded">
+            {action.size && (
+              <span className="text-lg font-black text-white">{action.size}</span>
+            )}
+            <h3 className="font-bold text-lg text-white">{action.name}</h3>
+          </div>
         </div>
         {/* Version badge for trained models */}
         {action.latestVersion && (
-          <div className="absolute top-2 left-3 bg-black/70 text-white text-xs font-mono px-2 py-0.5 rounded">
+          <div className="absolute top-2 left-3 bg-black/70 text-white text-xs font-mono px-2 py-0.5 rounded pointer-events-none">
             v{action.latestVersion}
           </div>
         )}
         {action.isQueued && (
-          <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded">
+          <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
             QUEUED
           </div>
         )}

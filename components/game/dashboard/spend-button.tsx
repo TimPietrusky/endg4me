@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import {
   CurrencyDollar,
   Lightning,
@@ -165,39 +165,12 @@ export function SpendButton({
   attributeLayout = "spread",
 }: SpendButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false)
-  const [displayTime, setDisplayTime] = useState(
-    isActive ? remainingTime * speedFactor : duration
-  )
-  const startTimeRef = useRef<number | null>(null)
-  const initialTimeRef = useRef(isActive ? remainingTime * speedFactor : duration)
 
-  // Progress animation for active state
-  useEffect(() => {
-    if (!isActive || duration === 0) {
-      setDisplayTime(duration)
-      return
-    }
-
-    startTimeRef.current = performance.now()
-    initialTimeRef.current = remainingTime * speedFactor
-
-    let rafId: number
-
-    const tick = (now: number) => {
-      if (!startTimeRef.current) return
-
-      const elapsed = (now - startTimeRef.current) / 1000
-      const newTime = Math.max(0, initialTimeRef.current - elapsed * speedFactor)
-      setDisplayTime(newTime)
-
-      if (newTime > 0) {
-        rafId = requestAnimationFrame(tick)
-      }
-    }
-
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [isActive, remainingTime, speedFactor, duration])
+  // Display time is purely derived from props - no local animation state
+  // The provider updates every second, so this naturally ticks down
+  // When active: show remaining time from server
+  // When not active: show total duration
+  const displayTime = isActive && remainingTime > 0 ? remainingTime : duration
 
   // Calculate progress percent
   const progressPercent = isActive && duration > 0 

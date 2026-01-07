@@ -18,6 +18,7 @@ export interface ModelBlueprint {
   trainingJobId: string;
   scoreRange: { min: number; max: number };
   tags?: string[];
+  assetSlug?: string; // Links to ENTITY_ASSETS by slug
 }
 
 export const MODEL_BLUEPRINTS: ModelBlueprint[] = [
@@ -29,6 +30,37 @@ export const MODEL_BLUEPRINTS: ModelBlueprint[] = [
     minLevelToTrain: 1,
     trainingJobId: "job_train_tts_3b",
     scoreRange: { min: 40, max: 70 },
+    assetSlug: "3b-tts",
+  },
+  {
+    id: "bp_tts_7b",
+    name: "7B TTS",
+    type: "tts",
+    description: "A mid-range voice model with better clarity.",
+    minLevelToTrain: 3,
+    trainingJobId: "job_train_tts_7b",
+    scoreRange: { min: 55, max: 82 },
+    assetSlug: "7b-tts",
+  },
+  {
+    id: "bp_tts_30b",
+    name: "30B TTS",
+    type: "tts",
+    description: "A large voice model with rich intonation.",
+    minLevelToTrain: 5,
+    trainingJobId: "job_train_tts_30b",
+    scoreRange: { min: 70, max: 92 },
+    assetSlug: "30b-tts",
+  },
+  {
+    id: "bp_tts_70b",
+    name: "70B TTS",
+    type: "tts",
+    description: "A massive voice model with studio-quality output.",
+    minLevelToTrain: 7,
+    trainingJobId: "job_train_tts_70b",
+    scoreRange: { min: 85, max: 99 },
+    assetSlug: "70b-tts",
   },
   {
     id: "bp_vlm_7b",
@@ -113,6 +145,51 @@ export const JOB_DEFS: JobDefinition[] = [
       requiredBlueprintIds: ["bp_tts_3b"],
     },
     output: { trainsBlueprintId: "bp_tts_3b" },
+    category: "training",
+  },
+  {
+    jobId: "job_train_tts_7b",
+    name: "Train 7B TTS",
+    description: "Train a new version of your 7B TTS model.",
+    durationMs: 6 * 60 * 1000, // 6 minutes
+    moneyCost: 1000,
+    computeRequiredCU: 1,
+    rewards: { money: 0, xp: 100, rp: 200 },
+    requirements: {
+      minLevel: 3,
+      requiredBlueprintIds: ["bp_tts_7b"],
+    },
+    output: { trainsBlueprintId: "bp_tts_7b" },
+    category: "training",
+  },
+  {
+    jobId: "job_train_tts_30b",
+    name: "Train 30B TTS",
+    description: "Train a new version of your 30B TTS model.",
+    durationMs: 15 * 60 * 1000, // 15 minutes
+    moneyCost: 2500,
+    computeRequiredCU: 2,
+    rewards: { money: 0, xp: 200, rp: 400 },
+    requirements: {
+      minLevel: 5,
+      requiredBlueprintIds: ["bp_tts_30b"],
+    },
+    output: { trainsBlueprintId: "bp_tts_30b" },
+    category: "training",
+  },
+  {
+    jobId: "job_train_tts_70b",
+    name: "Train 70B TTS",
+    description: "Train a new version of your 70B TTS model.",
+    durationMs: 25 * 60 * 1000, // 25 minutes
+    moneyCost: 5000,
+    computeRequiredCU: 3,
+    rewards: { money: 0, xp: 350, rp: 600 },
+    requirements: {
+      minLevel: 7,
+      requiredBlueprintIds: ["bp_tts_70b"],
+    },
+    output: { trainsBlueprintId: "bp_tts_70b" },
     category: "training",
   },
   {
@@ -714,3 +791,141 @@ export const ALL_BLUEPRINT_IDS = MODEL_BLUEPRINTS.map((bp) => bp.id);
 
 // Get all research node IDs
 export const ALL_RESEARCH_NODE_IDS = RESEARCH_NODES.map((n) => n.nodeId);
+
+// -----------------------------------------------------------------------------
+// ENTITY ASSETS (manga-cyberpunk icons for entities)
+// -----------------------------------------------------------------------------
+
+export type AssetCategory = "model" | "revenue" | "compute" | "research" | "hiring";
+
+export interface EntityAsset {
+  id: string;
+  title: string;
+  category: AssetCategory;
+  slug: string;
+  version: string;
+  files: {
+    image: string;
+    depth?: string;
+    model?: string; // GLB 3D model
+  };
+  notes?: string;
+}
+
+// Asset registry - populated as assets are generated via /asset command
+export const ENTITY_ASSETS: EntityAsset[] = [
+  {
+    id: "model_3b_tts",
+    title: "3B TTS",
+    category: "model",
+    slug: "3b-tts",
+    version: "v007",
+    files: {
+      image: "/assets/entities/3b-tts/3b-tts_v007.png",
+    },
+    notes: "compact audio synthesis module with single speaker, entry-level device",
+  },
+  {
+    id: "model_7b_tts",
+    title: "7B TTS",
+    category: "model",
+    slug: "7b-tts",
+    version: "v002",
+    files: {
+      image: "/assets/entities/7b-tts/7b-tts_v002.png",
+    },
+    notes: "dual-speaker audio synthesis module",
+  },
+  {
+    id: "model_30b_tts",
+    title: "30B TTS",
+    category: "model",
+    slug: "30b-tts",
+    version: "v003",
+    files: {
+      image: "/assets/entities/30b-tts/30b-tts_v003.png",
+    },
+    notes: "stacked dual-rack audio synthesis system",
+  },
+  {
+    id: "model_70b_tts",
+    title: "70B TTS",
+    category: "model",
+    slug: "70b-tts",
+    version: "v002",
+    files: {
+      image: "/assets/entities/70b-tts/70b-tts_v002.png",
+    },
+    notes: "massive industrial-scale audio synthesis system",
+  },
+];
+
+// -----------------------------------------------------------------------------
+// ASSET HELPER FUNCTIONS
+// -----------------------------------------------------------------------------
+
+/**
+ * Get asset by entity slug (e.g. "3b-tts")
+ */
+export function getAssetBySlug(slug: string): EntityAsset | undefined {
+  return ENTITY_ASSETS.find((a) => a.slug === slug);
+}
+
+/**
+ * Get asset by entity ID (e.g. "model_3b_tts")
+ */
+export function getAssetById(id: string): EntityAsset | undefined {
+  return ENTITY_ASSETS.find((a) => a.id === id);
+}
+
+/**
+ * Get image URL for an entity by slug
+ * Returns undefined if no asset exists
+ */
+export function getEntityImageUrl(slug: string): string | undefined {
+  const asset = getAssetBySlug(slug);
+  return asset?.files.image;
+}
+
+/**
+ * Get depth map URL for an entity by slug
+ * Returns undefined if no asset exists
+ */
+export function getEntityDepthUrl(slug: string): string | undefined {
+  const asset = getAssetBySlug(slug);
+  return asset?.files.depth;
+}
+
+/**
+ * Get 3D model URL for an entity by slug
+ * Returns undefined if no asset exists
+ */
+export function getEntityModelUrl(slug: string): string | undefined {
+  const asset = getAssetBySlug(slug);
+  return asset?.files.model;
+}
+
+/**
+ * Convert entity name to slug (lowercase kebab-case)
+ * "3B TTS" -> "3b-tts"
+ * "Basic Website" -> "basic-website"
+ */
+export function toEntitySlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+/**
+ * Generate file paths for a new asset
+ */
+export function generateAssetPaths(
+  slug: string,
+  version: string = "v001"
+): { image: string; depth: string } {
+  return {
+    image: `/assets/entities/${slug}/${slug}_${version}.png`,
+    depth: `/assets/entities/${slug}/${slug}_${version}_depth.png`,
+  };
+}

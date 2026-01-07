@@ -114,6 +114,14 @@ export async function getRealTimeForEffective(
   return Math.max(realTarget, realNow);
 }
 
+// Query: Check if user is a dev admin (simple boolean check)
+export const checkIsAdmin = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await isDevAdmin(ctx, args.userId);
+  },
+});
+
 // Query: Get dev settings for current user
 export const getDevSettings = query({
   args: { userId: v.id("users") },

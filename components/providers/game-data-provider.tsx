@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id, Doc } from "@/convex/_generated/dataModel"
-import { getJobById, JOB_DEFS } from "@/convex/lib/contentCatalog"
+import { getJobById, JOB_DEFS, getBlueprintById, getEntityImageUrl, getEntityDepthUrl, getEntityModelUrl } from "@/convex/lib/contentCatalog"
 import { getUpgradeValue, getXpForNextLevel, FOUNDER_BONUSES, type FounderType } from "@/convex/lib/gameConfig"
 import { useToast } from "@/hooks/use-toast"
 import type { Action, Notification } from "@/lib/game-types"
@@ -68,7 +68,7 @@ export function useGameData() {
   return context
 }
 
-// Job image mapping
+// Job image mapping (fallback when no asset exists)
 const JOB_IMAGES: Record<string, string> = {
   "job_train_tts_3b": "/ai-neural-network-training-blue-glow.jpg",
   "job_train_vlm_7b": "/advanced-ai-training-purple-cyber.jpg",
@@ -78,6 +78,25 @@ const JOB_IMAGES: Record<string, string> = {
   "job_contract_voice_pack": "/cyberpunk-freelance-coding-terminal.jpg",
   "job_contract_image_qa": "/cyberpunk-freelance-coding-terminal.jpg",
   "job_research_literature": "/server-optimization-tech-infrastructure.jpg",
+}
+
+// Get job images - prefer blueprint asset, fallback to JOB_IMAGES
+function getJobImages(jobDef: ReturnType<typeof getJobById>): { image: string; depthImage?: string; modelUrl?: string } {
+  if (!jobDef) return { image: "/server-optimization-tech-infrastructure.jpg" }
+  
+  // For training jobs, check if blueprint has an asset
+  if (jobDef.output.trainsBlueprintId) {
+    const blueprint = getBlueprintById(jobDef.output.trainsBlueprintId)
+    if (blueprint?.assetSlug) {
+      const assetImage = getEntityImageUrl(blueprint.assetSlug)
+      const depthImage = getEntityDepthUrl(blueprint.assetSlug)
+      const modelUrl = getEntityModelUrl(blueprint.assetSlug)
+      if (assetImage) return { image: assetImage, depthImage, modelUrl }
+    }
+  }
+  
+  // Fallback to job-specific image or default
+  return { image: JOB_IMAGES[jobDef.jobId] || "/server-optimization-tech-infrastructure.jpg" }
 }
 
 interface GameDataProviderProps {
@@ -163,10 +182,11 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   const startJob = useMutation(api.tasks.startJob)
   const markNotificationRead = useMutation(api.notifications.markAsRead)
 
-  // Re-render every second for task timers
-  const [, setTick] = useState(0)
+  // Current client time for countdown calculations
+  // This updates every second to drive the timer display
+  const [clientNow, setClientNow] = useState(Date.now())
   useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
+    const interval = setInterval(() => setClientNow(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -179,9 +199,8 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   // Derived calculations
   const xpRequired = playerState ? getXpForNextLevel(playerState.level) : 100
   
-  // Extract tasks and effectiveNow from the query result (supports Time Warp)
+  // Extract tasks from the query result
   const allActiveTasks = activeTasks?.tasks || []
-  const effectiveNow = activeTasks?.effectiveNow || Date.now()
   
   const inProgressTasks = allActiveTasks.filter((t) => t.status === "in_progress")
   const queuedTasks = allActiveTasks.filter((t) => t.status === "queued")
@@ -203,11 +222,12 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   }, 0)
   const availableGpus = computeCapacity - usedCompute
 
-  // Helper to get remaining time for a job (uses effectiveNow for Time Warp support)
+  // Helper to get remaining time for a job
+  // Uses clientNow (updates every second) to calculate actual remaining time
   function getJobRemainingTime(jobId: string): number | undefined {
     const task = inProgressTasks.find((t) => t.type === jobId)
     if (task?.completesAt) {
-      return Math.max(0, Math.floor((task.completesAt - effectiveNow) / 1000))
+      return Math.max(0, Math.floor((task.completesAt - clientNow) / 1000))
     }
     return undefined
   }
@@ -264,14 +284,34 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
   const totalSpeedBonus = founderSpeedBonus + upSpeedBonus + rpSpeedBonus + hireSpeedBonus
   const totalMoneyMultiplier = baseMoneyMultiplier + founderMoneyBonus + upMoneyBonus + rpMoneyBonus + hireMoneyBonus
   
-  // Helper to adjust duration based on speed bonus (hire jobs are NOT affected)
+  // Helper to adjust duration based on all speed modifiers (must match backend calculation)
+  // NOTE: Hire jobs have fixed duration - speed bonuses don't affect contract length
   function getAdjustedDuration(jobDef: { durationMs: number; category: string }): number {
     if (jobDef.category === "hire") {
       // Hire jobs have fixed duration
       return Math.floor(jobDef.durationMs / 1000)
     }
-    // Apply speed bonus: duration / (1 + bonus/100)
-    const adjustedMs = jobDef.durationMs / (1 + totalSpeedBonus / 100)
+    
+    let adjustedMs = jobDef.durationMs
+    
+    // Apply speed bonus (founder + UP ranks + RP perks + hires)
+    if (totalSpeedBonus > 0) {
+      adjustedMs = adjustedMs / (1 + totalSpeedBonus / 100)
+    }
+    
+    // Apply level bonus (1% per level above 1) - must match backend LEVEL_REWARDS.globalEfficiencyPerLevel
+    const playerLevel = playerState?.level ?? 1
+    if (playerLevel > 1) {
+      const levelBonus = 1 + (playerLevel - 1) * 0.01
+      adjustedMs = adjustedMs / levelBonus
+    }
+    
+    // Apply staff bonus for training jobs (10% per junior researcher)
+    if (jobDef.category === "training" && labState?.juniorResearchers && labState.juniorResearchers > 0) {
+      const staffBonus = 1 + labState.juniorResearchers * 0.1
+      adjustedMs = adjustedMs / staffBonus
+    }
+    
     return Math.floor(adjustedMs / 1000)
   }
   
@@ -395,7 +435,7 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
         disabledReason: disabledInfo.reason,
         fundsShortfall: disabledInfo.fundsShortfall || 0,
         gpuShortfall: disabledInfo.gpuShortfall || 0,
-        image: JOB_IMAGES[job.jobId] || "/server-optimization-tech-infrastructure.jpg",
+        ...getJobImages(jobDef),
         isActive,
         remainingTime: getJobRemainingTime(job.jobId),
         speedFactor: isActive ? getJobSpeedFactor(job.jobId) : 1,
