@@ -13,7 +13,7 @@ import { ActionCard } from "./action-card"
 import { ACTION_GRID_CLASSES } from "./grid-classes"
 import { useToast } from "@/hooks/use-toast"
 import type { Id } from "@/convex/_generated/dataModel"
-import type { Action } from "@/lib/game-types"
+import type { Action, ActionRequirement } from "@/lib/game-types"
 import { getContentById, getContentImageUrl } from "@/convex/lib/contentCatalog"
 
 type StatusFilter = "available" | "locked" | "researched" | "researching"
@@ -131,6 +131,36 @@ export function PerkTree({ userId, currentRp, playerLevel, category }: PerkTreeP
     const sizeMatch = node.name.match(/^(\d+B)/)
     const size = sizeMatch ? sizeMatch[1] : undefined
 
+    // Build unified requirements array
+    // Order: research (prereqs) -> level -> rp
+    const requirements: ActionRequirement[] = []
+    
+    // Prerequisite research requirement
+    if (prerequisiteId && prerequisiteName) {
+      // Check if prereq is purchased by looking at nodes
+      const prereqNode = researchState?.nodes?.find(n => n.nodeId === prerequisiteId)
+      const prereqMet = prereqNode?.isPurchased ?? false
+      requirements.push({
+        type: 'research',
+        label: prerequisiteName,
+        met: prereqMet,
+        navigable: !prereqMet,
+        link: !prereqMet ? { view: 'research', target: prerequisiteId } : undefined,
+      })
+    }
+    
+    // Level requirement
+    if (node.minLevel > 1) {
+      requirements.push({
+        type: 'level',
+        label: String(node.minLevel),
+        value: node.minLevel,
+        met: meetsLevel,
+        navigable: !meetsLevel,
+        link: !meetsLevel ? { view: 'lab/levels' as const } : undefined,
+      })
+    }
+
     return {
       id: node.nodeId,
       category: actionCategory,
@@ -154,6 +184,8 @@ export function PerkTree({ userId, currentRp, playerLevel, category }: PerkTreeP
       levelShortfall,
       image,
       size,
+      // Unified requirements
+      requirements,
     }
   }
 

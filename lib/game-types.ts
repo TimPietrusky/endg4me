@@ -17,6 +17,16 @@ export interface GameState {
   queueSlots?: number
 }
 
+// Unified requirement for action cards
+export interface ActionRequirement {
+  type: 'research' | 'level' | 'compute' | 'money' | 'model'
+  label: string           // compact: "7B TTS", "5", "800", "1"
+  value?: number          // raw value for formatting
+  met: boolean
+  navigable?: boolean
+  link?: { view: ViewType; target?: string }
+}
+
 export interface Action {
   id: string
   category: string
@@ -64,6 +74,8 @@ export interface Action {
   // Expandable versions (for Lab Models)
   versions?: ActionVersion[]
   publicCount?: number // Number of public versions
+  // Unified requirements system
+  requirements?: ActionRequirement[]
 }
 
 export interface ActionVersion {
@@ -85,5 +97,5 @@ export interface Notification {
 }
 
 // 5-tab navigation: operate / research / lab / inbox / leaderboard
-export type ViewType = "operate" | "research" | "lab" | "inbox" | "leaderboard"
+export type ViewType = "operate" | "research" | "lab" | "lab/levels" | "inbox" | "leaderboard"
 

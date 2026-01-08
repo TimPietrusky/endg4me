@@ -458,9 +458,36 @@ node scripts/generate-image.mjs -p "add neon glow effects" -i source.jpg
 
 ---
 
-_Last updated: 2026-01-08 (Content Catalog unified IDs)_
+_Last updated: 2026-01-08 (ActionCard Details Modal & Unified Requirements)_
 
 ---
+
+## Architecture Decisions (013 ActionCard Details Modal & Unified Requirements)
+
+- **ActionCard details modal**: Click card title or image to open details dialog
+- **Clickable affordance**: Title has `cursor-pointer hover:underline` on desktop
+- **ActionCardDetails component**: `components/game/dashboard/action-card-details.tsx`
+  - Large image header (full-width in modal)
+  - Description section
+  - Stats row (duration, cost, compute, rp reward, xp reward)
+  - Requirements section showing ALL requirements with met/unmet status
+  - Version list for collection/trained models
+  - "Go to requirement" CTA for locked items with navigable links
+- **RequiresPanel component**: `components/game/dashboard/requires-panel.tsx`
+  - Unified footer slot replacing various "missing/blocked" displays
+  - Shows unmet requirements only, ordered: research -> level -> compute -> money
+  - Compact labels: `lvl 5`, `research: 7B TTS`, `$800`, `cu 1`
+  - Navigable requirements are clickable (opens target in research/lab)
+- **ActionRequirement type**: New interface in `lib/game-types.ts`
+  - `type`: research | level | compute | money | model
+  - `label`: compact display string
+  - `met`: boolean
+  - `navigable`: boolean (can click to navigate)
+  - `link`: optional { view, target } for navigation
+- **Action.requirements array**: Unified requirements populated by providers
+- **SpendButton simplified**: Removed shortfall display (now handled by RequiresPanel)
+- **Card footer logic**: RequiresPanel shown when unmet requirements exist, otherwise SpendButton
+- **Removed from ActionCard**: `expandable`, `isExpanded`, `onToggleExpand` props (versions now in modal)
 
 ## Architecture Decisions (012 Lab Stats & Founder Simplification)
 
@@ -484,7 +511,7 @@ _Last updated: 2026-01-08 (Content Catalog unified IDs)_
 
 - **Aggregated model view**: Lab > Models shows one card per blueprint, not per version
 - **Card data**: Latest version number, total version count, best score across all versions
-- **Expandable versions**: Click card to reveal all versions with individual visibility toggles
+- **Versions in details modal**: Click card to open modal with version list (replaces inline accordion)
 - **Training state indicator**: Operate shows version badge ("v9") on cards for previously trained models
 - **Retrain button**: Training cards show "retrain" instead of "train" when model has versions
 - **Leaderboard deduplication**: Only best-scoring public model per lab per type appears on leaderboard
@@ -509,7 +536,7 @@ _Last updated: 2026-01-08 (Content Catalog unified IDs)_
 - **Four states**: ready (clickable), confirm (yes/no), active (progress bar), disabled (with reason)
 - **Configurable attributes**: Array of `SpendAttribute` with type, value, and isGain flag
 - **Attribute types**: time, cash, gpu, rp, xp, up - each with its icon
-- **Shortfall display**: Shows "need X more" for insufficient resources
+- **Shortfall display**: Removed (now handled by RequiresPanel)
 - **Used by**: ActionCard (Operate), PerkTree (Research), UpgradesView (Lab)
 - **Timed vs instant**: duration/remainingTime props for progress bar, omit for instant actions
 - **Confirmation toggle**: `showConfirmation` prop (default true, false for Upgrades)
@@ -582,7 +609,9 @@ _Last updated: 2026-01-08 (Content Catalog unified IDs)_
 ## Repository Structure (Key Files)
 
 - `components/game/dashboard/spend-button.tsx` — Unified action button component (states: ready/confirm/active/disabled)
-- `components/game/dashboard/action-card.tsx` — Unified card component for all views (Operate, Research, Lab Models) with optional expandable versions
+- `components/game/dashboard/action-card.tsx` — Unified card component for all views (Operate, Research, Lab Models)
+- `components/game/dashboard/action-card-details.tsx` — Details modal for action cards (image, stats, requirements, versions)
+- `components/game/dashboard/requires-panel.tsx` — Unified requirements panel for blocked actions
 - `components/game/dashboard/grid-classes.ts` — Shared responsive grid breakpoints for consistent layouts
 - `convex/lib/contentCatalog.ts` — Central source of truth for blueprints, jobs, research nodes, inbox events
 - `convex/lib/gameConfig.ts` — XP per-level requirements, UP system, upgrade definitions

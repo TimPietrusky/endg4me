@@ -49,12 +49,6 @@ export interface SpendButtonProps {
   remainingTime?: number // in seconds
   speedFactor?: number
   
-  // Shortfall display (for disabled state)
-  shortfalls?: Array<{
-    type: "cash" | "gpu" | "rp" | "up"
-    amount: number
-  }>
-  
   // Attribute grid configuration
   attributes: SpendAttribute[]
   
@@ -154,13 +148,6 @@ function AttributeCell({
   )
 }
 
-// Shortfall icons mapping
-const SHORTFALL_ICONS: Record<string, PhosphorIcon> = {
-  cash: CurrencyDollar,
-  gpu: Cpu,
-  rp: Lightning,
-  up: CaretDoubleUp,
-}
 
 export function SpendButton({
   label,
@@ -175,7 +162,6 @@ export function SpendButton({
   duration = 0,
   remainingTime = 0,
   speedFactor = 1,
-  shortfalls = [],
   attributes,
   attributeLayout = "spread",
 }: SpendButtonProps) {
@@ -273,45 +259,14 @@ export function SpendButton({
     )
   }
 
-  // Disabled state
+  // Disabled state - simplified (shortfalls now handled by RequiresPanel)
   if (disabled) {
-    // Show shortfall badges if available, otherwise show disabled reason
-    const hasShortfall = shortfalls.length > 0
-    // Check if blocked by level (disabledReason starts with "LVL")
-    const isLevelBlocked = disabledReason?.startsWith("LVL")
-
     return (
       <div className="w-full border-b border-border">
         <div className="flex items-center justify-center h-[72px] border-b border-white/10 gap-3">
-          {isLevelBlocked ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-amber-400 lowercase">blocked</span>
-              <div className="flex items-center border border-amber-500/50 rounded-md overflow-hidden">
-                <div className="flex items-center gap-1.5 text-amber-400 px-4 py-1.5">
-                  <span className="text-xl font-black">{disabledReason?.replace("+", "").toLowerCase()}</span>
-                </div>
-              </div>
-            </div>
-          ) : hasShortfall ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-red-400 lowercase">missing</span>
-              <div className="flex items-center border border-red-500/50 rounded-md overflow-hidden">
-                {shortfalls.map((shortfall, i) => {
-                  const ShortfallIcon = SHORTFALL_ICONS[shortfall.type]
-                  return (
-                    <div key={i} className={`flex items-center gap-1.5 text-red-400 px-4 py-1.5 ${i > 0 ? "border-l border-red-500/50" : ""}`}>
-                      <ShortfallIcon weight="bold" className="w-5 h-5" />
-                      <span className="text-xl font-black">{formatCompact(shortfall.amount)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : (
-            <span className="text-xl font-bold text-muted-foreground lowercase">
-              {disabledReason || "unavailable"}
-            </span>
-          )}
+          <span className="text-xl font-bold text-muted-foreground lowercase">
+            {disabledReason || "unavailable"}
+          </span>
         </div>
         <AttributeGrid />
       </div>

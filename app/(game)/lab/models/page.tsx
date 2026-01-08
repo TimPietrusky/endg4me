@@ -57,14 +57,20 @@ export default function LabModelsPage() {
 
   // Convert aggregated model to Action format
   const aggregatedToAction = (agg: NonNullable<typeof aggregatedModels>[number]): Action => {
-    const content = getContentById(agg.blueprintId)
+    // Handle legacy "bp_" prefix in blueprintId
+    const contentId = agg.blueprintId.startsWith("bp_") 
+      ? agg.blueprintId.slice(3) 
+      : agg.blueprintId
+    const content = getContentById(contentId)
     const image = content ? getContentImageUrl(content) : undefined
     const typeInfo = MODEL_TYPE_INFO[agg.modelType]
     
-    // Extract size from name (e.g., "3B TTS" -> "3B")
+    // Extract size from name (e.g., "3B TTS v3" -> "3B")
     const sizeMatch = agg.latestModel.name.match(/^(\d+B)/)
     const size = sizeMatch ? sizeMatch[1] : undefined
-    const displayName = size ? agg.latestModel.name.replace(/^\d+B\s*/, "") : agg.latestModel.name
+    // Remove size prefix and version suffix from name (e.g., "3B TTS v3" -> "TTS")
+    let displayName = size ? agg.latestModel.name.replace(/^\d+B\s*/, "") : agg.latestModel.name
+    displayName = displayName.replace(/\s*v\d+$/, "") // Remove version suffix
 
     // Convert all versions to ActionVersion format
     const versions: ActionVersion[] = agg.allVersions.map((v: Doc<"trainedModels">) => ({
@@ -79,7 +85,7 @@ export default function LabModelsPage() {
       id: agg.blueprintId,
       category: "COLLECTION",
       name: displayName,
-      description: `${typeInfo.label} model`,
+      description: content?.description || `${typeInfo.label} model`,
       size,
       cost: 0,
       duration: 0,

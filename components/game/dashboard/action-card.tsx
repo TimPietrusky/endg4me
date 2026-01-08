@@ -3,19 +3,15 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { SpendButton, type SpendAttribute } from "./spend-button"
-import { Brain, CurrencyDollar, Users, CaretDown, CaretUp, Star, Trophy, Stack } from "@phosphor-icons/react"
-import type { Action, ActionVersion } from "@/lib/game-types"
+import { RequiresPanel } from "./requires-panel"
+import { ActionCardDetails } from "./action-card-details"
+import { Brain, CurrencyDollar, Users, Star, Trophy } from "@phosphor-icons/react"
+import type { Action } from "@/lib/game-types"
 import { cn } from "@/lib/utils"
 
 interface ActionCardProps {
   action: Action
   onStartAction: (action: Action) => void
-  /** For collection views - enables expand/collapse of versions */
-  expandable?: boolean
-  /** Controlled expand state (optional - defaults to internal state) */
-  isExpanded?: boolean
-  /** Callback when expand toggle is clicked */
-  onToggleExpand?: () => void
 }
 
 // Category-based styling for cards without images
@@ -37,14 +33,16 @@ const CATEGORY_STYLES: Record<string, { icon: typeof Brain; gradient: string; ic
   },
 }
 
-export function ActionCard({ action, onStartAction, expandable, isExpanded: controlledExpanded, onToggleExpand }: ActionCardProps) {
-  const [internalExpanded, setInternalExpanded] = useState(false)
-  const isExpanded = controlledExpanded ?? internalExpanded
-  const toggleExpand = onToggleExpand ?? (() => setInternalExpanded(!internalExpanded))
+export function ActionCard({ action, onStartAction }: ActionCardProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false)
   
   const isResearch = action.category.startsWith("RESEARCH_")
   const isCollection = action.category === "COLLECTION"
   const categoryStyle = CATEGORY_STYLES[action.category]
+
+  // Check if action has unmet requirements
+  const unmetRequirements = action.requirements?.filter(r => !r.met) || []
+  const hasUnmetRequirements = unmetRequirements.length > 0
 
   const getButtonLabel = (action: Action): string => {
     if (action.category.startsWith("RESEARCH_")) {
@@ -119,19 +117,25 @@ export function ActionCard({ action, onStartAction, expandable, isExpanded: cont
     ]
   }
 
-  // Build shortfalls for disabled state
-  const buildShortfalls = () => {
-    const shortfalls: Array<{ type: "cash" | "gpu" | "rp" | "up"; amount: number }> = []
-    if (action.fundsShortfall != null && action.fundsShortfall > 0) {
-      shortfalls.push({ type: "cash", amount: action.fundsShortfall })
-    }
-    if (action.gpuShortfall != null && action.gpuShortfall > 0) {
-      shortfalls.push({ type: "gpu", amount: action.gpuShortfall })
-    }
-    if (action.rpShortfall != null && action.rpShortfall > 0) {
-      shortfalls.push({ type: "rp", amount: action.rpShortfall })
-    }
-    return shortfalls
+  // Clickable title component with hover affordance
+  const ClickableTitle = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        setDetailsOpen(true)
+      }}
+      className={cn(
+        "cursor-pointer hover:underline decoration-white/50 underline-offset-2 transition-all",
+        className
+      )}
+    >
+      {children}
+    </button>
+  )
+
+  // Clickable image area
+  const handleImageClick = () => {
+    setDetailsOpen(true)
   }
 
   // Render research cards - use image if available, otherwise icon
@@ -145,222 +149,301 @@ export function ActionCard({ action, onStartAction, expandable, isExpanded: cont
     const iconColor = categoryStyle?.iconColor || "text-purple-400"
 
     return (
-      <Card className={cn(
-        "overflow-hidden pt-0 pb-0 gap-0",
-        action.locked && "opacity-60"
-      )}>
-        {/* Header - image if available, otherwise icon */}
-        <div className={cn(
-          "relative h-36 overflow-hidden border-b border-border",
-          hasImage ? "bg-black" : cn("bg-gradient-to-br flex items-center justify-center", cardGradient)
+      <>
+        <Card className={cn(
+          "overflow-hidden pt-0 pb-0 gap-0",
+          action.locked && "opacity-60"
         )}>
-          {hasImage ? (
-            <img
-              src={action.image}
-              alt={action.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <Icon className={cn("w-16 h-16 opacity-50", iconColor)} weight="duotone" />
-          )}
-          <div className="absolute bottom-2 left-2 pointer-events-none flex flex-col items-start">
-            {/* Prerequisite indicator - separate box above model name, touching */}
-            {action.prerequisiteName && (
-              <div className="bg-black/70 backdrop-blur-sm px-1.5 rounded-t">
-                <span className="text-[10px] text-white/50 leading-tight">{action.prerequisiteName}</span>
+          {/* Header - image if available, otherwise icon */}
+          <div 
+            className={cn(
+              "relative h-36 overflow-hidden border-b border-border cursor-pointer",
+              hasImage ? "bg-black" : cn("bg-gradient-to-br flex items-center justify-center", cardGradient)
+            )}
+            onClick={handleImageClick}
+          >
+            {hasImage ? (
+              <img
+                src={action.image}
+                alt={action.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Icon className={cn("w-16 h-16 opacity-50", iconColor)} weight="duotone" />
+            )}
+            <div className="absolute bottom-2 left-2 pointer-events-none">
+              <div className="flex items-center gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded pointer-events-auto">
+                {action.size && (
+                  <span className="text-lg font-black text-white">{action.size}</span>
+                )}
+                <ClickableTitle>
+                  <h3 className="font-bold text-lg text-white">{action.name}</h3>
+                </ClickableTitle>
+                {action.latestVersion && (
+                  <span className="text-xs font-mono text-white/60 ml-1">v{action.latestVersion}</span>
+                )}
+              </div>
+            </div>
+            {/* Status badge - only for researching */}
+            {action.isActive && !isCompleted && (
+              <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
+                RESEARCHING
               </div>
             )}
-            <div className="flex items-baseline gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded">
-              {action.size && (
-                <span className="text-lg font-black text-white">{action.size}</span>
-              )}
-              <h3 className="font-bold text-lg text-white">{action.name}</h3>
-            </div>
           </div>
-          {/* Status badge - only for researching */}
-          {action.isActive && !isCompleted && (
-            <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
-              RESEARCHING
-            </div>
-          )}
-        </div>
 
-        <CardContent className="p-0">
-          <SpendButton
-            label={getButtonLabel(action)}
-            disabled={action.disabled}
-            disabledReason={action.disabledReason}
-            onAction={() => onStartAction(action)}
-            isActive={action.isActive}
-            duration={action.duration}
-            remainingTime={action.remainingTime}
-            speedFactor={action.speedFactor || 1}
-            shortfalls={buildShortfalls()}
-            attributes={buildAttributes()}
-            showConfirmation={!isCompleted}
-            isMaxed={isCompleted}
-            maxedLabel="unlocked"
-            maxedSubLabel=""
-          />
-        </CardContent>
-      </Card>
+          <CardContent className="p-0">
+            {/* Show RequiresPanel if has unmet requirements, otherwise SpendButton */}
+            {hasUnmetRequirements && !isCompleted ? (
+              <>
+                <RequiresPanel requirements={action.requirements!} />
+                {/* Attribute grid below requires panel */}
+                <AttributeGrid attributes={buildAttributes()} />
+              </>
+            ) : (
+              <SpendButton
+                label={getButtonLabel(action)}
+                disabled={action.disabled}
+                disabledReason={action.disabledReason}
+                onAction={() => onStartAction(action)}
+                isActive={action.isActive}
+                duration={action.duration}
+                remainingTime={action.remainingTime}
+                speedFactor={action.speedFactor || 1}
+                attributes={buildAttributes()}
+                showConfirmation={!isCompleted}
+                isMaxed={isCompleted}
+                maxedLabel="unlocked"
+                maxedSubLabel=""
+              />
+            )}
+          </CardContent>
+        </Card>
+        
+        <ActionCardDetails 
+          action={action} 
+          open={detailsOpen} 
+          onOpenChange={setDetailsOpen}
+          onStartAction={onStartAction}
+        />
+      </>
     )
   }
 
-  // Collection card (Lab Models) - same structure as regular card but with "owned" state and expandable versions
+  // Collection card (Lab Models) - shows owned status with best score
   if (isCollection && action.versions) {
     return (
-      <Card className="overflow-hidden pt-0 pb-0 gap-0">
-        <div className="relative h-36 overflow-hidden border-b border-border bg-black">
-          {action.image ? (
-            <img
-              src={action.image}
-              alt={action.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-violet-500/30 to-violet-500/10 flex items-center justify-center">
-              <Brain className="w-16 h-16 text-violet-400 opacity-50" weight="duotone" />
-            </div>
-          )}
-          <div className="absolute bottom-2 left-2 pointer-events-none">
-            <div className="flex items-baseline gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded">
-              {action.size && (
-                <span className="text-lg font-black text-white">{action.size}</span>
-              )}
-              <h3 className="font-bold text-lg text-white">{action.name}</h3>
-            </div>
-          </div>
-          {/* Version badge - same as regular card */}
-          <div className="absolute top-2 left-3 bg-black/70 text-white text-xs font-mono px-2 py-0.5 rounded pointer-events-none">
-            v{action.latestVersion}
-          </div>
-        </div>
-
-        <CardContent className="p-0">
-          {/* SpendButton showing "owned" state with best score */}
-          <SpendButton
-            label="owned"
-            isMaxed={true}
-            onAction={() => {}}
-            showConfirmation={false}
-            attributes={[
-              { type: "score", value: action.bestScore, isGain: true },
-              { type: "versions", value: action.versionCount, isGain: true },
-            ]}
-            attributeLayout="compact"
-          />
-
-          {/* Expand/collapse for versions */}
-          <button
-            onClick={toggleExpand}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 border-t border-border bg-black/20 hover:bg-black/40 transition-colors text-xs"
+      <>
+        <Card className="overflow-hidden pt-0 pb-0 gap-0">
+          <div 
+            className="relative h-36 overflow-hidden border-b border-border bg-black cursor-pointer"
+            onClick={handleImageClick}
           >
-            {isExpanded ? (
-              <>
-                <CaretUp className="w-3 h-3" />
-                <span>hide versions</span>
-              </>
+            {action.image ? (
+              <img
+                src={action.image}
+                alt={action.name}
+                className="w-full h-full object-cover"
+              />
             ) : (
-              <>
-                <CaretDown className="w-3 h-3" />
-                <span>show {action.versionCount} version{action.versionCount !== 1 ? "s" : ""}</span>
-              </>
+              <div className="w-full h-full bg-gradient-to-br from-violet-500/30 to-violet-500/10 flex items-center justify-center">
+                <Brain className="w-16 h-16 text-violet-400 opacity-50" weight="duotone" />
+              </div>
             )}
-          </button>
-
-          {/* Expanded version list */}
-          {isExpanded && (
-            <div className="border-t border-border">
-              {action.versions.map((version) => (
-                <VersionRow key={version.id} version={version} />
-              ))}
+            <div className="absolute bottom-2 left-2 pointer-events-none">
+              <div className="flex items-center gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded pointer-events-auto">
+                {action.size && (
+                  <span className="text-lg font-black text-white">{action.size}</span>
+                )}
+                <ClickableTitle>
+                  <h3 className="font-bold text-lg text-white">{action.name}</h3>
+                </ClickableTitle>
+                {action.latestVersion && (
+                  <span className="text-xs font-mono text-white/60 ml-1">v{action.latestVersion}</span>
+                )}
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+
+          <CardContent className="p-0">
+            {/* Owned state display with best score and version count */}
+            <SpendButton
+              label="owned"
+              isMaxed={true}
+              onAction={() => {}}
+              showConfirmation={false}
+              attributes={[
+                { type: "score", value: action.bestScore, isGain: true },
+                { type: "versions", value: action.versionCount, isGain: true },
+              ]}
+              attributeLayout="compact"
+            />
+          </CardContent>
+        </Card>
+        
+        <ActionCardDetails 
+          action={action} 
+          open={detailsOpen} 
+          onOpenChange={setDetailsOpen}
+          onStartAction={onStartAction}
+        />
+      </>
     )
   }
 
   // Regular action card with image
   return (
-    <Card className="overflow-hidden pt-0 pb-0 gap-0">
-      <div className="relative h-36 overflow-hidden border-b border-border bg-black">
-        <img
-          src={action.image || "/placeholder.svg"}
-          alt={action.name}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute bottom-2 left-2 pointer-events-none">
-          <div className="flex items-baseline gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded">
-            {action.size && (
-              <span className="text-lg font-black text-white">{action.size}</span>
-            )}
-            <h3 className="font-bold text-lg text-white">{action.name}</h3>
+    <>
+      <Card className="overflow-hidden pt-0 pb-0 gap-0">
+        <div 
+          className="relative h-36 overflow-hidden border-b border-border bg-black cursor-pointer"
+          onClick={handleImageClick}
+        >
+          <img
+            src={action.image || "/placeholder.svg"}
+            alt={action.name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute bottom-2 left-2 pointer-events-none">
+            <div className="flex items-center gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded pointer-events-auto">
+              {action.size && (
+                <span className="text-lg font-black text-white">{action.size}</span>
+              )}
+              <ClickableTitle>
+                <h3 className="font-bold text-lg text-white">{action.name}</h3>
+              </ClickableTitle>
+              {action.latestVersion && (
+                <span className="text-xs font-mono text-white/60 ml-1">v{action.latestVersion}</span>
+              )}
+            </div>
           </div>
+          {action.isQueued && (
+            <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
+              QUEUED
+            </div>
+          )}
         </div>
-        {/* Version badge for trained models */}
-        {action.latestVersion && (
-          <div className="absolute top-2 left-3 bg-black/70 text-white text-xs font-mono px-2 py-0.5 rounded pointer-events-none">
-            v{action.latestVersion}
-          </div>
-        )}
-        {action.isQueued && (
-          <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
-            QUEUED
-          </div>
-        )}
-      </div>
 
-      <CardContent className="p-0">
-        <SpendButton
-          label={getButtonLabel(action)}
-          disabled={action.disabled}
-          disabledReason={action.disabledReason}
-          onAction={() => onStartAction(action)}
-          isActive={action.isActive}
-          duration={action.duration}
-          remainingTime={action.remainingTime}
-          speedFactor={action.speedFactor || 1}
-          shortfalls={buildShortfalls()}
-          attributes={buildAttributes()}
-        />
-      </CardContent>
-    </Card>
+        <CardContent className="p-0">
+          {/* Show RequiresPanel if has unmet requirements, otherwise SpendButton */}
+          {hasUnmetRequirements ? (
+            <>
+              <RequiresPanel requirements={action.requirements!} />
+              <AttributeGrid attributes={buildAttributes()} />
+            </>
+          ) : (
+            <SpendButton
+              label={getButtonLabel(action)}
+              disabled={action.disabled}
+              disabledReason={action.disabledReason}
+              onAction={() => onStartAction(action)}
+              isActive={action.isActive}
+              duration={action.duration}
+              remainingTime={action.remainingTime}
+              speedFactor={action.speedFactor || 1}
+              attributes={buildAttributes()}
+            />
+          )}
+        </CardContent>
+      </Card>
+      
+      <ActionCardDetails 
+        action={action} 
+        open={detailsOpen} 
+        onOpenChange={setDetailsOpen} 
+      />
+    </>
   )
 }
 
-// Version row for expanded collection view
-function VersionRow({ version }: { version: ActionVersion }) {
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+// Standalone attribute grid for use with RequiresPanel
+function AttributeGrid({ attributes }: { attributes: SpendAttribute[] }) {
+  // Import the formatting functions and icons we need
+  const gridCols = attributes.length
+  const gridColsClass = 
+    gridCols === 1 ? "grid-cols-1" :
+    gridCols === 2 ? "grid-cols-2" :
+    gridCols === 3 ? "grid-cols-3" :
+    gridCols === 4 ? "grid-cols-4" :
+    gridCols === 5 ? "grid-cols-[2fr_3fr_3fr_3fr_3fr]" :
+    "grid-cols-5"
 
   return (
-    <div className={cn(
-      "flex items-center justify-between px-4 py-2",
-      version.isBest ? "bg-green-500/10" : "bg-black/20"
-    )}>
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-mono text-muted-foreground">v{version.version}</span>
-        <div className="flex items-center gap-1 text-amber-400">
-          <Star className="w-3 h-3" weight="fill" />
-          <span className="text-xs font-bold">{version.score}</span>
-        </div>
-        {version.isBest && (
-          <div className="flex items-center gap-1 text-green-400">
-            <Trophy className="w-3 h-3" weight="fill" />
-            <span className="text-xs font-medium">BEST</span>
-          </div>
-        )}
-      </div>
-      <span className="text-xs text-muted-foreground">{formatDate(version.trainedAt)}</span>
+    <div className={`grid ${gridColsClass} py-2 bg-card border-b border-white/10`}>
+      {attributes.map((attr, i) => (
+        <AttributeCell key={i} {...attr} />
+      ))}
     </div>
   )
 }
 
+// Minimal attribute cell (simplified version of SpendButton's)
+import { Clock, Cpu, Lightning, CaretUp, CaretDown, CurrencyDollar as Cash } from "@phosphor-icons/react"
+import { XpIcon } from "./xp-icon"
+import { formatCompact, formatTimeCompact } from "@/lib/utils"
+
+function AttributeCell({ type, value, isGain = true }: SpendAttribute) {
+  const ICONS: Record<string, typeof Clock | null> = {
+    time: Clock,
+    cash: Cash,
+    gpu: Cpu,
+    rp: Lightning,
+    xp: null,
+  }
+  
+  const Icon = ICONS[type]
+  const isXP = type === "xp"
+  const isTime = type === "time"
+  const isRP = type === "rp"
+  
+  const hasValue = value !== undefined && value !== null && value !== ""
+  const isZero = value === 0
+  const isFree = isRP && isZero && !isGain
+  
+  let displayValue: string | number | undefined = value
+  if (hasValue && !isZero) {
+    if (isTime) {
+      displayValue = formatTimeCompact(Number(value))
+    } else {
+      displayValue = formatCompact(value)
+    }
+  } else if (isFree) {
+    displayValue = "free"
+  }
+
+  const iconActive = hasValue && (!isZero || isFree)
+
+  if (isXP) {
+    return (
+      <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
+        <span className="w-3 flex items-center justify-center flex-shrink-0">
+          <XpIcon className={iconActive ? "text-white" : "text-gray-500 opacity-50"} />
+        </span>
+        {iconActive && !isZero && (
+          isGain 
+            ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
+            : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
+        )}
+        {iconActive && !isZero && <span className="text-white text-xs">{displayValue}</span>}
+      </div>
+    )
+  }
+
+  if (!Icon) {
+    return <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0" />
+  }
+
+  return (
+    <div className="flex items-center gap-1 px-2 border-r border-white/10 last:border-r-0">
+      <span className="w-3 flex items-center justify-center flex-shrink-0">
+        <Icon weight="regular" className={`w-3 h-3 ${iconActive ? "text-white" : "text-gray-500 opacity-50"}`} />
+      </span>
+      {iconActive && !isTime && !isFree && (
+        isGain 
+          ? <CaretUp weight="fill" className="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
+          : <CaretDown weight="fill" className="w-2.5 h-2.5 text-red-500 flex-shrink-0" />
+      )}
+      {iconActive && <span className="text-white text-xs">{displayValue}</span>}
+    </div>
+  )
+}

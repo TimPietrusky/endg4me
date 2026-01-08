@@ -278,7 +278,6 @@ export function UpgradesView() {
                     disabledReason={disabledReason}
                     onAction={() => handleUpgrade(upgrade.id as UpgradeType)}
                     showConfirmation={false}
-                    shortfalls={upShortfall > 0 ? [{ type: "up", amount: upShortfall }] : []}
                     attributes={[
                       { type: "up", value: 1, isGain: false },
                       { 

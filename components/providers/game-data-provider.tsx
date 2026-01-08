@@ -7,7 +7,7 @@ import { Id, Doc } from "@/convex/_generated/dataModel"
 import { getContentById, getContentImageUrl, getAssetBySlug, type ContentEntry } from "@/convex/lib/contentCatalog"
 import { getUpgradeValue, getXpForNextLevel, FOUNDER_BONUSES, type FounderType } from "@/convex/lib/gameConfig"
 import { useToast } from "@/hooks/use-toast"
-import type { Action, Notification } from "@/lib/game-types"
+import type { Action, ActionRequirement, Notification } from "@/lib/game-types"
 
 interface GameData {
   // Core data
@@ -371,6 +371,60 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
     return { disabled: false }
   }
 
+  // Helper to build unified requirements array for an action
+  // Order: research -> level -> compute -> money
+  function buildRequirements(
+    content: ContentEntry,
+    adjustedCost: number,
+    computeCost: number
+  ): ActionRequirement[] {
+    const requirements: ActionRequirement[] = []
+    const playerLevel = playerState?.level ?? 1
+    const currentCash = labState?.cash ?? 0
+
+    // Level requirement
+    if (content.minLevel && content.minLevel > 1) {
+      const met = playerLevel >= content.minLevel
+      requirements.push({
+        type: 'level',
+        label: String(content.minLevel),
+        value: content.minLevel,
+        met,
+        navigable: !met,
+        link: !met ? { view: 'lab/levels' as const } : undefined,
+      })
+    }
+
+    // Compute requirement - show shortfall when not met
+    if (computeCost > 0) {
+      const met = availableGpus >= computeCost
+      const shortfall = met ? 0 : computeCost - availableGpus
+      requirements.push({
+        type: 'compute',
+        label: met ? String(computeCost) : String(shortfall),
+        value: met ? computeCost : shortfall,
+        met,
+        navigable: !met,
+        link: !met ? { view: 'lab', target: 'upgrades' } : undefined,
+      })
+    }
+
+    // Money requirement - show shortfall when not met
+    if (adjustedCost > 0) {
+      const met = currentCash >= adjustedCost
+      const shortfall = met ? 0 : adjustedCost - currentCash
+      requirements.push({
+        type: 'money',
+        label: met ? String(adjustedCost) : String(shortfall),
+        value: met ? adjustedCost : shortfall,
+        met,
+        navigable: false, // Can't navigate to "get more money"
+      })
+    }
+
+    return requirements
+  }
+
   // Build actions from available jobs
   // Only show jobs in Operate (no pure research unlocks)
   const actions: Action[] = (availableJobs || [])
@@ -411,8 +465,9 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
       }
 
       // Get training history for this content (if model)
+      // Handle legacy "bp_" prefix in blueprintId stored in database
       const history = content.contentType === "model" && trainingHistory 
-        ? trainingHistory[content.id] 
+        ? (trainingHistory[content.id] || trainingHistory[`bp_${content.id}`])
         : undefined
 
       // Calculate adjusted values based on current bonuses
@@ -422,6 +477,10 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
       })
       const adjustedCashReward = getAdjustedCashReward(content.rewardMoney || 0)
       const adjustedCost = getAdjustedCost(content.jobMoneyCost ?? 0)
+      const computeCost = content.jobComputeCost ?? 0
+
+      // Build unified requirements array
+      const requirements = buildRequirements(content, adjustedCost, computeCost)
 
       return {
         id: job.id,
@@ -430,7 +489,7 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
         description: content.description,
         size,
         cost: adjustedCost,
-        gpuCost: content.jobComputeCost ?? 0,
+        gpuCost: computeCost,
         duration: adjustedDuration,
         rpReward: content.rewardRP || undefined,
         xpReward: content.rewardXP || undefined,
@@ -449,6 +508,8 @@ export function GameDataProvider({ children, workosUserId }: GameDataProviderPro
         latestVersion: history?.latestVersion,
         versionCount: history?.versionCount,
         bestScore: history?.bestScore,
+        // Unified requirements
+        requirements,
       } as Action
     })
     .filter((a): a is Action => a !== null)
