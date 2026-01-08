@@ -10,7 +10,7 @@ import {
   SheetFooter,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { Gear, SignOut, User, Buildings, Lightning } from "@phosphor-icons/react"
+import { Gear, SignOut, User, Buildings, Lightning, Wrench } from "@phosphor-icons/react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { Id } from "@/convex/_generated/dataModel"
@@ -44,6 +44,8 @@ export function SettingsPanel({
     userId ? { userId } : "skip"
   )
   const setTimeScale = useMutation(api.dev.setTimeScale)
+  const repairResearch = useMutation(api.dev.repairResearchState)
+  const repairModels = useMutation(api.dev.repairSpuriousTrainedModels)
 
   const handleTimeScaleChange = async (scale: number) => {
     if (!userId) return
@@ -191,6 +193,48 @@ export function SettingsPanel({
                 </div>
                 <p className="text-xs text-muted-foreground italic">
                   accelerates all timed jobs
+                </p>
+                
+                {/* Repair Research State */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <span className="text-xs text-muted-foreground lowercase">repair research</span>
+                  <button
+                    onClick={async () => {
+                      if (!userId) return
+                      const result = await repairResearch({ userId })
+                      if (result.success) {
+                        alert(`Repaired: ${result.repairedResearch?.length || 0} research, ${result.repairedUnlocks?.length || 0} unlocks`)
+                      }
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                  >
+                    <Wrench className="w-3 h-3" />
+                    repair
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  fixes corrupted research state
+                </p>
+                
+                {/* Repair Spurious Trained Models */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <span className="text-xs text-muted-foreground lowercase">repair models</span>
+                  <button
+                    onClick={async () => {
+                      if (!userId) return
+                      const result = await repairModels({ userId })
+                      if (result.success) {
+                        alert(`Checked: ${result.checked}, Deleted: ${result.deleted?.length || 0} spurious models`)
+                      }
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                  >
+                    <Wrench className="w-3 h-3" />
+                    repair
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  removes wrongly created models
                 </p>
               </div>
             </section>

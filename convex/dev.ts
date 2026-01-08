@@ -7,6 +7,7 @@ import {
   MutationCtx,
 } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getContentById } from "./lib/contentCatalog";
 
 // =============================================================================
 // TIME WARP - Dev-only time acceleration (007_dev_time_warp)
@@ -728,6 +729,108 @@ export const resetAllGameData = internalMutation({
 });
 
 // =============================================================================
+// REPAIR - Fix corrupted research state
+// =============================================================================
+
+// Repair research state for a user - ensures all completed research tasks
+// have proper entries in playerResearch and playerUnlocks
+export const repairResearchState = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const results = {
+      checkedTasks: 0,
+      repairedResearch: [] as string[],
+      repairedUnlocks: [] as string[],
+    };
+
+    // Get lab for this user
+    const lab = await ctx.db
+      .query("labs")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!lab) {
+      return { success: false, error: "No lab found for user" };
+    }
+
+    // Get all completed tasks for this lab
+    const completedTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_lab_status", (q) =>
+        q.eq("labId", lab._id).eq("status", "completed")
+      )
+      .collect();
+
+    // Get current player research
+    const playerResearch = await ctx.db
+      .query("playerResearch")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+    const researchedIds = new Set(playerResearch.map((r) => r.nodeId));
+
+    // Get current player unlocks
+    let playerUnlocks = await ctx.db
+      .query("playerUnlocks")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    // Create playerUnlocks if doesn't exist
+    if (!playerUnlocks) {
+      const newId = await ctx.db.insert("playerUnlocks", {
+        userId: args.userId,
+        unlockedContentIds: [],
+      });
+      playerUnlocks = await ctx.db.get(newId);
+    }
+
+    const unlockedIds = new Set(playerUnlocks?.unlockedContentIds || []);
+    const newUnlocks: string[] = [];
+
+    for (const task of completedTasks) {
+      results.checkedTasks++;
+
+      const content = getContentById(task.type);
+      if (!content) continue;
+
+      // Check if this is a researchable content (has unlockCostRP)
+      if (content.unlockCostRP === undefined) continue;
+
+      // Check if research entry exists
+      if (!researchedIds.has(task.type)) {
+        // Add missing research entry
+        await ctx.db.insert("playerResearch", {
+          userId: args.userId,
+          nodeId: task.type,
+          purchasedAt: task.completesAt || Date.now(),
+        });
+        results.repairedResearch.push(task.type);
+        researchedIds.add(task.type);
+      }
+
+      // Check if unlock entry exists
+      if (!unlockedIds.has(task.type)) {
+        newUnlocks.push(task.type);
+        results.repairedUnlocks.push(task.type);
+        unlockedIds.add(task.type);
+      }
+    }
+
+    // Update playerUnlocks if we added any
+    if (newUnlocks.length > 0 && playerUnlocks) {
+      await ctx.db.patch(playerUnlocks._id, {
+        unlockedContentIds: [...(playerUnlocks.unlockedContentIds || []), ...newUnlocks],
+      });
+    }
+
+    return {
+      success: true,
+      message: `Repaired ${results.repairedResearch.length} research entries and ${results.repairedUnlocks.length} unlock entries`,
+      ...results,
+    };
+  },
+});
+
+// =============================================================================
 // MIGRATION - playerUnlocks schema migration (old → new format)
 // =============================================================================
 
@@ -851,5 +954,123 @@ export const migratePlayerUnlocks = internalMutation({
       message: `Migration complete. ${results.migrated} migrated, ${results.alreadyMigrated} already migrated.`,
       ...results,
     };
+  },
+});
+
+// =============================================================================
+// REPAIR: Delete spurious trainedModels created by research bug
+// =============================================================================
+
+/**
+ * Delete trainedModels entries that were incorrectly created when research 
+ * completion was processed as training completion (bug in old completeTask).
+ * 
+ * This identifies spurious entries by checking if there's only ONE trained model
+ * for a blueprint, and that model was created around the same time as the research
+ * task completed (not a subsequent training task).
+ */
+export const repairSpuriousTrainedModels = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    // Dev admin check
+    const isAdmin = await isDevAdmin(ctx, args.userId);
+    if (!isAdmin) {
+      throw new Error("Not authorized - dev admin only");
+    }
+
+    const results = {
+      checked: 0,
+      deleted: [] as string[],
+      kept: [] as string[],
+    };
+
+    const lab = await ctx.db
+      .query("labs")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!lab) {
+      return { success: false, error: "No lab found" };
+    }
+
+    // Get all trained models
+    const trainedModels = await ctx.db
+      .query("trainedModels")
+      .withIndex("by_lab", (q) => q.eq("labId", lab._id))
+      .collect();
+
+    // Group by blueprintId
+    const modelsByBlueprint: Record<string, typeof trainedModels> = {};
+    for (const model of trainedModels) {
+      if (!modelsByBlueprint[model.blueprintId]) {
+        modelsByBlueprint[model.blueprintId] = [];
+      }
+      modelsByBlueprint[model.blueprintId].push(model);
+    }
+
+    // Get all completed tasks for this lab
+    const completedTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_lab_status", (q) =>
+        q.eq("labId", lab._id).eq("status", "completed")
+      )
+      .collect();
+
+    // Group completed tasks by type (content ID)
+    const tasksByType: Record<string, typeof completedTasks> = {};
+    for (const task of completedTasks) {
+      if (!tasksByType[task.type]) {
+        tasksByType[task.type] = [];
+      }
+      tasksByType[task.type].push(task);
+    }
+
+    for (const [blueprintId, models] of Object.entries(modelsByBlueprint)) {
+      results.checked += models.length;
+
+      const content = getContentById(blueprintId);
+      if (!content) continue;
+
+      // Only check models that require research (have unlockCostRP)
+      if (content.unlockCostRP === undefined) {
+        for (const m of models) {
+          results.kept.push(`${blueprintId} v${m.version} - no research required`);
+        }
+        continue;
+      }
+
+      const tasksForBlueprint = tasksByType[blueprintId] || [];
+      
+      // Sort tasks by startedAt
+      tasksForBlueprint.sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0));
+
+      // The FIRST task for a researchable model should be research, not training
+      // If a model was created from the first task, it's likely spurious
+      const firstTask = tasksForBlueprint[0];
+      
+      if (models.length === 1 && firstTask) {
+        const model = models[0];
+        
+        // If the model's taskId matches the first task (which should be research),
+        // and there's only one model, it was likely created erroneously
+        if (model.taskId.toString() === firstTask._id.toString()) {
+          // Additional check: if this task has no cash reward recorded, it was research
+          const taskRewards = firstTask.rewards;
+          const wasLikelyResearch = !taskRewards?.cash || taskRewards.cash === 0;
+          
+          if (wasLikelyResearch) {
+            await ctx.db.delete(model._id);
+            results.deleted.push(`${blueprintId} v${model.version} - created from research task`);
+            continue;
+          }
+        }
+      }
+
+      for (const m of models) {
+        results.kept.push(`${blueprintId} v${m.version} - valid training`);
+      }
+    }
+
+    return { success: true, ...results };
   },
 });

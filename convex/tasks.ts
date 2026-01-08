@@ -52,6 +52,11 @@ function isContentUnlocked(contentId: string, unlockedIds: string[]): boolean {
   // Always available content (no unlockCostRP defined)
   if (content.unlockCostRP === undefined) return true;
   
+  // Free starters (0 RP, level 1, no prerequisite) are always unlocked
+  if (content.unlockCostRP === 0 && (content.minLevel ?? 1) === 1 && !content.prerequisite) {
+    return true;
+  }
+  
   // Check if explicitly unlocked
   return unlockedIds.includes(contentId);
 }
@@ -378,21 +383,33 @@ export const completeTask = internalMutation({
 
     const content = getContentById(task.type);
     
-    // Handle research node completion (task type is a research unlock)
-    if (content && content.unlockCostRP !== undefined && !content.jobDurationMs) {
-      // This is a research-only unlock, complete via research module
-      await ctx.runMutation(internal.research.completeResearchNode, {
-        userId: lab.userId,
-        nodeId: task.type,
-      });
+    // Handle research node completion
+    // Check if this is a research unlock task (not a job/training task)
+    // Research tasks are for content with unlockCostRP that hasn't been purchased yet
+    if (content && content.unlockCostRP !== undefined) {
+      // Check if research is already completed
+      const existingResearch = await ctx.db
+        .query("playerResearch")
+        .withIndex("by_user_node", (q) =>
+          q.eq("userId", lab.userId).eq("nodeId", task.type)
+        )
+        .first();
 
-      await ctx.db.patch(args.taskId, {
-        status: "completed",
-        rewards: {},
-      });
+      // If research not purchased yet, this is a research unlock task
+      if (!existingResearch) {
+        await ctx.runMutation(internal.research.completeResearchNode, {
+          userId: lab.userId,
+          nodeId: task.type,
+        });
 
-      await syncLeaderboardForLab(ctx, task.labId);
-      return;
+        await ctx.db.patch(args.taskId, {
+          status: "completed",
+          rewards: {},
+        });
+
+        await syncLeaderboardForLab(ctx, task.labId);
+        return;
+      }
     }
 
     const labState = await ctx.db

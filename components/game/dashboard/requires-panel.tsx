@@ -31,7 +31,8 @@ function formatRequirement(req: ActionRequirement): string {
       // Don't add $ prefix - the icon handles it
       return req.label
     case 'compute':
-      return `cu ${req.label}`
+      // Don't add "cu" prefix - the Cpu icon handles it
+      return req.label
     case 'research':
       return req.label
     case 'model':
