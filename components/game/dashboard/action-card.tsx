@@ -207,7 +207,7 @@ export function ActionCard({ action, onStartAction, expandable, isExpanded: cont
     )
   }
 
-  // Collection card (Lab Models) - display-only with expandable versions
+  // Collection card (Lab Models) - same structure as regular card but with "owned" state and expandable versions
   if (isCollection && action.versions) {
     return (
       <Card className="overflow-hidden pt-0 pb-0 gap-0">
@@ -231,35 +231,40 @@ export function ActionCard({ action, onStartAction, expandable, isExpanded: cont
               <h3 className="font-bold text-lg text-white">{action.name}</h3>
             </div>
           </div>
-          {/* Version count badge */}
-          <div className="absolute top-2 left-3 flex items-center gap-1 bg-black/70 text-white text-xs font-mono px-2 py-0.5 rounded pointer-events-none">
-            <Stack className="w-3 h-3" />
-            <span>{action.versionCount} version{action.versionCount !== 1 ? "s" : ""}</span>
+          {/* Version badge - same as regular card */}
+          <div className="absolute top-2 left-3 bg-black/70 text-white text-xs font-mono px-2 py-0.5 rounded pointer-events-none">
+            v{action.latestVersion}
           </div>
-          {/* Best score badge */}
-          {action.bestScore !== undefined && action.bestScore > 0 && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 bg-amber-500/90 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
-              <Star className="w-3 h-3" weight="fill" />
-              <span>{action.bestScore}</span>
-            </div>
-          )}
         </div>
 
         <CardContent className="p-0">
-          {/* Expand/collapse button */}
+          {/* SpendButton showing "owned" state with best score */}
+          <SpendButton
+            label="owned"
+            isMaxed={true}
+            onAction={() => {}}
+            showConfirmation={false}
+            attributes={[
+              { type: "score", value: action.bestScore, isGain: true },
+              { type: "versions", value: action.versionCount, isGain: true },
+            ]}
+            attributeLayout="compact"
+          />
+
+          {/* Expand/collapse for versions */}
           <button
             onClick={toggleExpand}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white/5 hover:bg-white/10 transition-colors text-sm font-medium"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 border-t border-border bg-black/20 hover:bg-black/40 transition-colors text-xs"
           >
             {isExpanded ? (
               <>
-                <CaretUp className="w-4 h-4" />
-                Hide versions
+                <CaretUp className="w-3 h-3" />
+                <span>hide versions</span>
               </>
             ) : (
               <>
-                <CaretDown className="w-4 h-4" />
-                Show {action.versionCount} version{action.versionCount !== 1 ? "s" : ""}
+                <CaretDown className="w-3 h-3" />
+                <span>show {action.versionCount} version{action.versionCount !== 1 ? "s" : ""}</span>
               </>
             )}
           </button>

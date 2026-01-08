@@ -12,13 +12,15 @@ import {
   ListChecks,
   Users,
   CheckCircle,
+  Star,
+  Stack,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react"
 import { XpIcon } from "./xp-icon"
 import { formatCompact, formatTimeCompact } from "@/lib/utils"
 
 // Attribute types for the grid
-export type AttributeType = "time" | "cash" | "gpu" | "rp" | "xp" | "up" | "queue" | "staff" | "compute" | "speed" | "moneyMultiplier"
+export type AttributeType = "time" | "cash" | "gpu" | "rp" | "xp" | "up" | "queue" | "staff" | "compute" | "speed" | "moneyMultiplier" | "score" | "versions"
 
 export interface SpendAttribute {
   type: AttributeType
@@ -73,6 +75,8 @@ const ATTRIBUTE_ICONS: Record<AttributeType, PhosphorIcon | null> = {
   compute: Cpu,
   speed: Clock, // Speed uses clock icon
   moneyMultiplier: CurrencyDollar,
+  score: Star,
+  versions: Stack,
 }
 
 // Format time as m:ss

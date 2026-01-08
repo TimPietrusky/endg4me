@@ -105,7 +105,7 @@ export default function LabModelsPage() {
   }
 
   return (
-    <>
+    <div className="mt-2">
       {/* Filter toggles by model type */}
       <SubSubNav>
         <SubSubNavFilter
@@ -128,28 +128,79 @@ export default function LabModelsPage() {
         />
       </SubSubNav>
 
-      {/* Model Grid */}
-      {filteredModels && filteredModels.length > 0 ? (
-        <div className={ACTION_GRID_CLASSES}>
-          {filteredModels.map((agg) => (
-            <ActionCard
-              key={agg.blueprintId}
-              action={aggregatedToAction(agg)}
-              onStartAction={() => {}} // No action for collection cards
-              expandable
-              isExpanded={expandedBlueprint === agg.blueprintId}
-              onToggleExpand={() => setExpandedBlueprint(
-                expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
-              )}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No models match the current filter</p>
-        </div>
-      )}
-    </>
+      {/* Model Sections by Type */}
+      <div className="space-y-8">
+        {/* LLM Section */}
+        {(selectedTypes.length === 0 || selectedTypes.includes("llm")) && llmCount > 0 && (
+          <div className="mt-4">
+            <h2 className="text-xl font-bold mb-4 text-primary">LLM</h2>
+            <div className={ACTION_GRID_CLASSES}>
+              {filteredModels?.filter(agg => agg.modelType === "llm").map((agg) => (
+                <ActionCard
+                  key={agg.blueprintId}
+                  action={aggregatedToAction(agg)}
+                  onStartAction={() => {}}
+                  expandable
+                  isExpanded={expandedBlueprint === agg.blueprintId}
+                  onToggleExpand={() => setExpandedBlueprint(
+                    expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TTS Section */}
+        {(selectedTypes.length === 0 || selectedTypes.includes("tts")) && ttsCount > 0 && (
+          <div className="mt-4">
+            <h2 className="text-xl font-bold mb-4 text-primary">TTS</h2>
+            <div className={ACTION_GRID_CLASSES}>
+              {filteredModels?.filter(agg => agg.modelType === "tts").map((agg) => (
+                <ActionCard
+                  key={agg.blueprintId}
+                  action={aggregatedToAction(agg)}
+                  onStartAction={() => {}}
+                  expandable
+                  isExpanded={expandedBlueprint === agg.blueprintId}
+                  onToggleExpand={() => setExpandedBlueprint(
+                    expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* VLM Section */}
+        {(selectedTypes.length === 0 || selectedTypes.includes("vlm")) && vlmCount > 0 && (
+          <div className="mt-4">
+            <h2 className="text-xl font-bold mb-4 text-primary">VLM</h2>
+            <div className={ACTION_GRID_CLASSES}>
+              {filteredModels?.filter(agg => agg.modelType === "vlm").map((agg) => (
+                <ActionCard
+                  key={agg.blueprintId}
+                  action={aggregatedToAction(agg)}
+                  onStartAction={() => {}}
+                  expandable
+                  isExpanded={expandedBlueprint === agg.blueprintId}
+                  onToggleExpand={() => setExpandedBlueprint(
+                    expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state when filters active but no matches */}
+        {filteredModels?.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-sm">No models match the current filter</p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
