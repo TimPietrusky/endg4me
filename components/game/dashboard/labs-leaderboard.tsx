@@ -96,10 +96,10 @@ export function LabsLeaderboard({ labId }: LabsLeaderboardProps) {
             <TooltipContent side="left" className="max-w-xs">
               <p className="font-medium mb-1">Lab Score Formula</p>
               <p className="text-xs text-muted-foreground">
-                Score = (Level x 100) + Best Public Models + (Upgrades x 20)
+                Score = (Level x 100) + Best Model Scores + (Upgrades x 20)
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Only public models count toward your score.
+                Your best model of each type counts toward your score.
               </p>
             </TooltipContent>
           </Tooltip>

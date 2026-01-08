@@ -228,11 +228,11 @@ export default defineSchema({
     .index("by_lab", ["labId"])
     .index("by_lab_score", ["labScore"]),
 
-  // World Best Models - best public model per lab per type (006_leaderboard_day1)
+  // World Best Models - best model per lab per BLUEPRINT (e.g., best 7B TTS for each lab)
   worldBestModels: defineTable({
     labId: v.id("labs"),
     modelType: v.union(v.literal("llm"), v.literal("tts"), v.literal("vlm")),
-    blueprintId: v.string(),
+    blueprintId: v.string(),  // e.g., "tts_7b", "llm_3b"
     modelName: v.string(),
     score: v.number(),
     version: v.number(),
@@ -240,8 +240,9 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_lab", ["labId"])
-    .index("by_lab_type", ["labId", "modelType"])
-    .index("by_type_score", ["modelType", "score"]),
+    .index("by_lab_blueprint", ["labId", "blueprintId"])
+    .index("by_blueprint_score", ["blueprintId", "score"])
+    .index("by_type", ["modelType"]),
 
   // Dev User Settings - Time Warp for dev/testing (007_dev_time_warp)
   devUserSettings: defineTable({

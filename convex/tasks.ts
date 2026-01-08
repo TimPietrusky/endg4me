@@ -479,6 +479,14 @@ export const completeTask = internalMutation({
           )
           .collect();
 
+        // Check for first model milestone BEFORE inserting
+        // Count all existing models for this lab to detect first-ever model
+        const allExistingModels = await ctx.db
+          .query("trainedModels")
+          .withIndex("by_lab", (q) => q.eq("labId", task.labId))
+          .collect();
+        const isFirstModelEver = allExistingModels.length === 0;
+
         const version = existingModels.length + 1;
         const modelName = `${content.name} v${version}`;
         const score = calculateModelScore(content, labState.speedBonus);
@@ -495,35 +503,28 @@ export const completeTask = internalMutation({
           visibility: "public",
         });
 
-        // Check for first model milestone
-        if (existingModels.length === 0) {
-          const allModels = await ctx.db
-            .query("trainedModels")
-            .withIndex("by_lab", (q) => q.eq("labId", task.labId))
-            .collect();
+        // Fire first model milestone if this was the first-ever model
+        if (isFirstModelEver) {
+          const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "first_model");
+          if (milestoneEvent) {
+            const existingEvent = await ctx.db
+              .query("notifications")
+              .withIndex("by_user_event", (q) =>
+                q.eq("userId", lab.userId).eq("eventId", milestoneEvent.eventId)
+              )
+              .first();
 
-          if (allModels.length === 0) {
-            const milestoneEvent = INBOX_EVENTS.find((e) => e.trigger === "first_model");
-            if (milestoneEvent) {
-              const existingEvent = await ctx.db
-                .query("notifications")
-                .withIndex("by_user_event", (q) =>
-                  q.eq("userId", lab.userId).eq("eventId", milestoneEvent.eventId)
-                )
-                .first();
-
-              if (!existingEvent) {
-                await ctx.db.insert("notifications", {
-                  userId: lab.userId,
-                  type: "milestone",
-                  title: milestoneEvent.title,
-                  message: milestoneEvent.message,
-                  read: false,
-                  createdAt: Date.now(),
-                  eventId: milestoneEvent.eventId,
-                  deepLink: milestoneEvent.deepLink,
-                });
-              }
+            if (!existingEvent) {
+              await ctx.db.insert("notifications", {
+                userId: lab.userId,
+                type: "milestone",
+                title: milestoneEvent.title,
+                message: milestoneEvent.message,
+                read: false,
+                createdAt: Date.now(),
+                eventId: milestoneEvent.eventId,
+                deepLink: milestoneEvent.deepLink,
+              });
             }
           }
         }
@@ -845,7 +846,6 @@ export const getAggregatedModels = query({
         bestScore: best.score,
         bestModel: best,
         versionCount: versions.length,
-        publicCount: versions.filter((m) => m.visibility === "public").length,
         allVersions: sorted,
       };
     });
@@ -920,7 +920,6 @@ export const getModelStats = query({
     const llmModels = models.filter((m) => m.modelType === "llm");
     const ttsModels = models.filter((m) => m.modelType === "tts");
     const vlmModels = models.filter((m) => m.modelType === "vlm");
-    const publicModels = models.filter((m) => m.visibility === "public");
 
     const totalScore = models.reduce((sum, m) => sum + m.score, 0);
     const bestModel = models.reduce(
@@ -933,7 +932,6 @@ export const getModelStats = query({
       llmModels: llmModels.length,
       ttsModels: ttsModels.length,
       vlmModels: vlmModels.length,
-      publicModels: publicModels.length,
       totalScore,
       averageScore: models.length > 0 ? Math.round(totalScore / models.length) : 0,
       bestModel,
@@ -941,20 +939,3 @@ export const getModelStats = query({
   },
 });
 
-// Toggle model visibility
-export const toggleModelVisibility = mutation({
-  args: { modelId: v.id("trainedModels") },
-  handler: async (ctx, args) => {
-    const model = await ctx.db.get(args.modelId);
-    if (!model) {
-      throw new Error("Model not found");
-    }
-
-    const newVisibility = model.visibility === "public" ? "private" : "public";
-    await ctx.db.patch(args.modelId, { visibility: newVisibility });
-
-    await syncLeaderboardForLab(ctx, model.labId);
-
-    return { modelId: args.modelId, visibility: newVisibility };
-  },
-});

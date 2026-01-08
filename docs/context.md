@@ -458,7 +458,7 @@ node scripts/generate-image.mjs -p "add neon glow effects" -i source.jpg
 
 ---
 
-_Last updated: 2026-01-08 (ActionCard Details Modal & Unified Requirements)_
+_Last updated: 2026-01-08 (Per-Blueprint Leaderboards & Route-Based Tabs)_
 
 ---
 
@@ -567,13 +567,15 @@ _Last updated: 2026-01-08 (ActionCard Details Modal & Unified Requirements)_
 ## Architecture Decisions (006 Leaderboard Day One)
 
 - **Leaderboard available from day one**: No level or research gating
-- **Publishing available from day one**: Toggle visibility (public/private) without research unlock
-- **Lab Score**: Ranking metric = (level x 100) + sum(best public model scores) + (upgrade ranks x 20)
-- **Neighbors slice**: Leaderboard shows 20 above + you + 20 below (41 rows max)
-- **Two leaderboard views**: Labs (default, by Lab Score) and Models (by type: LLM/TTS/VLM)
+- **All models count**: No visibility toggle - all trained models contribute to leaderboard
+- **Lab Score**: Ranking metric = (level x 100) + sum(best model scores per type) + (upgrade ranks x 20)
+- **Neighbors slice**: Labs leaderboard shows 20 above + you + 20 below (41 rows max)
+- **Route-based tabs**: `/leaderboard/labs` and `/leaderboard/models` (real Next.js routes)
+- **Per-blueprint rankings**: Each model size (3B TTS, 7B TTS, etc.) has its own leaderboard
+- **Type filter as URL param**: `/leaderboard/models?type=tts` persists on refresh
 - **Materialized leaderboard**: `worldLeaderboard` and `worldBestModels` tables for fast queries
-- **Sync on activity**: Leaderboard updates when player levels up, upgrades, trains, or toggles visibility
-- **Only public models count**: Lab Score and model rankings only consider public models
+- **worldBestModels per blueprint**: One entry per lab per blueprintId (not per modelType)
+- **Sync on activity**: Leaderboard updates when player levels up, upgrades, or trains
 
 ## Architecture Decisions (005 Playable MVP)
 
@@ -582,7 +584,7 @@ _Last updated: 2026-01-08 (ActionCard Details Modal & Unified Requirements)_
 - **Model versioning**: Each training creates a new version of the blueprint
 - **Research unlocks**: Purchasing research nodes unlocks blueprints, jobs, and system flags
 - **Contract jobs**: Require both capability unlock AND trained model of the required type
-- **Leaderboards by type**: World view filters by LLM/TTS/VLM
+- **Leaderboards by blueprint**: Each model size has its own leaderboard (3B TTS, 7B TTS, etc.)
 - **Milestone inbox events**: Triggered on first level-up, first research, first model, level 5
 
 ## Architecture Decisions (004 Upgrade Points System)

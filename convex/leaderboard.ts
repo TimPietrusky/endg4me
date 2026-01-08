@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, mutation, internalMutation } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { MutationCtx } from "./_generated/server";
+import { getContentById } from "./lib/contentCatalog";
 
 // =============================================================================
 // LEADERBOARD - Lab Score calculation + neighbors slice (006_leaderboard_day1)
@@ -59,25 +60,23 @@ export async function syncLeaderboardForLab(
   const staffRank = playerState?.staffRank ?? 0;
   const computeRank = playerState?.computeRank ?? 0;
 
-  // Get best public model scores by type
-  const publicModels = await ctx.db
+  // Get best model scores by type (all trained models count toward leaderboard)
+  const allModels = await ctx.db
     .query("trainedModels")
     .withIndex("by_lab", (q) => q.eq("labId", labId))
     .collect();
 
-  const publicOnly = publicModels.filter((m) => m.visibility === "public");
+  const bestScores: { llm?: number; tts?: number; vlm?: number } = {};
 
-  const bestPublicScores: { llm?: number; tts?: number; vlm?: number } = {};
-
-  for (const model of publicOnly) {
-    const currentBest = bestPublicScores[model.modelType];
+  for (const model of allModels) {
+    const currentBest = bestScores[model.modelType];
     if (currentBest === undefined || model.score > currentBest) {
-      bestPublicScores[model.modelType] = model.score;
+      bestScores[model.modelType] = model.score;
     }
   }
 
   // Calculate lab score
-  const labScore = calculateLabScore(level, bestPublicScores, queueRank, staffRank, computeRank);
+  const labScore = calculateLabScore(level, bestScores, queueRank, staffRank, computeRank);
 
   // Upsert leaderboard entry
   const existingEntry = await ctx.db
@@ -90,7 +89,7 @@ export async function syncLeaderboardForLab(
       labName: lab.name,
       level,
       labScore,
-      bestPublicScores,
+      bestPublicScores: bestScores,
       queueRank,
       staffRank,
       computeRank,
@@ -102,7 +101,7 @@ export async function syncLeaderboardForLab(
       labName: lab.name,
       level,
       labScore,
-      bestPublicScores,
+      bestPublicScores: bestScores,
       queueRank,
       staffRank,
       computeRank,
@@ -115,7 +114,8 @@ export async function syncLeaderboardForLab(
 }
 
 /**
- * Sync best public models for a lab (one entry per type)
+ * Sync best models for a lab (one entry per BLUEPRINT)
+ * Each blueprint (3B TTS, 7B TTS, etc.) has its own leaderboard entry
  */
 async function syncBestModelsForLab(
   ctx: MutationCtx,
@@ -126,14 +126,12 @@ async function syncBestModelsForLab(
     .withIndex("by_lab", (q) => q.eq("labId", labId))
     .collect();
 
-  const publicModels = allModels.filter((m) => m.visibility === "public");
-
-  // Find best model per type
-  const bestByType: Record<string, Doc<"trainedModels">> = {};
-  for (const model of publicModels) {
-    const current = bestByType[model.modelType];
+  // Find best model per BLUEPRINT (highest score wins)
+  const bestByBlueprint: Record<string, Doc<"trainedModels">> = {};
+  for (const model of allModels) {
+    const current = bestByBlueprint[model.blueprintId];
     if (!current || model.score > current.score) {
-      bestByType[model.modelType] = model;
+      bestByBlueprint[model.blueprintId] = model;
     }
   }
 
@@ -143,21 +141,26 @@ async function syncBestModelsForLab(
     .withIndex("by_lab", (q) => q.eq("labId", labId))
     .collect();
 
-  const existingByType: Record<string, Doc<"worldBestModels">> = {};
+  const existingByBlueprint: Record<string, Doc<"worldBestModels">> = {};
   for (const entry of existingEntries) {
-    existingByType[entry.modelType] = entry;
+    existingByBlueprint[entry.blueprintId] = entry;
   }
 
-  // Update or create entries for types with public models
-  for (const type of ["llm", "tts", "vlm"] as const) {
-    const bestModel = bestByType[type];
-    const existingEntry = existingByType[type];
+  // Get all blueprint IDs we need to track
+  const allBlueprintIds = new Set([
+    ...Object.keys(bestByBlueprint),
+    ...Object.keys(existingByBlueprint),
+  ]);
+
+  // Update or create entries for each blueprint
+  for (const blueprintId of allBlueprintIds) {
+    const bestModel = bestByBlueprint[blueprintId];
+    const existingEntry = existingByBlueprint[blueprintId];
 
     if (bestModel) {
-      // Has a public model of this type
+      // Has a model of this blueprint - update or create entry
       if (existingEntry) {
         await ctx.db.patch(existingEntry._id, {
-          blueprintId: bestModel.blueprintId,
           modelName: bestModel.name,
           score: bestModel.score,
           version: bestModel.version,
@@ -167,7 +170,7 @@ async function syncBestModelsForLab(
       } else {
         await ctx.db.insert("worldBestModels", {
           labId,
-          modelType: type,
+          modelType: bestModel.modelType,
           blueprintId: bestModel.blueprintId,
           modelName: bestModel.name,
           score: bestModel.score,
@@ -177,7 +180,7 @@ async function syncBestModelsForLab(
         });
       }
     } else {
-      // No public model of this type - delete entry if exists
+      // No model of this blueprint anymore - delete entry if exists
       if (existingEntry) {
         await ctx.db.delete(existingEntry._id);
       }
@@ -270,46 +273,40 @@ export const getLabLeaderboardSlice = query({
   },
 });
 
-export interface ModelLeaderboardRow {
+export interface ModelLeaderboardEntry {
   labId: string;
   labName: string;
   modelName: string;
-  blueprintId: string;
   score: number;
   version: number;
   rank: number;
   isCurrentPlayer: boolean;
 }
 
+export interface BlueprintLeaderboard {
+  blueprintId: string;
+  blueprintName: string;
+  modelType: "llm" | "tts" | "vlm";
+  entries: ModelLeaderboardEntry[];
+  myRank: number | null;
+  myScore: number | null;
+}
+
 /**
- * Get models leaderboard slice for a specific type (20 above + me + 20 below)
+ * Get models leaderboard grouped by blueprint for a model type
+ * Each blueprint (3B TTS, 7B TTS, etc.) has its own leaderboard
  */
-export const getModelLeaderboardSlice = query({
+export const getBlueprintLeaderboards = query({
   args: {
     labId: v.id("labs"),
     modelType: v.union(v.literal("llm"), v.literal("tts"), v.literal("vlm")),
   },
-  handler: async (ctx, args): Promise<{ rows: ModelLeaderboardRow[]; myRank: number | null; hasPublicModel: boolean }> => {
-    // Check if player has a public model of this type
-    const myBestModel = await ctx.db
-      .query("worldBestModels")
-      .withIndex("by_lab_type", (q) => q.eq("labId", args.labId).eq("modelType", args.modelType))
-      .first();
-
-    const hasPublicModel = myBestModel !== null;
-
+  handler: async (ctx, args): Promise<{ blueprints: BlueprintLeaderboard[] }> => {
     // Get all best models for this type
     const allEntries = await ctx.db
       .query("worldBestModels")
-      .withIndex("by_type_score", (q) => q.eq("modelType", args.modelType))
+      .withIndex("by_type", (q) => q.eq("modelType", args.modelType))
       .collect();
-
-    // Sort by score desc
-    allEntries.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.updatedAt !== a.updatedAt) return b.updatedAt - a.updatedAt;
-      return a.labId.localeCompare(b.labId);
-    });
 
     // Get lab names
     const labIds = [...new Set(allEntries.map((e) => e.labId))];
@@ -319,50 +316,80 @@ export const getModelLeaderboardSlice = query({
       if (lab) labNameMap[lab._id] = lab.name;
     }
 
-    // Find my rank
-    let myRank: number | null = null;
-    let myIndex = -1;
-    if (hasPublicModel) {
-      for (let i = 0; i < allEntries.length; i++) {
-        if (allEntries[i].labId === args.labId) {
+    // Group by blueprint
+    const byBlueprint: Record<string, typeof allEntries> = {};
+    for (const entry of allEntries) {
+      if (!byBlueprint[entry.blueprintId]) {
+        byBlueprint[entry.blueprintId] = [];
+      }
+      byBlueprint[entry.blueprintId].push(entry);
+    }
+
+    // Build leaderboard for each blueprint
+    const blueprints: BlueprintLeaderboard[] = [];
+
+    for (const [blueprintId, entries] of Object.entries(byBlueprint)) {
+      // Sort by score desc
+      entries.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (b.updatedAt !== a.updatedAt) return b.updatedAt - a.updatedAt;
+        return a.labId.localeCompare(b.labId);
+      });
+
+      // Find player's entry
+      let myRank: number | null = null;
+      let myScore: number | null = null;
+      for (let i = 0; i < entries.length; i++) {
+        if (entries[i].labId === args.labId) {
           myRank = i + 1;
-          myIndex = i;
+          myScore = entries[i].score;
           break;
         }
       }
-    }
 
-    // Calculate slice bounds
-    let startIndex = 0;
-    let endIndex = Math.min(41, allEntries.length);
-
-    if (myIndex >= 0) {
-      startIndex = Math.max(0, myIndex - 20);
-      endIndex = Math.min(allEntries.length, myIndex + 21);
-
-      if (endIndex - startIndex < 41 && allEntries.length >= 41) {
-        if (startIndex === 0) {
-          endIndex = Math.min(41, allEntries.length);
-        } else if (endIndex === allEntries.length) {
-          startIndex = Math.max(0, allEntries.length - 41);
+      // Get blueprint name from content catalog
+      // Try both the blueprintId as-is and without "bp_" prefix
+      let content = getContentById(blueprintId);
+      if (!content && blueprintId.startsWith("bp_")) {
+        content = getContentById(blueprintId.replace("bp_", ""));
+      }
+      // Fallback: convert "tts_3b" or "bp_tts_3b" to "3B TTS" format
+      let blueprintName = content?.name;
+      if (!blueprintName) {
+        const cleanId = blueprintId.replace(/^bp_/, "");
+        const match = cleanId.match(/^(tts|llm|vlm)_(\d+)b$/i);
+        if (match) {
+          blueprintName = `${match[2]}B ${match[1].toUpperCase()}`;
+        } else {
+          blueprintName = cleanId;
         }
       }
+
+      // Take top entries (limit to reasonable amount)
+      const topEntries = entries.slice(0, 20);
+
+      blueprints.push({
+        blueprintId,
+        blueprintName,
+        modelType: args.modelType,
+        entries: topEntries.map((entry, i) => ({
+          labId: entry.labId,
+          labName: labNameMap[entry.labId] ?? "Unknown Lab",
+          modelName: entry.modelName,
+          score: entry.score,
+          version: entry.version,
+          rank: i + 1,
+          isCurrentPlayer: entry.labId === args.labId,
+        })),
+        myRank,
+        myScore,
+      });
     }
 
-    const slice = allEntries.slice(startIndex, endIndex);
+    // Sort blueprints by name (e.g., 3B TTS, 7B TTS, 30B TTS)
+    blueprints.sort((a, b) => a.blueprintName.localeCompare(b.blueprintName));
 
-    const rows: ModelLeaderboardRow[] = slice.map((entry, i) => ({
-      labId: entry.labId,
-      labName: labNameMap[entry.labId] ?? "Unknown Lab",
-      modelName: entry.modelName,
-      blueprintId: entry.blueprintId,
-      score: entry.score,
-      version: entry.version,
-      rank: startIndex + i + 1,
-      isCurrentPlayer: entry.labId === args.labId,
-    }));
-
-    return { rows, myRank, hasPublicModel };
+    return { blueprints };
   },
 });
 
@@ -384,7 +411,7 @@ export const syncLeaderboard = mutation({
 /**
  * Rebuild all leaderboard entries (dev/migration tool)
  */
-export const rebuildAllLeaderboards = internalMutation({
+export const rebuildAllLeaderboards = mutation({
   args: {},
   handler: async (ctx) => {
     const labs = await ctx.db.query("labs").collect();
@@ -392,6 +419,58 @@ export const rebuildAllLeaderboards = internalMutation({
       await syncLeaderboardForLab(ctx, lab._id);
     }
     return { synced: labs.length };
+  },
+});
+
+/**
+ * Debug query to check leaderboard state for a lab
+ */
+export const debugLeaderboardState = query({
+  args: { labId: v.id("labs") },
+  handler: async (ctx, args) => {
+    // Get trained models
+    const trainedModels = await ctx.db
+      .query("trainedModels")
+      .withIndex("by_lab", (q) => q.eq("labId", args.labId))
+      .collect();
+
+    // Get worldLeaderboard entry
+    const leaderboardEntry = await ctx.db
+      .query("worldLeaderboard")
+      .withIndex("by_lab", (q) => q.eq("labId", args.labId))
+      .first();
+
+    // Get worldBestModels entries
+    const bestModelsEntries = await ctx.db
+      .query("worldBestModels")
+      .withIndex("by_lab", (q) => q.eq("labId", args.labId))
+      .collect();
+
+    return {
+      trainedModels: {
+        total: trainedModels.length,
+        models: trainedModels.map((m) => ({
+          id: m._id,
+          name: m.name,
+          type: m.modelType,
+          score: m.score,
+        })),
+      },
+      worldLeaderboard: leaderboardEntry
+        ? {
+            exists: true,
+            labScore: leaderboardEntry.labScore,
+            bestScores: leaderboardEntry.bestPublicScores,
+            level: leaderboardEntry.level,
+          }
+        : { exists: false },
+      worldBestModels: bestModelsEntries.map((e) => ({
+        type: e.modelType,
+        modelName: e.modelName,
+        score: e.score,
+        version: e.version,
+      })),
+    };
   },
 });
 
