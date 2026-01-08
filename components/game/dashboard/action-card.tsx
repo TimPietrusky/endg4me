@@ -193,8 +193,8 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
           </div>
 
           <CardContent className="p-0">
-            {/* Show RequiresPanel if has unmet requirements, otherwise SpendButton */}
-            {hasUnmetRequirements && !isCompleted ? (
+            {/* Show RequiresPanel if has unmet requirements AND not completed AND not active */}
+            {hasUnmetRequirements && !isCompleted && !action.isActive ? (
               <>
                 <RequiresPanel requirements={action.requirements!} />
                 {/* Attribute grid below requires panel */}
@@ -325,8 +325,8 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
         </div>
 
         <CardContent className="p-0">
-          {/* Show RequiresPanel if has unmet requirements, otherwise SpendButton */}
-          {hasUnmetRequirements ? (
+          {/* Show RequiresPanel if has unmet requirements AND not currently active/queued */}
+          {hasUnmetRequirements && !action.isActive && !action.isQueued ? (
             <>
               <RequiresPanel requirements={action.requirements!} />
               <AttributeGrid attributes={buildAttributes()} />
