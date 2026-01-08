@@ -147,6 +147,9 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
     const isCompleted = action.completed
     const cardGradient = categoryStyle?.gradient || "from-purple-500/30 to-purple-500/10"
     const iconColor = categoryStyle?.iconColor || "text-purple-400"
+    
+    // Blueprint mode: show schematic style for unresearched items (not completed, not actively researching)
+    const showBlueprint = hasImage && !isCompleted && !action.isActive
 
     return (
       <>
@@ -163,16 +166,24 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
             onClick={handleImageClick}
           >
             {hasImage ? (
-              <img
-                src={action.image}
-                alt={action.name}
-                className="w-full h-full object-cover"
-              />
+              <>
+                {showBlueprint && (
+                  <div className="blueprint-overlay" />
+                )}
+                <img
+                  src={action.image}
+                  alt={action.name}
+                  className={cn(
+                    "w-full h-full object-cover",
+                    showBlueprint && "blueprint-image"
+                  )}
+                />
+              </>
             ) : (
               <Icon className={cn("w-16 h-16 opacity-50", iconColor)} weight="duotone" />
             )}
-            <div className="absolute bottom-2 left-2 pointer-events-none">
-              <div className="flex items-center gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded pointer-events-auto">
+            <div className="absolute bottom-2 left-2 z-10 pointer-events-none">
+              <div className="flex items-center gap-1.5 bg-black/90 px-2 py-1 rounded pointer-events-auto">
                 {action.size && (
                   <span className="text-lg font-black text-white">{action.size}</span>
                 )}
