@@ -920,6 +920,7 @@ export const getModelStats = query({
     const llmModels = models.filter((m) => m.modelType === "llm");
     const ttsModels = models.filter((m) => m.modelType === "tts");
     const vlmModels = models.filter((m) => m.modelType === "vlm");
+    const publicModels = models.filter((m) => m.visibility === "public");
 
     const totalScore = models.reduce((sum, m) => sum + m.score, 0);
     const bestModel = models.reduce(
@@ -932,6 +933,7 @@ export const getModelStats = query({
       llmModels: llmModels.length,
       ttsModels: ttsModels.length,
       vlmModels: vlmModels.length,
+      publicModels: publicModels.length,
       totalScore,
       averageScore: models.length > 0 ? Math.round(totalScore / models.length) : 0,
       bestModel,

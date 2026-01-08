@@ -202,8 +202,8 @@ export function SettingsPanel({
                     onClick={async () => {
                       if (!userId) return
                       const result = await repairResearch({ userId })
-                      if (result.success) {
-                        alert(`Repaired: ${result.repairedResearch?.length || 0} research, ${result.repairedUnlocks?.length || 0} unlocks`)
+                      if (result.success && 'repairedResearch' in result) {
+                        alert(`Repaired: ${result.repairedResearch.length} research, ${result.repairedUnlocks.length} unlocks`)
                       }
                     }}
                     className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
@@ -223,8 +223,8 @@ export function SettingsPanel({
                     onClick={async () => {
                       if (!userId) return
                       const result = await repairModels({ userId })
-                      if (result.success) {
-                        alert(`Checked: ${result.checked}, Deleted: ${result.deleted?.length || 0} spurious models`)
+                      if (result.success && 'checked' in result) {
+                        alert(`Checked: ${result.checked}, Deleted: ${result.deleted.length} spurious models`)
                       }
                     }}
                     className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"

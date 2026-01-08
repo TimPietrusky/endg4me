@@ -24,7 +24,6 @@ const MODEL_TYPE_INFO = {
 export default function LabModelsPage() {
   const { lab, trainedModels } = useGameData()
   const [selectedTypes, setSelectedTypes] = useState<ModelType[]>([])
-  const [expandedBlueprint, setExpandedBlueprint] = useState<string | null>(null)
 
   // Use aggregated models query for grouped view
   const aggregatedModels = useQuery(
@@ -94,7 +93,6 @@ export default function LabModelsPage() {
       versionCount: agg.versionCount,
       bestScore: agg.bestScore,
       versions,
-      publicCount: agg.publicCount,
     }
   }
 
@@ -146,11 +144,6 @@ export default function LabModelsPage() {
                   key={agg.blueprintId}
                   action={aggregatedToAction(agg)}
                   onStartAction={() => {}}
-                  expandable
-                  isExpanded={expandedBlueprint === agg.blueprintId}
-                  onToggleExpand={() => setExpandedBlueprint(
-                    expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
-                  )}
                 />
               ))}
             </div>
@@ -167,11 +160,6 @@ export default function LabModelsPage() {
                   key={agg.blueprintId}
                   action={aggregatedToAction(agg)}
                   onStartAction={() => {}}
-                  expandable
-                  isExpanded={expandedBlueprint === agg.blueprintId}
-                  onToggleExpand={() => setExpandedBlueprint(
-                    expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
-                  )}
                 />
               ))}
             </div>
@@ -188,11 +176,6 @@ export default function LabModelsPage() {
                   key={agg.blueprintId}
                   action={aggregatedToAction(agg)}
                   onStartAction={() => {}}
-                  expandable
-                  isExpanded={expandedBlueprint === agg.blueprintId}
-                  onToggleExpand={() => setExpandedBlueprint(
-                    expandedBlueprint === agg.blueprintId ? null : agg.blueprintId
-                  )}
                 />
               ))}
             </div>

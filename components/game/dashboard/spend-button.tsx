@@ -273,37 +273,37 @@ export function SpendButton({
     )
   }
 
-  // Ready state (clickable) - muted glass, white bg on hover with black brackets
+  // Ready state (clickable) - no bg, white text, white brackets; white bg on hover with black text/brackets
   return (
     <button
       onClick={() => showConfirmation ? setShowConfirm(true) : onAction()}
       className="w-full border-b border-border group cursor-pointer"
     >
-      <div className="relative bg-white/10 group-hover:bg-white transition-colors">
-        {/* Corner brackets - hidden by default, black/50 on hover */}
+      <div className="relative group-hover:bg-white transition-colors">
+        {/* Corner brackets - white/20 by default, black/50 on hover */}
         {/* Top-left */}
-        <div className="absolute top-2 left-2 w-3 h-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-black/50" />
-          <div className="absolute top-0 left-0 w-[1px] h-full bg-black/50" />
+        <div className="absolute top-2 left-2 w-3 h-3 pointer-events-none transition-opacity">
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-white/20 group-hover:bg-black/50" />
+          <div className="absolute top-0 left-0 w-[1px] h-full bg-white/20 group-hover:bg-black/50" />
         </div>
         {/* Top-right */}
-        <div className="absolute top-2 right-2 w-3 h-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="absolute top-0 right-0 w-full h-[1px] bg-black/50" />
-          <div className="absolute top-0 right-0 w-[1px] h-full bg-black/50" />
+        <div className="absolute top-2 right-2 w-3 h-3 pointer-events-none transition-opacity">
+          <div className="absolute top-0 right-0 w-full h-[1px] bg-white/20 group-hover:bg-black/50" />
+          <div className="absolute top-0 right-0 w-[1px] h-full bg-white/20 group-hover:bg-black/50" />
         </div>
         {/* Bottom-left */}
-        <div className="absolute bottom-2 left-2 w-3 h-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-black/50" />
-          <div className="absolute bottom-0 left-0 w-[1px] h-full bg-black/50" />
+        <div className="absolute bottom-2 left-2 w-3 h-3 pointer-events-none transition-opacity">
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/20 group-hover:bg-black/50" />
+          <div className="absolute bottom-0 left-0 w-[1px] h-full bg-white/20 group-hover:bg-black/50" />
         </div>
         {/* Bottom-right */}
-        <div className="absolute bottom-2 right-2 w-3 h-3 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="absolute bottom-0 right-0 w-full h-[1px] bg-black/50" />
-          <div className="absolute bottom-0 right-0 w-[1px] h-full bg-black/50" />
+        <div className="absolute bottom-2 right-2 w-3 h-3 pointer-events-none transition-opacity">
+          <div className="absolute bottom-0 right-0 w-full h-[1px] bg-white/20 group-hover:bg-black/50" />
+          <div className="absolute bottom-0 right-0 w-[1px] h-full bg-white/20 group-hover:bg-black/50" />
         </div>
         
         <div className="flex items-center justify-center h-[72px] border-b border-white/10 group-hover:border-black/10 transition-colors">
-          <span className="text-3xl font-black text-white/80 group-hover:text-black lowercase transition-colors">
+          <span className="text-3xl font-black text-white group-hover:text-black lowercase transition-colors">
             {label}
           </span>
         </div>

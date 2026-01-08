@@ -222,6 +222,7 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
                 remainingTime={action.remainingTime}
                 speedFactor={action.speedFactor || 1}
                 attributes={buildAttributes()}
+                attributeLayout="compact"
                 showConfirmation={!isCompleted}
                 isMaxed={isCompleted}
                 maxedLabel="unlocked"
@@ -369,8 +370,11 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
 
 // Standalone attribute grid for use with RequiresPanel
 function AttributeGrid({ attributes }: { attributes: SpendAttribute[] }) {
-  // Import the formatting functions and icons we need
   const gridCols = attributes.length
+  
+  // Use compact (flex centered) layout for 2 or fewer items, grid for more
+  const useCompact = gridCols <= 2
+  
   const gridColsClass = 
     gridCols === 1 ? "grid-cols-1" :
     gridCols === 2 ? "grid-cols-2" :
@@ -380,7 +384,10 @@ function AttributeGrid({ attributes }: { attributes: SpendAttribute[] }) {
     "grid-cols-5"
 
   return (
-    <div className={`grid ${gridColsClass} py-2 bg-card border-b border-white/10`}>
+    <div className={cn(
+      "py-2 bg-card border-b border-white/10",
+      useCompact ? "flex justify-center" : `grid ${gridColsClass}`
+    )}>
       {attributes.map((attr, i) => (
         <AttributeCell key={i} {...attr} />
       ))}

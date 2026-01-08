@@ -8,8 +8,10 @@ import { Cpu, Users, ListChecks, CaretDoubleUp, Clock, CurrencyDollar, User } fr
 import { useToast } from "@/hooks/use-toast"
 import type { Id } from "@/convex/_generated/dataModel"
 import { SpendButton } from "./spend-button"
+import { RequiresPanel } from "./requires-panel"
 import { cn } from "@/lib/utils"
 import { LAB_UPGRADES } from "@/convex/lib/gameConfig"
+import type { ActionRequirement } from "@/lib/game-types"
 
 type UpgradeType = "queue" | "staff" | "compute" | "speed" | "moneyMultiplier"
 
@@ -207,10 +209,6 @@ export function UpgradesView() {
         {upgradeDetails.upgrades.map((upgrade) => {
           const isDisabled = !upgrade.canUpgrade
           const disabledReason = upgrade.isMaxRank ? "max rank" : upgrade.lockReason
-          const upShortfall = !upgrade.canUpgrade && !upgrade.isMaxRank && upgradeDetails.upgradePoints < 1 
-            ? 1 - upgradeDetails.upgradePoints 
-            : 0
-          
           const Icon = getIcon(upgrade.id)
           const accent = UPGRADE_ACCENTS[upgrade.id as keyof typeof UPGRADE_ACCENTS]
 
@@ -271,24 +269,58 @@ export function UpgradesView() {
                     ]}
                     attributeLayout="compact"
                   />
-                ) : (
-                  <SpendButton
-                    label="upgrade"
-                    disabled={isDisabled}
-                    disabledReason={disabledReason}
-                    onAction={() => handleUpgrade(upgrade.id as UpgradeType)}
-                    showConfirmation={false}
-                    attributes={[
-                      { type: "up", value: 1, isGain: false },
-                      { 
-                        type: upgrade.id as "queue" | "staff" | "compute" | "speed" | "moneyMultiplier", 
-                        value: upgrade.isPercent ? "5%" : upgrade.isMultiplier ? "0.1x" : 1, 
-                        isGain: true 
-                      },
-                    ]}
-                    attributeLayout="compact"
-                  />
-                )}
+                ) : (() => {
+                  // Build requirements array for RequiresPanel
+                  const requirements: ActionRequirement[] = []
+                  
+                  // Level requirement
+                  if (upgrade.requiredLevelForNext && upgrade.requiredLevelForNext > upgradeDetails.level) {
+                    requirements.push({
+                      type: 'level',
+                      label: String(upgrade.requiredLevelForNext),
+                      met: false,
+                      navigable: true,
+                      link: { view: 'lab/levels' }
+                    })
+                  }
+                  
+                  const hasUnmetRequirements = requirements.some(r => !r.met)
+                  
+                  return hasUnmetRequirements ? (
+                    <>
+                      <RequiresPanel requirements={requirements} />
+                      <div className="grid grid-cols-2 py-2 bg-card">
+                        <div className="flex items-center gap-1 px-2 border-r border-white/10 justify-center">
+                          <CaretDoubleUp weight="regular" className="w-3 h-3 text-gray-500 opacity-50" />
+                        </div>
+                        <div className="flex items-center gap-1 px-2 justify-center">
+                          {upgrade.id === "queue" && <ListChecks weight="regular" className="w-3 h-3 text-gray-500 opacity-50" />}
+                          {upgrade.id === "staff" && <Users weight="regular" className="w-3 h-3 text-gray-500 opacity-50" />}
+                          {upgrade.id === "compute" && <Cpu weight="regular" className="w-3 h-3 text-gray-500 opacity-50" />}
+                          {upgrade.id === "speed" && <Clock weight="regular" className="w-3 h-3 text-gray-500 opacity-50" />}
+                          {upgrade.id === "moneyMultiplier" && <CurrencyDollar weight="regular" className="w-3 h-3 text-gray-500 opacity-50" />}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <SpendButton
+                      label="upgrade"
+                      disabled={isDisabled}
+                      disabledReason={disabledReason}
+                      onAction={() => handleUpgrade(upgrade.id as UpgradeType)}
+                      showConfirmation={false}
+                      attributes={[
+                        { type: "up", value: 1, isGain: false },
+                        { 
+                          type: upgrade.id as "queue" | "staff" | "compute" | "speed" | "moneyMultiplier", 
+                          value: upgrade.isPercent ? "5%" : upgrade.isMultiplier ? "0.1x" : 1, 
+                          isGain: true 
+                        },
+                      ]}
+                      attributeLayout="compact"
+                    />
+                  )
+                })()}
               </CardContent>
             </Card>
           )

@@ -109,7 +109,7 @@ export function RequiresPanel({ requirements, className, onNavigate }: RequiresP
 
   return (
     <div className={cn(
-      "flex flex-col items-center justify-center h-[72px] border-b border-white/10 bg-card",
+      "flex flex-col items-center justify-center h-[72px] border-t border-b border-white/10 bg-card",
       className
     )}>
       <span className="text-xs font-bold text-muted-foreground lowercase mb-1">requires</span>
