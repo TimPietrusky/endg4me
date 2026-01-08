@@ -61,6 +61,17 @@ export interface Action {
   prerequisiteId?: string // ID of prerequisite node
   prerequisiteName?: string // Display name of prerequisite node
   levelShortfall?: number // How many levels needed (e.g., need 5, have 3 = 2)
+  // Expandable versions (for Lab Models)
+  versions?: ActionVersion[]
+  publicCount?: number // Number of public versions
+}
+
+export interface ActionVersion {
+  id: string
+  version: number
+  score: number
+  trainedAt: number
+  isBest: boolean
 }
 
 export interface Notification {
