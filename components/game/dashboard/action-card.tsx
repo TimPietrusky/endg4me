@@ -151,7 +151,13 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
           ) : (
             <Icon className={cn("w-16 h-16 opacity-50", iconColor)} weight="duotone" />
           )}
-          <div className="absolute bottom-2 left-2 pointer-events-none">
+          <div className="absolute bottom-2 left-2 pointer-events-none flex flex-col items-start">
+            {/* Prerequisite indicator - separate box above model name, touching */}
+            {action.prerequisiteName && (
+              <div className="bg-black/70 backdrop-blur-sm px-1.5 rounded-t">
+                <span className="text-[10px] text-white/50 leading-tight">{action.prerequisiteName}</span>
+              </div>
+            )}
             <div className="flex items-baseline gap-1.5 bg-black/80 backdrop-blur-sm px-2 py-1 rounded">
               {action.size && (
                 <span className="text-lg font-black text-white">{action.size}</span>
@@ -159,30 +165,10 @@ export function ActionCard({ action, onStartAction }: ActionCardProps) {
               <h3 className="font-bold text-lg text-white">{action.name}</h3>
             </div>
           </div>
-          {/* Requirements badges */}
-          {(action.minLevel && action.minLevel > 1) || (action.prerequisiteCount && action.prerequisiteCount > 0) ? (
-            <div className="absolute top-2 left-2 flex gap-1">
-              {action.minLevel && action.minLevel > 1 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/70 text-white/80 font-mono">
-                  LVL {action.minLevel}+
-                </span>
-              )}
-              {action.prerequisiteCount && action.prerequisiteCount > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/70 text-white/80">
-                  {action.prerequisiteCount} prereq
-                </span>
-              )}
-            </div>
-          ) : null}
-          {/* Status badges */}
+          {/* Status badge - only for researching */}
           {action.isActive && !isCompleted && (
             <div className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
               RESEARCHING
-            </div>
-          )}
-          {action.locked && !isCompleted && (
-            <div className="absolute top-2 right-2 bg-white/20 text-white/60 text-xs font-bold px-2 py-0.5 rounded pointer-events-none">
-              LOCKED
             </div>
           )}
         </div>

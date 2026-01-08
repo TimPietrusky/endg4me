@@ -638,6 +638,17 @@ export const INBOX_EVENTS: InboxEventDef[] = [
 // ENTITY ASSETS
 // -----------------------------------------------------------------------------
 
+export interface AssetConcept {
+  /** The object metaphor description used in generation */
+  metaphor: string;
+  /** Category this asset was designed for */
+  category: "model" | "revenue" | "hiring" | "contract" | "research";
+  /** Size class for visual hierarchy */
+  sizeClass?: "compact" | "desktop" | "rack" | "industrial";
+  /** Key visual elements for deduplication */
+  keywords?: string[];
+}
+
 export interface EntityAsset {
   id: string;
   title: string;
@@ -645,6 +656,8 @@ export interface EntityAsset {
   version: string;
   files: { image: string; depth?: string; model?: string };
   notes?: string;
+  /** Generation metadata for tracking concepts */
+  concept?: AssetConcept;
 }
 
 export const ENTITY_ASSETS: EntityAsset[] = [
@@ -654,22 +667,12 @@ export const ENTITY_ASSETS: EntityAsset[] = [
     slug: "3b-tts",
     version: "v007",
     files: { image: "/assets/entities/3b-tts/3b-tts_v007_transparent.png" },
-  },
-  {
-    id: "income_website",
-    title: "Basic Website",
-    slug: "basic-website",
-    version: "v001",
-    files: { image: "/assets/entities/basic-website/basic-website_v001_transparent.png" },
-    notes: "Compact browser cartridge with HTML brackets and webpage wireframe layout",
-  },
-  {
-    id: "income_website_advanced",
-    title: "Advanced Website",
-    slug: "advanced-website",
-    version: "v001",
-    files: { image: "/assets/entities/advanced-website/advanced-website_v001_transparent.png" },
-    notes: "Large premium tablet with minimal elegant screen layout and refined housing",
+    concept: {
+      metaphor: "compact palm-sized voice module with speaker grill pattern and waveform etching",
+      category: "model",
+      sizeClass: "compact",
+      keywords: ["voice", "speaker", "waveform", "module", "audio"],
+    },
   },
   {
     id: "tts_7b",
@@ -677,6 +680,12 @@ export const ENTITY_ASSETS: EntityAsset[] = [
     slug: "7b-tts",
     version: "v002",
     files: { image: "/assets/entities/7b-tts/7b-tts_v002_transparent.png" },
+    concept: {
+      metaphor: "desktop-sized voice synthesis unit with dual speaker arrays and frequency display",
+      category: "model",
+      sizeClass: "desktop",
+      keywords: ["voice", "speaker", "frequency", "unit", "audio"],
+    },
   },
   {
     id: "tts_30b",
@@ -684,6 +693,12 @@ export const ENTITY_ASSETS: EntityAsset[] = [
     slug: "30b-tts",
     version: "v003",
     files: { image: "/assets/entities/30b-tts/30b-tts_v003_transparent.png" },
+    concept: {
+      metaphor: "rack-mounted voice processing array with multiple speaker modules and audio waveform displays",
+      category: "model",
+      sizeClass: "rack",
+      keywords: ["voice", "speaker", "rack", "array", "audio", "waveform"],
+    },
   },
   {
     id: "tts_70b",
@@ -691,12 +706,78 @@ export const ENTITY_ASSETS: EntityAsset[] = [
     slug: "70b-tts",
     version: "v002",
     files: { image: "/assets/entities/70b-tts/70b-tts_v002_transparent.png" },
+    concept: {
+      metaphor: "industrial voice synthesis tower with massive speaker bank and studio-grade audio processing",
+      category: "model",
+      sizeClass: "industrial",
+      keywords: ["voice", "speaker", "tower", "industrial", "audio", "studio"],
+    },
+  },
+  {
+    id: "income_website",
+    title: "Basic Website",
+    slug: "basic-website",
+    version: "v001",
+    files: { image: "/assets/entities/basic-website/basic-website_v001_transparent.png" },
+    concept: {
+      metaphor: "compact rectangular cartridge module with stylized browser frame silhouette, HTML angle bracket etchings, and minimal grid pattern suggesting webpage layout",
+      category: "revenue",
+      sizeClass: "compact",
+      keywords: ["browser", "tablet", "wireframe", "code", "html", "web"],
+    },
+  },
+  {
+    id: "income_website_advanced",
+    title: "Advanced Website",
+    slug: "advanced-website",
+    version: "v001",
+    files: { image: "/assets/entities/advanced-website/advanced-website_v001_transparent.png" },
+    concept: {
+      metaphor: "large desktop-sized rectangular tablet module with premium browser frame silhouette, sleek minimalist screen showing clean sparse layout with few elegant elements, refined angular housing",
+      category: "revenue",
+      sizeClass: "desktop",
+      keywords: ["browser", "tablet", "premium", "minimal", "web", "professional"],
+    },
   },
 ];
 
 /** Get asset by slug. */
 export function getAssetBySlug(slug: string): EntityAsset | undefined {
   return ENTITY_ASSETS.find((a) => a.slug === slug);
+}
+
+/** Get all assets with concepts. */
+export function getAssetsWithConcepts(): EntityAsset[] {
+  return ENTITY_ASSETS.filter((a) => a.concept);
+}
+
+/** Get assets by category. */
+export function getAssetsByCategory(category: AssetConcept["category"]): EntityAsset[] {
+  return ENTITY_ASSETS.filter((a) => a.concept?.category === category);
+}
+
+/** Get all used keywords across assets. */
+export function getAllAssetKeywords(): string[] {
+  const keywords = new Set<string>();
+  for (const asset of ENTITY_ASSETS) {
+    if (asset.concept?.keywords) {
+      asset.concept.keywords.forEach((k) => keywords.add(k));
+    }
+  }
+  return Array.from(keywords).sort();
+}
+
+/** Check if a keyword combination already exists. */
+export function hasOverlappingConcept(keywords: string[], threshold = 3): EntityAsset | undefined {
+  for (const asset of ENTITY_ASSETS) {
+    if (asset.concept?.keywords) {
+      const overlap = keywords.filter((k) => asset.concept!.keywords!.includes(k));
+      if (overlap.length >= threshold) {
+        return asset;
+      }
+    }
+  }
+  return undefined;
 }
 
 /** Get image URL for a content entry. */

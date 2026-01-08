@@ -185,7 +185,7 @@ async function main() {
   }
 
   console.log("Removing background...");
-  console.log(`  Model: fal-ai/birefnet/v2`);
+  console.log(`  Model: fal-ai/birefnet/v2 (Dynamic @ 2048x2048)`);
   console.log(`  Input: ${args.input}`);
 
   try {
@@ -195,6 +195,9 @@ async function main() {
     const result = await fal.subscribe("fal-ai/birefnet/v2", {
       input: {
         image_url: imageUrl,
+        model: "General Use (Dynamic)",
+        operating_resolution: "2048x2048",
+        refine_foreground: true,
       },
       logs: true,
       onQueueUpdate: (update) => {

@@ -20,6 +20,7 @@ type StatusFilter = "available" | "locked" | "researched" | "researching"
 interface PerkTreeProps {
   userId: Id<"users">
   currentRp: number
+  playerLevel: number
   category: "model" | "revenue" | "hiring"
 }
 
@@ -48,7 +49,7 @@ const CATEGORY_CONFIG = {
   },
 }
 
-export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
+export function PerkTree({ userId, currentRp, playerLevel, category }: PerkTreeProps) {
   const { toast } = useToast()
   const researchState = useQuery(api.research.getResearchTreeState, { userId })
   const purchaseNode = useMutation(api.research.purchaseResearchNode)
@@ -99,9 +100,13 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
   // Convert a node to an Action for ActionCard
   const nodeToAction = (node: typeof nodes[0]): Action => {
     const canAfford = currentRp >= node.rpCost
+    const meetsLevel = playerLevel >= node.minLevel
     const isDisabled = node.isLocked || (!canAfford && !node.isResearching)
-    const disabledReason = node.isLocked 
-      ? node.lockReason?.replace("Requires ", "") || "locked"
+    
+    // Only show level requirement as disabled reason (not prereqs)
+    const levelShortfall = !meetsLevel ? node.minLevel - playerLevel : undefined
+    const disabledReason = !meetsLevel
+      ? `LVL ${node.minLevel}+`
       : !canAfford && !node.isResearching
         ? "not enough RP" 
         : undefined
@@ -115,6 +120,11 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
     // Get image from content catalog if available
     const content = getContentById(node.nodeId)
     const image = content ? getContentImageUrl(content) : undefined
+    
+    // Get prerequisite info
+    const prerequisiteId = node.prerequisiteNodes.length > 0 ? node.prerequisiteNodes[0] : undefined
+    const prerequisiteContent = prerequisiteId ? getContentById(prerequisiteId) : undefined
+    const prerequisiteName = prerequisiteContent?.name
     
     // Extract size from name (e.g., "3B TTS" -> "3B")
     const sizeMatch = node.name.match(/^(\d+B)/)
@@ -138,6 +148,9 @@ export function PerkTree({ userId, currentRp, category }: PerkTreeProps) {
       completed: node.isPurchased,
       minLevel: node.minLevel,
       prerequisiteCount: node.prerequisiteNodes.length,
+      prerequisiteId,
+      prerequisiteName,
+      levelShortfall,
       image,
       size,
     }

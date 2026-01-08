@@ -273,11 +273,22 @@ export function SpendButton({
   if (disabled) {
     // Show shortfall badges if available, otherwise show disabled reason
     const hasShortfall = shortfalls.length > 0
+    // Check if blocked by level (disabledReason starts with "LVL")
+    const isLevelBlocked = disabledReason?.startsWith("LVL")
 
     return (
       <div className="w-full border-b border-border">
         <div className="flex items-center justify-center h-[72px] border-b border-white/10 gap-3">
-          {hasShortfall ? (
+          {isLevelBlocked ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-amber-400 lowercase">blocked</span>
+              <div className="flex items-center border border-amber-500/50 rounded-md overflow-hidden">
+                <div className="flex items-center gap-1.5 text-amber-400 px-4 py-1.5">
+                  <span className="text-xl font-black">{disabledReason?.replace("+", "").toLowerCase()}</span>
+                </div>
+              </div>
+            </div>
+          ) : hasShortfall ? (
             <div className="flex items-center gap-3">
               <span className="text-sm font-bold text-red-400 lowercase">missing</span>
               <div className="flex items-center border border-red-500/50 rounded-md overflow-hidden">

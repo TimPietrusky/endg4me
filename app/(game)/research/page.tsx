@@ -18,7 +18,7 @@ const RESEARCH_TABS = [
 type ResearchTab = typeof RESEARCH_TABS[number]["id"]
 
 export default function ResearchPage() {
-  const { userId, labState } = useGameData()
+  const { userId, labState, playerState } = useGameData()
   const [activeTab, setActiveTab] = useState<ResearchTab>("model")
   
   // Get research tree state to compute counts
@@ -64,6 +64,7 @@ export default function ResearchPage() {
         <PerkTree
           userId={userId as Id<"users">}
           currentRp={labState.researchPoints}
+          playerLevel={playerState?.level ?? 1}
           category={activeTab}
         />
       </div>

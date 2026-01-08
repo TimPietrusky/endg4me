@@ -2,3 +2,4 @@
   "buildCommand": "npx convex deploy && next build"
 }
 
+

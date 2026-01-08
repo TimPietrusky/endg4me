@@ -14,6 +14,21 @@ Examples:
 
 ## Workflow Steps
 
+### Step 0: Check Existing Concepts
+
+Before brainstorming, review `ENTITY_ASSETS` in `convex/lib/contentCatalog.ts` to see:
+
+- What metaphors already exist for this category
+- Which keywords are already used
+- What size classes are taken
+
+Use helper functions:
+- `getAssetsByCategory(category)` - See existing assets in same category
+- `getAllAssetKeywords()` - All used keywords
+- `hasOverlappingConcept(keywords)` - Check for duplicates
+
+**Goal**: Propose NEW metaphors that don't overlap with existing assets.
+
 ### Step 1: Brainstorm Object Metaphors
 
 Propose 2-4 "object metaphors" that represent the entity as a single object.
@@ -28,6 +43,7 @@ Rules:
   - VLM: lens + chip fusion
   - LLM: neural pathways, data streams
 - Keep it plausible for the Endg4me universe
+- **MUST differ from existing concepts** (check Step 0)
 
 ### Step 2: Choose Direction
 
@@ -140,28 +156,35 @@ Add to `ENTITY_ASSETS` in `convex/lib/contentCatalog.ts`:
 
 ```typescript
 {
-  id: "<category>_<entity_slug_underscored>",
+  id: "<content_id>",  // Must match id in CONTENT_CATALOG (e.g., "tts_3b", "income_website")
   title: "<Entity Name>",
-  category: "<category>",
   slug: "<entity_slug>",
   version: "v001",
   files: {
-    image: "/assets/entities/<entity_slug>/<entity_slug>_v001.png",
-    imageTransparent: "/assets/entities/<entity_slug>/<entity_slug>_v001_transparent.png",
+    image: "/assets/entities/<entity_slug>/<entity_slug>_v001_transparent.png",
   },
-  notes: "<object metaphor description>",
+  concept: {
+    metaphor: "<full object metaphor description used in prompt>",
+    category: "<model|revenue|hiring|contract|research>",
+    sizeClass: "<compact|desktop|rack|industrial>",
+    keywords: ["<keyword1>", "<keyword2>", ...],  // 4-6 key visual elements
+  },
 },
 ```
 
-If entity is a model blueprint, also add `assetSlug: "<entity_slug>"` to the blueprint in `MODEL_BLUEPRINTS`.
+**Important:**
+- `id` must match the content entry in `CONTENT_CATALOG`
+- Also add `assetSlug: "<entity_slug>"` to the content entry in `CONTENT_CATALOG`
+- Keywords should capture unique visual elements for future deduplication
 
 ---
 
 ## Output Checklist
 
-1. Brainstorm options (2-4)
-2. User picks one (or auto-select best)
-3. Generate PNG via generate-image.mjs
-4. Remove background via remove-background.mjs (creates transparent version)
-5. Add metadata to contentCatalog.ts
-6. Link to blueprint if applicable
+1. **Check existing concepts** in ENTITY_ASSETS (avoid duplicates)
+2. **Brainstorm options** (2-4) that differ from existing
+3. **User picks one** (or auto-select best)
+4. **Generate PNG** via generate-image.mjs
+5. **Remove background** via remove-background.mjs
+6. **Add ENTITY_ASSETS entry** with full concept metadata
+7. **Add assetSlug** to content entry in CONTENT_CATALOG
