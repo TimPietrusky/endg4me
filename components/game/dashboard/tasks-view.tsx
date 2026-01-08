@@ -2,6 +2,7 @@
 
 import { Star } from "@phosphor-icons/react"
 import { ActionCard } from "./action-card"
+import { ACTION_GRID_CLASSES } from "./grid-classes"
 import type { Action } from "@/lib/game-types"
 
 interface TasksViewProps {
@@ -57,7 +58,7 @@ export function TasksView({
         Object.entries(filteredByCategory).map(([category, categoryActions]) => (
           <div key={category} id={category.toLowerCase()} className="mt-4">
             <h2 className="text-xl font-bold mb-4 text-primary">{category}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
+            <div className={ACTION_GRID_CLASSES}>
               {categoryActions.map((action) => (
                 <ActionCard key={action.id} action={action} onStartAction={onStartAction} />
               ))}

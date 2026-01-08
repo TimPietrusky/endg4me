@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react"
 import { SubSubNav, SubSubNavFilter } from "./sub-nav"
 import { ActionCard } from "./action-card"
+import { ACTION_GRID_CLASSES } from "./grid-classes"
 import { useToast } from "@/hooks/use-toast"
 import type { Id } from "@/convex/_generated/dataModel"
 import type { Action } from "@/lib/game-types"
@@ -224,7 +225,7 @@ export function PerkTree({ userId, currentRp, playerLevel, category }: PerkTreeP
         {researchingNodes.length > 0 && shouldShowStatus("researching") && (
           <div className="mt-4">
             <h2 className="text-xl font-bold mb-4 text-amber-400">RESEARCHING</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
+            <div className={ACTION_GRID_CLASSES}>
               {researchingNodes.map(node => (
                 <ActionCard 
                   key={node.nodeId} 
@@ -240,7 +241,7 @@ export function PerkTree({ userId, currentRp, playerLevel, category }: PerkTreeP
         {availableNodes.filter(n => !n.isResearching).length > 0 && shouldShowStatus("available") && (
           <div className="mt-4">
             <h2 className="text-xl font-bold mb-4 text-primary">AVAILABLE</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
+            <div className={ACTION_GRID_CLASSES}>
               {availableNodes.filter(n => !n.isResearching).map(node => (
                 <ActionCard 
                   key={node.nodeId} 
@@ -256,7 +257,7 @@ export function PerkTree({ userId, currentRp, playerLevel, category }: PerkTreeP
         {lockedNodes.length > 0 && shouldShowStatus("locked") && (
           <div className="mt-4">
             <h2 className="text-xl font-bold mb-4 text-muted-foreground">LOCKED</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
+            <div className={ACTION_GRID_CLASSES}>
               {lockedNodes.map(node => (
                 <ActionCard 
                   key={node.nodeId} 
@@ -272,7 +273,7 @@ export function PerkTree({ userId, currentRp, playerLevel, category }: PerkTreeP
         {researchedNodes.length > 0 && shouldShowStatus("researched") && (
           <div className="mt-4">
             <h2 className="text-xl font-bold mb-4 text-primary">RESEARCHED</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
+            <div className={ACTION_GRID_CLASSES}>
               {researchedNodes.map(node => (
                 <ActionCard 
                   key={node.nodeId} 

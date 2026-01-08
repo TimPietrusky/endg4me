@@ -726,3 +726,130 @@ export const resetAllGameData = internalMutation({
     };
   },
 });
+
+// =============================================================================
+// MIGRATION - playerUnlocks schema migration (old → new format)
+// =============================================================================
+
+// Transform old ID formats to new unified content IDs
+function transformOldIdToNew(oldId: string): string | null {
+  // Blueprint IDs: bp_tts_3b → tts_3b
+  if (oldId.startsWith("bp_")) {
+    return oldId.slice(3); // Remove "bp_" prefix
+  }
+
+  // Training job IDs: job_train_tts_3b → tts_3b
+  if (oldId.startsWith("job_train_")) {
+    return oldId.slice(10); // Remove "job_train_" prefix
+  }
+
+  // Research job: job_research_literature → research_literature
+  if (oldId.startsWith("job_research_")) {
+    return oldId.slice(4); // Remove "job_" prefix
+  }
+
+  // Income jobs: job_income_basic_website → income_website
+  if (oldId.startsWith("job_income_")) {
+    const suffix = oldId.slice(11); // Remove "job_income_"
+    // Map old names to new names
+    if (suffix === "basic_website") return "income_website";
+    if (suffix === "api_integration") return "income_api";
+    return "income_" + suffix;
+  }
+
+  // Contract jobs: job_contract_blog_basic → contract_blog
+  if (oldId.startsWith("job_contract_")) {
+    const suffix = oldId.slice(13); // Remove "job_contract_"
+    if (suffix === "blog_basic") return "contract_blog";
+    if (suffix === "voice_pack") return "contract_voice";
+    if (suffix === "image_qa") return "contract_vision";
+    return "contract_" + suffix;
+  }
+
+  // Hire jobs: job_hire_junior_researcher → hire_junior
+  if (oldId.startsWith("job_hire_")) {
+    const suffix = oldId.slice(9); // Remove "job_hire_"
+    if (suffix === "junior_researcher") return "hire_junior";
+    if (suffix === "optimization_specialist") return "hire_optimizer";
+    if (suffix === "hr_manager") return "hire_hr";
+    if (suffix === "business_partner") return "hire_partner";
+    if (suffix === "senior_engineer") return "hire_senior";
+    return "hire_" + suffix;
+  }
+
+  // Unknown format - skip
+  return null;
+}
+
+// Migration: Transform old playerUnlocks format to new unified format
+export const migratePlayerUnlocks = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const results = {
+      total: 0,
+      migrated: 0,
+      alreadyMigrated: 0,
+      errors: [] as string[],
+    };
+
+    // Get all playerUnlocks documents
+    const allUnlocks = await ctx.db.query("playerUnlocks").collect();
+    results.total = allUnlocks.length;
+
+    for (const doc of allUnlocks) {
+      // Check if already migrated (has unlockedContentIds)
+      if (doc.unlockedContentIds && Array.isArray(doc.unlockedContentIds)) {
+        results.alreadyMigrated++;
+        continue;
+      }
+
+      // Access old fields via type assertion (they exist in DB but not in schema)
+      const oldDoc = doc as unknown as {
+        _id: typeof doc._id;
+        userId: typeof doc.userId;
+        unlockedBlueprintIds?: string[];
+        unlockedJobIds?: string[];
+        enabledSystemFlags?: string[];
+        unlockedContentIds?: string[];
+      };
+
+      const newContentIds = new Set<string>();
+
+      // Transform blueprint IDs
+      if (oldDoc.unlockedBlueprintIds) {
+        for (const oldId of oldDoc.unlockedBlueprintIds) {
+          const newId = transformOldIdToNew(oldId);
+          if (newId) newContentIds.add(newId);
+        }
+      }
+
+      // Transform job IDs
+      if (oldDoc.unlockedJobIds) {
+        for (const oldId of oldDoc.unlockedJobIds) {
+          const newId = transformOldIdToNew(oldId);
+          if (newId) newContentIds.add(newId);
+        }
+      }
+
+      // System flags don't map to content IDs - they're handled differently now
+      // (enabledSystemFlags are ignored in migration)
+
+      try {
+        // Replace document with new format
+        await ctx.db.replace(doc._id, {
+          userId: doc.userId,
+          unlockedContentIds: Array.from(newContentIds),
+        });
+        results.migrated++;
+      } catch (error) {
+        results.errors.push(`Failed to migrate ${doc._id}: ${error}`);
+      }
+    }
+
+    return {
+      success: true,
+      message: `Migration complete. ${results.migrated} migrated, ${results.alreadyMigrated} already migrated.`,
+      ...results,
+    };
+  },
+});

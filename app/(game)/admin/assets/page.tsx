@@ -12,6 +12,7 @@ import {
   getAllJobs,
   getContentImageUrl,
 } from "@/convex/lib/contentCatalog"
+import { ACTION_GRID_CLASSES } from "@/components/game/dashboard/grid-classes"
 import type { Action } from "@/lib/game-types"
 
 type AssetCategory = "training" | "revenue" | "all"
@@ -125,7 +126,7 @@ export default function AdminAssetsPage() {
             <h2 className="text-lg font-bold uppercase tracking-wider mb-4 text-white/80">
               Training Models ({trainingActions.length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            <div className={ACTION_GRID_CLASSES}>
               {trainingActions.map((action) => (
                 <ActionCard
                   key={action.id}
@@ -142,7 +143,7 @@ export default function AdminAssetsPage() {
             <h2 className="text-lg font-bold uppercase tracking-wider mb-4 text-white/80">
               Revenue Jobs ({revenueActions.length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            <div className={ACTION_GRID_CLASSES}>
               {revenueActions.map((action) => (
                 <ActionCard
                   key={action.id}

@@ -188,13 +188,14 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 - Starting cash: $1,000
 - Spent in Operate (training costs, contracts, hiring)
 
-### Model System (Blueprint-driven)
+### Model System (Content Catalog)
 
-**Blueprints** define what models can be trained:
-- `bp_tts_3b` - 3B TTS (voice model)
-- `bp_vlm_7b` - 7B VLM (vision-language model)
-- `bp_llm_3b` - 3B LLM (text model)
-- `bp_llm_17b` - 17B LLM (stronger text model)
+**Model entries** in contentCatalog define what models can be trained:
+- `tts_3b` - 3B TTS (voice model)
+- `tts_7b`, `tts_30b`, `tts_70b` - Larger TTS models
+- `vlm_7b` - 7B VLM (vision-language model)
+- `llm_3b` - 3B LLM (text model)
+- `llm_17b` - 17B LLM (stronger text model)
 
 **Model Lifecycle**:
 1. **Blueprint**: Unlocked via Research (RP purchase)
@@ -215,41 +216,42 @@ Lab is your organization/ownership hub (nested routes under `/lab`):
 
 ### Job System (Content Catalog)
 
-All jobs are defined in `convex/lib/contentCatalog.ts`:
+All content is defined in `convex/lib/contentCatalog.ts` with unified IDs:
 
-**Training Jobs**: Create new model versions
-- `job_train_tts_3b` (2 min, 50 XP, 125 RP), `job_train_vlm_7b`, `job_train_llm_3b`, `job_train_llm_17b`
+**Training** (contentType: "model"): Create new model versions
+- `tts_3b` (2 min, 50 XP, 125 RP), `tts_7b`, `tts_30b`, `tts_70b`
+- `vlm_7b`, `llm_3b`, `llm_17b`
 
-**Contract Jobs**: Earn money using trained models
-- `job_contract_blog_basic` (uses LLM)
-- `job_contract_voice_pack` (uses TTS)
-- `job_contract_image_qa` (uses VLM)
+**Contracts** (contentType: "contract"): Earn money using trained models
+- `contract_blog` (uses LLM)
+- `contract_voice` (uses TTS)
+- `contract_vision` (uses VLM)
 
-**Revenue Jobs**: Freelance work, no models needed
-- `job_income_basic_website` (level 1, $200 + 30 XP)
-- `job_income_api_integration` (level 3, $400 + 50 XP)
+**Income** (contentType: "income"): Freelance work, no models needed
+- `income_website` (level 1, $200 + 30 XP)
+- `income_website_advanced` (level 4, $550 + 70 XP)
+- `income_api` (level 3, $400 + 50 XP)
 
-**Hire Jobs**: Temporary boosts to lab stats, cost money
-- `job_hire_junior_researcher` (level 2, +1 queue, 8 min, $300)
-- `job_hire_optimization_specialist` (level 3, +15% speed, 10 min, $1000)
-- `job_hire_hr_manager` (level 5, +1 staff, 15 min, $500)
-- `job_hire_business_partner` (level 6, +25% money multiplier, 15 min, $900)
-- `job_hire_senior_engineer` (level 10, +1 compute, 20 min, $1500)
+**Hires** (contentType: "hire"): Temporary boosts to lab stats
+- `hire_junior` (level 2, +1 queue, 8 min, $300)
+- `hire_optimizer` (level 3, +15% speed, 10 min, $1000)
+- `hire_hr` (level 5, +1 staff, 15 min, $500)
+- `hire_partner` (level 6, +25% money multiplier, 15 min, $900)
+- `hire_senior` (level 10, +1 compute, 20 min, $1500)
 
-**Research Job**: Always available RP trickle
-- `job_research_literature`
+**Research** (contentType: "research"): Always available RP trickle
+- `research_literature`
 
 ### Unlock System
 
-Player unlocks are tracked in `playerUnlocks` table:
-- `unlockedBlueprintIds`: Which blueprints can be trained
-- `unlockedJobIds`: Which jobs can be started
-- `enabledSystemFlags`: System features like `model_api_income`
+Player unlocks are tracked in `playerUnlocks` table with a unified format:
+- `unlockedContentIds`: Array of content IDs from CONTENT_CATALOG
 
-Free starter unlocks (0 RP, level 1):
-- `rn_cap_contracts_basic` - Basic blog contracts (monetization)
-- `rn_bp_unlock_tts_3b` - 3B TTS blueprint (model)
-- `rn_income_basic_website` - Basic website gigs (income)
+Free starter unlocks (0 RP, level 1, auto-unlocked):
+- `tts_3b` - 3B TTS model training
+- `contract_blog` - Basic blog contracts
+- `income_website` - Basic website freelance
+- `research_literature` - Always available research job
 
 ### Settings Panel
 
@@ -456,7 +458,7 @@ node scripts/generate-image.mjs -p "add neon glow effects" -i source.jpg
 
 ---
 
-_Last updated: 2026-01-06 (Lab Stats Architecture)_
+_Last updated: 2026-01-08 (Content Catalog unified IDs)_
 
 ---
 
@@ -580,7 +582,8 @@ _Last updated: 2026-01-06 (Lab Stats Architecture)_
 ## Repository Structure (Key Files)
 
 - `components/game/dashboard/spend-button.tsx` — Unified action button component (states: ready/confirm/active/disabled)
-- `components/game/dashboard/action-card.tsx` — Job card wrapper using SpendButton
+- `components/game/dashboard/action-card.tsx` — Unified card component for all views (Operate, Research, Lab Models) with optional expandable versions
+- `components/game/dashboard/grid-classes.ts` — Shared responsive grid breakpoints for consistent layouts
 - `convex/lib/contentCatalog.ts` — Central source of truth for blueprints, jobs, research nodes, inbox events
 - `convex/lib/gameConfig.ts` — XP per-level requirements, UP system, upgrade definitions
 - `convex/lib/gameConstants.ts` — Legacy task definitions (kept for backwards compatibility)
